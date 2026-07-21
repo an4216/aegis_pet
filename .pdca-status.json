@@ -1,0 +1,17 @@
+{
+  "activeFeature": "desktop-tamagotchi",
+  "features": {
+    "desktop-tamagotchi": {
+      "phase": "design",
+      "level": "Starter",
+      "matchRate": null,
+      "iterationCount": 0,
+      "startedAt": "2026-07-21T00:00:00+09:00",
+      "documents": {
+        "plan": "docs/01-plan/features/desktop-tamagotchi.plan.md",
+        "design": "docs/02-design/features/desktop-tamagotchi.design.md",
+        "characters": "docs/02-design/characters.md"
+      }
+    }
+  }
+}

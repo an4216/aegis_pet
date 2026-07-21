@@ -1,0 +1,258 @@
+# Design Ref: §2.1 — 펫 표현(스프라이트·애니메이션·입력). 시뮬레이션은 PetState가 소유.
+extends Node2D
+
+signal care_menu_requested(pos: Vector2)
+
+const Characters := preload("res://scripts/data/characters.gd")
+const STAGE_SCALE := {"egg": 0.5, "baby": 0.35, "child": 0.42, "adult": 0.5}
+const SPRITE_SIZE := 256.0
+const BASE_SPEED := 120.0
+const PET_COOLDOWN_SECONDS := 30.0
+const DRAG_THRESHOLD := 10.0
+
+var ps: Node
+var machine: Node
+var ground_y := 0.0
+var screen_size := Vector2.ZERO
+
+var _sprite: Sprite2D
+var _zzz: Label
+var _sick_mark: Label
+var _base_scale := Vector2.ONE
+var _pet_cooldown := 0.0
+var _pressed := false
+var _press_pos := Vector2.ZERO
+var _bob_tween: Tween
+var _wiggle_tween: Tween
+
+
+func _ready() -> void:
+	ps = get_node("/root/PetState")
+
+	_sprite = Sprite2D.new()
+	add_child(_sprite)
+	_zzz = _make_mark("Zzz", Color(0.55, 0.62, 0.85))
+	_sick_mark = _make_mark("@_@", Color(0.45, 0.65, 0.45))
+	refresh_appearance()
+
+	ps.species_assigned.connect(func(_s): refresh_appearance())
+	ps.stage_changed.connect(func(_s): refresh_appearance())
+	ps.care_performed.connect(_on_care_performed)
+	ps.pooped.connect(_on_pooped)
+
+	machine = load("res://scenes/pet/state_machine.gd").new()
+	machine.name = "StateMachine"
+	add_child(machine)
+	machine.setup(self)
+
+	position = Vector2(screen_size.x * 0.5, ground_y)
+
+
+func _process(delta: float) -> void:
+	if _pet_cooldown > 0.0:
+		_pet_cooldown -= delta
+
+
+func _input(event: InputEvent) -> void:
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT:
+		if event.pressed and get_click_rect().has_point(event.position):
+			care_menu_requested.emit(event.position)
+		return
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_MIDDLE:
+		# 백업 종료 수단 (기본은 트레이 메뉴 '종료')
+		if event.pressed and get_click_rect().has_point(event.position):
+			_quit_app()
+		return
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		if event.pressed and get_click_rect().has_point(event.position):
+			_pressed = true
+			_press_pos = event.position
+		elif not event.pressed and _pressed:
+			_pressed = false
+			if machine.current_name() != "Dragged":
+				_short_click()
+	elif event is InputEventMouseMotion and _pressed:
+		if machine.current_name() != "Dragged" and ps.stage != "egg" \
+				and event.position.distance_to(_press_pos) > DRAG_THRESHOLD:
+			machine.transition_to("Dragged")
+
+
+func is_mouse_pressed() -> bool:
+	return _pressed
+
+
+func get_click_rect() -> Rect2:
+	var size := SPRITE_SIZE * _base_scale.x
+	return Rect2(global_position + Vector2(-size * 0.5, -size), Vector2(size, size)).grow(8.0)
+
+
+func move_speed() -> float:
+	var speed := BASE_SPEED * Characters.get_stat_modifier(ps.species, "move_speed")
+	if ps.caffeine_until_min > 0.0:
+		speed *= 2.0
+	if ps.has_special("morning_speed"):
+		var h: int = Time.get_datetime_dict_from_system().hour
+		if h >= 7 and h < 10:
+			speed *= 2.0
+	return speed
+
+
+func face_towards(target_x: float) -> void:
+	_sprite.flip_h = target_x < position.x
+
+
+func refresh_appearance() -> void:
+	var tex_key: String = "egg" if ps.stage == "egg" else ps.species
+	var path := "res://assets/sprites/concept/%s.png" % tex_key
+	if not ResourceLoader.exists(path):
+		path = "res://assets/sprites/concept/mochi.png"  # Design §6: 리소스 폴백
+	_sprite.texture = load(path)
+	_base_scale = Vector2.ONE * STAGE_SCALE.get(ps.stage, 0.5)
+	_sprite.scale = _base_scale
+	_sprite.position = Vector2(0.0, -SPRITE_SIZE * _base_scale.y * 0.5)
+	var mark_y := -SPRITE_SIZE * _base_scale.y - 26.0
+	_zzz.position = Vector2(10.0, mark_y)
+	_sick_mark.position = Vector2(-16.0, mark_y)
+
+
+# --- 상태별 표현 (states/*.gd에서 호출) ---
+
+func idle_breathe() -> void:
+	var t := create_tween()
+	t.tween_property(_sprite, "scale", _base_scale * Vector2(1.03, 0.97), 0.5)
+	t.tween_property(_sprite, "scale", _base_scale, 0.5)
+
+
+func walk_bob(on: bool) -> void:
+	_kill_bob()
+	if on:
+		_bob_tween = create_tween().set_loops()
+		var up := -SPRITE_SIZE * _base_scale.y * 0.5 - 6.0
+		var down := -SPRITE_SIZE * _base_scale.y * 0.5
+		_bob_tween.tween_property(_sprite, "position:y", up, 0.18)
+		_bob_tween.tween_property(_sprite, "position:y", down, 0.18)
+
+
+func shake() -> void:
+	var t := create_tween()
+	for i in 3:
+		t.tween_property(_sprite, "rotation", 0.12, 0.06)
+		t.tween_property(_sprite, "rotation", -0.12, 0.06)
+	t.tween_property(_sprite, "rotation", 0.0, 0.06)
+
+
+func hatch_pop() -> void:
+	var t := create_tween()
+	t.tween_property(_sprite, "scale", _base_scale * 1.35, 0.15)
+	t.tween_property(_sprite, "scale", _base_scale, 0.25)
+	_float_text("탄생!")
+
+
+func eat_munch() -> void:
+	var t := create_tween()
+	for i in 3:
+		t.tween_property(_sprite, "scale", _base_scale * Vector2(1.1, 0.9), 0.15)
+		t.tween_property(_sprite, "scale", _base_scale, 0.15)
+
+
+func squat() -> void:
+	var t := create_tween()
+	t.tween_property(_sprite, "scale", _base_scale * Vector2(1.12, 0.82), 0.2)
+	t.tween_property(_sprite, "scale", _base_scale, 0.3)
+
+
+func land_squish() -> void:
+	var t := create_tween()
+	t.tween_property(_sprite, "scale", _base_scale * Vector2(1.25, 0.7), 0.08)
+	t.tween_property(_sprite, "scale", _base_scale, 0.2)
+
+
+func sulk_crouch() -> void:
+	var t := create_tween()
+	t.tween_property(_sprite, "scale", _base_scale * Vector2(1.05, 0.88), 0.4)
+
+
+func wiggle(on: bool) -> void:
+	if _wiggle_tween != null:
+		_wiggle_tween.kill()
+		_wiggle_tween = null
+		_sprite.rotation = 0.0
+	if on:
+		_wiggle_tween = create_tween().set_loops()
+		_wiggle_tween.tween_property(_sprite, "rotation", 0.18, 0.12)
+		_wiggle_tween.tween_property(_sprite, "rotation", -0.18, 0.12)
+
+
+func show_zzz(on: bool) -> void:
+	_zzz.visible = on
+
+
+func show_sick(on: bool) -> void:
+	_sick_mark.visible = on
+
+
+func set_sprite_tint(color: Color) -> void:
+	_sprite.modulate = color
+
+
+# --- 내부 ---
+
+func _short_click() -> void:
+	if ps.stage == "egg":
+		ps.click_egg()
+		shake()
+		return
+	if _pet_cooldown <= 0.0:
+		ps.care("pet")
+		_pet_cooldown = PET_COOLDOWN_SECONDS
+		_float_text("♥")
+	else:
+		idle_breathe()
+
+
+func _on_care_performed(action: String) -> void:
+	if action == "feed" or action == "snack":
+		if machine.current_name() not in machine.UNINTERRUPTIBLE:
+			machine.transition_to("Eat")
+	elif action == "medicine":
+		_float_text("+HP")
+
+
+func _on_pooped() -> void:
+	if ps.stage != "egg" and machine.current_name() not in machine.UNINTERRUPTIBLE:
+		machine.transition_to("Poop")
+
+
+func _float_text(text: String) -> void:
+	var label := Label.new()
+	label.text = text
+	label.add_theme_font_size_override("font_size", 20)
+	label.add_theme_color_override("font_color", Color(0.95, 0.4, 0.55))
+	label.position = Vector2(-10.0, -SPRITE_SIZE * _base_scale.y - 30.0)
+	add_child(label)
+	var t := create_tween()
+	t.tween_property(label, "position:y", label.position.y - 30.0, 0.8)
+	t.parallel().tween_property(label, "modulate:a", 0.0, 0.8)
+	t.tween_callback(label.queue_free)
+
+
+func _make_mark(text: String, color: Color) -> Label:
+	var label := Label.new()
+	label.text = text
+	label.add_theme_font_size_override("font_size", 18)
+	label.add_theme_color_override("font_color", color)
+	label.visible = false
+	add_child(label)
+	return label
+
+
+func _kill_bob() -> void:
+	if _bob_tween != null:
+		_bob_tween.kill()
+		_bob_tween = null
+		_sprite.position.y = -SPRITE_SIZE * _base_scale.y * 0.5
+
+
+func _quit_app() -> void:
+	get_node("/root/SaveManager").save_game()
+	get_tree().quit()
