@@ -58,15 +58,14 @@ func _setup_window() -> void:
 
 
 func _setup_ui() -> void:
-	var ui := CanvasLayer.new()
-	ui.name = "UI"
-	add_child(ui)
+	# CanvasLayer는 투명 오버레이 창(gl_compatibility)에서 렌더링되지 않는 문제가 있어
+	# UI를 월드 캔버스에 직접 배치하고 z_index로 최상위를 보장한다.
 	care_menu = load("res://scenes/ui/care_menu.tscn").instantiate()
 	stats_popup = load("res://scenes/ui/stats_popup.tscn").instantiate()
 	bubble = load("res://scenes/ui/speech_bubble.tscn").instantiate()
-	ui.add_child(care_menu)
-	ui.add_child(stats_popup)
-	ui.add_child(bubble)
+	for control in [care_menu, stats_popup, bubble]:
+		control.z_index = 100
+		add_child(control)
 	care_menu.action_selected.connect(_on_care_action)
 
 	speech = load("res://scripts/speech_controller.gd").new()
@@ -213,13 +212,16 @@ func _spawn_poop_at(pos: Vector2) -> void:
 
 
 ## 클릭 가능한 영역(펫+응아+열린 UI)만 마우스를 받고, 나머지는 아래 창으로 통과.
+## 주의: Windows에서 이 영역은 입력뿐 아니라 "그리기 영역"도 잘라낸다 (SetWindowRgn).
+## 따라서 말풍선·머리 위 이펙트(Zzz/하트)도 반드시 영역에 포함해야 화면에 보인다.
 func _update_passthrough() -> void:
-	var rects: Array = [pet.get_click_rect()]
+	# 펫 영역을 위로 70px 확장: Zzz·하트·탄생! 등 머리 위 이펙트 포함
+	var rects: Array = [pet.get_click_rect().grow_individual(12.0, 70.0, 12.0, 0.0)]
 	for poop in get_tree().get_nodes_in_group("poop"):
 		rects.append(poop.get_click_rect())
-	for control in [care_menu, stats_popup]:
+	for control in [care_menu, stats_popup, bubble]:
 		if control != null and control.visible:
-			rects.append(control.get_global_rect().grow(4.0))
+			rects.append(control.get_global_rect().grow(6.0))
 
 	var intervals: Array = []  # [x0, x1, top_y]
 	for r in rects:
