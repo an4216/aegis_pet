@@ -221,7 +221,7 @@ func _update_passthrough() -> void:
 		rects.append(poop.get_click_rect())
 	for control in [care_menu, stats_popup, bubble]:
 		if control != null and control.visible:
-			rects.append(control.get_global_rect().grow(6.0))
+			rects.append(control.get_global_rect().grow(12.0))  # 말꼬리 포함 여유
 
 	var intervals: Array = []  # [x0, x1, top_y]
 	for r in rects:
