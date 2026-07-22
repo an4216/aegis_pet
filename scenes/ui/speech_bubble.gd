@@ -38,12 +38,12 @@ func _ready() -> void:
 	add_child(_label)
 
 
-func say(text: String, target: Node2D, screen_size: Vector2) -> void:
+func say(text: String, target: Node2D, screen_size: Vector2, seconds: float = SHOW_SECONDS) -> void:
 	_label.text = text
 	_label.custom_minimum_size.x = minf(190.0, 14.0 + text.length() * 11.0)
 	_target = target
 	_screen_size = screen_size
-	_countdown = SHOW_SECONDS
+	_countdown = seconds
 	visible = true
 	reset_size()
 	if _fade != null:

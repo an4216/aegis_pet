@@ -16,7 +16,12 @@ var settings := {
 	"always_on_top": true,
 	"autostart": false,
 	"window_play": false,  # 창 위 점프 놀이 — 업무 방해 우려로 기본 꺼짐 (트레이에서 opt-in)
+	"reminders": [],       # [{text, hour, minute, repeat: once|daily|weekdays, last_fired}]
+	"todos": [],           # [{text, done}] 최대 3개, 매일 리셋
+	"todos_date": "",      # 할 일 목록 기준 날짜 (YYYY-MM-DD)
 }
+
+var pomodoro_work := false  # 뽀모도로 집중 중 (비영속, 말풍선·산책 억제용)
 
 
 func _ready() -> void:

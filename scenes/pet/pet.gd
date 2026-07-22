@@ -181,6 +181,18 @@ func land_squish() -> void:
 	t.tween_property(_sprite, "scale", _base_scale, 0.2)
 
 
+func celebrate() -> void:
+	# 신나는 세리머니: 폴짝폴짝 3연속 점프 + 음표
+	var base_y := -SPRITE_SIZE * _base_scale.y * 0.5
+	var t := create_tween()
+	for i in 3:
+		t.tween_property(_sprite, "position:y", base_y - 22.0, 0.14) \
+			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		t.tween_property(_sprite, "position:y", base_y, 0.14) \
+			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	_float_text("♪")
+
+
 func sulk_crouch() -> void:
 	var t := create_tween()
 	t.tween_property(_sprite, "scale", _base_scale * Vector2(1.05, 0.88), 0.4)

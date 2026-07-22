@@ -12,7 +12,9 @@ var poop_container: Node2D
 var care_menu: Control
 var stats_popup: Control
 var bubble: Control
+var notebook: Control
 var speech: Node
+var assistant: Node
 var tray_menu: PopupMenu
 var screen_rect: Rect2i
 var _last_poly := PackedVector2Array()
@@ -53,6 +55,10 @@ func _ready() -> void:
 
 
 func _process(_delta: float) -> void:
+	# 수첩이 열려 있을 때만 키보드 입력 허용 (텍스트 입력용, 닫히면 다시 비침습)
+	var need_focus: bool = notebook != null and notebook.visible
+	if get_window().unfocusable == need_focus:
+		get_window().unfocusable = not need_focus
 	_update_passthrough()
 
 
@@ -95,6 +101,15 @@ func _setup_ui() -> void:
 	add_child(speech)
 	speech.setup(bubble, pet, Vector2(screen_rect.size))
 
+	notebook = load("res://scenes/ui/notebook.tscn").instantiate()
+	notebook.z_index = 100
+	add_child(notebook)
+	assistant = load("res://scripts/assistant.gd").new()
+	assistant.name = "Assistant"
+	add_child(assistant)
+	assistant.setup(pet, bubble, Vector2(screen_rect.size))
+	notebook.assistant = assistant
+
 
 func _setup_tray() -> void:
 	tray_menu = PopupMenu.new()
@@ -103,6 +118,7 @@ func _setup_tray() -> void:
 	tray_menu.add_check_item("항상 위", 2)
 	tray_menu.add_check_item("시작 시 자동 실행", 3)
 	tray_menu.add_check_item("창 위 놀이 (점프)", 5)
+	tray_menu.add_item("📔 수첩 (할 일·리마인더·집중)", 6)
 	tray_menu.add_separator()
 	tray_menu.add_item("종료", 4)
 	tray_menu.set_item_checked(1, _sm.settings.get("focus_mode", false))
@@ -152,6 +168,11 @@ func _on_tray_action(id: int) -> void:
 			if _sm.settings["window_play"] and not probe.available:
 				probe.start()
 			_sm.save_game()
+		6:
+			if notebook.visible:
+				notebook.visible = false
+			else:
+				notebook.open_at_corner(Vector2(screen_rect.size))
 
 
 func _open_care_menu(pos: Vector2) -> void:
@@ -252,7 +273,7 @@ func _update_passthrough() -> void:
 	var rects: Array = [pet.get_click_rect().grow_individual(12.0, 70.0, 12.0, 0.0)]
 	for poop in get_tree().get_nodes_in_group("poop"):
 		rects.append(poop.get_click_rect())
-	for control in [care_menu, stats_popup, bubble]:
+	for control in [care_menu, stats_popup, bubble, notebook]:
 		if control != null and control.visible:
 			rects.append(control.get_global_rect().grow(12.0))  # 말꼬리 포함 여유
 

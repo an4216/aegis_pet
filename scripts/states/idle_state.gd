@@ -14,6 +14,9 @@ func enter() -> void:
 func update(delta: float) -> void:
 	_timer -= delta
 	if _timer <= 0.0:
+		if get_node("/root/SaveManager").pomodoro_work:
+			_timer = randf_range(5.0, 10.0)  # 집중 시간엔 얌전히 대기 (FR-22)
+			return
 		var roll := randf()
 		if roll < 0.6:
 			machine.transition_to("Walk")

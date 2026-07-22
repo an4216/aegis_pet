@@ -55,6 +55,8 @@ func _on_hatched(species: String) -> void:
 func _can_speak() -> bool:
 	if _sm.settings.get("focus_mode", false):
 		return false
+	if _sm.pomodoro_work:
+		return false  # 집중 시간엔 조용히 (FR-22)
 	if _sm.settings.get("bubble_frequency", "normal") == "off":
 		return false
 	if _ps.activity == _ps.Activity.SLEEPING:

@@ -191,6 +191,12 @@ func has_special(tag: String) -> bool:
 	return Characters.has_special(species, tag)
 
 
+## 할 일 완료·뽀모도로 등 생산성 보상 (Plan FR-22, FR-23)
+func reward_happiness(amount: float) -> void:
+	_add_stat("happiness", amount)
+	_update_conditions()
+
+
 ## 케어 품질 스코어 (성체 진화 분기용, 일 1회 샘플링)
 func care_quality_now() -> float:
 	var total := 0.0
