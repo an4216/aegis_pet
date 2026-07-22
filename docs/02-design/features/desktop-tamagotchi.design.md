@@ -274,14 +274,15 @@ const HATCH_HOURS_RANGE := [1.0, 4.0]
 | 시작 시 자동 실행 | 레지스트리 `HKCU\Software\Microsoft\Windows\CurrentVersion\Run` 등록/해제 (OS.execute reg add/delete) |
 | 종료 | SaveManager.save() → quit |
 
-### 4.3 창 감지 어댑터 (Phase 2 자리만 확보)
+### 4.3 창 감지 어댑터 (Phase 2 — 구현 완료)
 
-```gdscript
-# scripts/platform/window_probe.gd — Phase 1에서는 스텁
-class_name WindowProbe
-func get_window_rects() -> Array[Rect2]:   # Phase 2: GDExtension(EnumWindows)
-    return []                               # Phase 1: 빈 배열 = 화면 가장자리만 사용
-```
+- **방식**: Windows 내장 C# 컴파일러(csc, .NET Framework 4.x)로 첫 실행 시 `window_probe.exe`를 빌드 → 헬퍼가 0.5초마다 EnumWindows 결과를 `user://windows.json`에 기록 → Godot이 폴링
+- **개인정보**: 창 제목은 읽지 않음 (핸들·클래스 판별·좌표만)
+- **수명 관리**: 게임 pid를 헬퍼에 전달 → 게임 종료 시 헬퍼 자동 종료 (+ Godot 쪽 OS.kill 이중 안전장치)
+- **토스트 감지**: CoreWindow 계열 소형 창 휴리스틱 → `toast_appeared` 시그널 → 펫이 달려가 올라탐
+- **폴백**: csc 부재/빌드 실패 시 platforms 빈 배열 = Phase 1 동작 (우아한 성능 저하)
+- **관련 상태**: `JumpState`(포물선 점프) / `PerchState`(창 위 앉기·산책, 창 이동 추적, 소실 시 낙하)
+- **클릭영역**: 스카이라인 방식 → **스템(stem) 방식**(`region_builder.gd`)으로 교체 — 공중에 뜬 펫 아래로 클릭 차단 기둥이 생기지 않도록 2px 기둥으로만 바닥과 연결
 
 ---
 

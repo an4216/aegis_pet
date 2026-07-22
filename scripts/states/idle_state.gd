@@ -14,8 +14,25 @@ func enter() -> void:
 func update(delta: float) -> void:
 	_timer -= delta
 	if _timer <= 0.0:
-		if randf() < 0.65:
+		var roll := randf()
+		if roll < 0.6:
 			machine.transition_to("Walk")
+		elif roll < 0.8 and _try_jump():
+			return
 		else:
 			_timer = randf_range(3.0, 8.0)
 			pet.idle_breathe()
+
+
+## 열린 창이 있으면 그 위로 점프 (Phase 2, FR-13)
+func _try_jump() -> bool:
+	if pet.probe == null or not pet.probe.available:
+		return false
+	var plats: Array = pet.probe.platforms(Rect2(Vector2.ZERO, pet.screen_size), pet.ground_y)
+	if plats.is_empty():
+		return false
+	var win: Dictionary = plats[randi() % plats.size()]
+	pet.jump_target_id = win["id"]
+	pet.jump_target_rect = win["rect"]
+	machine.transition_to("Jump")
+	return true

@@ -12,8 +12,13 @@ const DRAG_THRESHOLD := 10.0
 
 var ps: Node
 var machine: Node
+var probe: Node = null            # scripts/platform/window_probe.gd (main이 주입)
 var ground_y := 0.0
 var screen_size := Vector2.ZERO
+var platform_id := -1             # 올라가 있는 창 핸들 (-1 = 지상)
+var platform_rect := Rect2()
+var jump_target_id := -1
+var jump_target_rect := Rect2()
 
 var _sprite: Sprite2D
 var _zzz: Label
@@ -79,6 +84,12 @@ func _input(event: InputEvent) -> void:
 
 func is_mouse_pressed() -> bool:
 	return _pressed
+
+
+func start_jump(target_id: int, target_rect: Rect2) -> void:
+	jump_target_id = target_id
+	jump_target_rect = target_rect
+	machine.transition_to("Jump")
 
 
 func get_click_rect() -> Rect2:

@@ -3,8 +3,11 @@ extends Node2D
 
 const AUTOSTART_REG_KEY := "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run"
 const AUTOSTART_REG_NAME := "DesktopTamagotchi"
+const RegionBuilder := preload("res://scripts/platform/region_builder.gd")
+const DialogData := preload("res://scripts/data/dialog.gd")
 
 var pet: Node2D
+var probe: Node
 var poop_container: Node2D
 var care_menu: Control
 var stats_popup: Control
@@ -29,6 +32,13 @@ func _ready() -> void:
 	pet.screen_size = Vector2(screen_rect.size)
 	pet.ground_y = float(screen_rect.size.y) - 6.0
 	add_child(pet)
+
+	probe = load("res://scripts/platform/window_probe.gd").new()
+	probe.name = "WindowProbe"
+	add_child(probe)
+	probe.start()
+	probe.toast_appeared.connect(_on_toast)
+	pet.probe = probe
 
 	_setup_ui()
 	_setup_tray()
@@ -223,25 +233,20 @@ func _update_passthrough() -> void:
 		if control != null and control.visible:
 			rects.append(control.get_global_rect().grow(12.0))  # 말꼬리 포함 여유
 
-	var intervals: Array = []  # [x0, x1, top_y]
-	for r in rects:
-		intervals.append([r.position.x, r.end.x, r.position.y])
-	intervals.sort_custom(func(a, b): return a[0] < b[0])
-	var merged: Array = []
-	for it in intervals:
-		if merged.is_empty() or it[0] > merged[-1][1]:
-			merged.append([it[0], it[1], it[2]])
-		else:
-			merged[-1][1] = maxf(merged[-1][1], it[1])
-			merged[-1][2] = minf(merged[-1][2], it[2])
-
-	var base := float(screen_rect.size.y)
-	var poly := PackedVector2Array()
-	for m in merged:
-		poly.append(Vector2(m[0], base))
-		poly.append(Vector2(m[0], m[2]))
-		poly.append(Vector2(m[1], m[2]))
-		poly.append(Vector2(m[1], base))
+	var poly := RegionBuilder.build(rects, float(screen_rect.size.y))
 	if poly != _last_poly:
 		DisplayServer.window_set_mouse_passthrough(poly)
 		_last_poly = poly
+
+
+## 알림 토스트가 뜨면 달려가서 올라탄다 (Phase 2)
+func _on_toast(id: int, rect: Rect2) -> void:
+	if _ps.stage == "egg":
+		return
+	if not rect.intersects(Rect2(Vector2.ZERO, Vector2(screen_rect.size))):
+		return
+	if pet.machine.current_name() in ["Idle", "Walk"]:
+		pet.start_jump(id, rect)
+		var lines: Array = DialogData.COMMON.get("toast", [])
+		if not lines.is_empty():
+			bubble.say(lines[randi() % lines.size()], pet, Vector2(screen_rect.size))
