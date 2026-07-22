@@ -30,13 +30,15 @@ func _ready() -> void:
 
 	pet = load("res://scenes/pet/pet.tscn").instantiate()
 	pet.screen_size = Vector2(screen_rect.size)
-	pet.ground_y = float(screen_rect.size.y) - 6.0
+	pet.ground_y = ground_bottom - 6.0
 	add_child(pet)
 
 	probe = load("res://scripts/platform/window_probe.gd").new()
 	probe.name = "WindowProbe"
+	probe.origin = Vector2(screen_rect.position)  # 전역 → 창 로컬 좌표 변환
 	add_child(probe)
-	probe.start()
+	if _sm.settings.get("window_play", false):
+		probe.start()
 	probe.toast_appeared.connect(_on_toast)
 	pet.probe = probe
 
@@ -54,6 +56,9 @@ func _process(_delta: float) -> void:
 	_update_passthrough()
 
 
+var ground_bottom := 0.0  # 로컬 좌표 기준 바닥 (가장 낮은 작업표시줄 위)
+
+
 func _setup_window() -> void:
 	var win := get_window()
 	win.borderless = true
@@ -61,7 +66,14 @@ func _setup_window() -> void:
 	win.transparent_bg = true
 	win.always_on_top = _sm.settings.get("always_on_top", true)
 	win.unfocusable = true
-	screen_rect = DisplayServer.screen_get_usable_rect()
+	# 모든 모니터를 덮는 하나의 오버레이 (Phase 2: 멀티모니터)
+	screen_rect = DisplayServer.screen_get_usable_rect(0)
+	var min_bottom := float((screen_rect as Rect2i).end.y)
+	for i in range(1, DisplayServer.get_screen_count()):
+		var usable := DisplayServer.screen_get_usable_rect(i)
+		screen_rect = (screen_rect as Rect2i).merge(usable)
+		min_bottom = minf(min_bottom, float(usable.end.y))
+	ground_bottom = min_bottom - float(screen_rect.position.y)
 	win.position = screen_rect.position
 	win.size = screen_rect.size
 	Engine.max_fps = 30
@@ -90,11 +102,13 @@ func _setup_tray() -> void:
 	tray_menu.add_check_item("집중 모드", 1)
 	tray_menu.add_check_item("항상 위", 2)
 	tray_menu.add_check_item("시작 시 자동 실행", 3)
+	tray_menu.add_check_item("창 위 놀이 (점프)", 5)
 	tray_menu.add_separator()
 	tray_menu.add_item("종료", 4)
 	tray_menu.set_item_checked(1, _sm.settings.get("focus_mode", false))
 	tray_menu.set_item_checked(2, _sm.settings.get("always_on_top", true))
 	tray_menu.set_item_checked(3, _sm.settings.get("autostart", false))
+	tray_menu.set_item_checked(4, _sm.settings.get("window_play", false))
 	tray_menu.id_pressed.connect(_on_tray_action)
 	add_child(tray_menu)
 
@@ -132,9 +146,18 @@ func _on_tray_action(id: int) -> void:
 		4:
 			_sm.save_game()
 			get_tree().quit()
+		5:
+			_sm.settings["window_play"] = not _sm.settings.get("window_play", false)
+			tray_menu.set_item_checked(tray_menu.get_item_index(5), _sm.settings["window_play"])
+			if _sm.settings["window_play"] and not probe.available:
+				probe.start()
+			_sm.save_game()
 
 
 func _open_care_menu(pos: Vector2) -> void:
+	if care_menu.visible:
+		care_menu.visible = false  # 우클릭 다시 하면 닫기
+		return
 	care_menu.open_at(pos + Vector2(40.0, -80.0), Vector2(screen_rect.size))
 
 
@@ -233,7 +256,7 @@ func _update_passthrough() -> void:
 		if control != null and control.visible:
 			rects.append(control.get_global_rect().grow(12.0))  # 말꼬리 포함 여유
 
-	var poly := RegionBuilder.build(rects, float(screen_rect.size.y))
+	var poly := RegionBuilder.build(rects, ground_bottom + 4.0)
 	if poly != _last_poly:
 		DisplayServer.window_set_mouse_passthrough(poly)
 		_last_poly = poly
@@ -241,6 +264,8 @@ func _update_passthrough() -> void:
 
 ## 알림 토스트가 뜨면 달려가서 올라탄다 (Phase 2)
 func _on_toast(id: int, rect: Rect2) -> void:
+	if not _sm.settings.get("window_play", false):
+		return
 	if _ps.stage == "egg":
 		return
 	if not rect.intersects(Rect2(Vector2.ZERO, Vector2(screen_rect.size))):

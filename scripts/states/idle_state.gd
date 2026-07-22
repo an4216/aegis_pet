@@ -26,7 +26,12 @@ func update(delta: float) -> void:
 
 ## 열린 창이 있으면 그 위로 점프 (Phase 2, FR-13)
 func _try_jump() -> bool:
+	var sm := get_node("/root/SaveManager")
+	if not sm.settings.get("window_play", false):
+		return false  # 창 위 놀이 꺼짐 (기본값) — 업무 방해 방지
 	if pet.probe == null or not pet.probe.available:
+		return false
+	if pet.jump_cooldown > 0.0:
 		return false
 	var plats: Array = pet.probe.platforms(Rect2(Vector2.ZERO, pet.screen_size), pet.ground_y)
 	if plats.is_empty():

@@ -15,6 +15,7 @@ var settings := {
 	"bubble_frequency": "normal",
 	"always_on_top": true,
 	"autostart": false,
+	"window_play": false,  # 창 위 점프 놀이 — 업무 방해 우려로 기본 꺼짐 (트레이에서 opt-in)
 }
 
 

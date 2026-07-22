@@ -13,11 +13,13 @@ func enter() -> void:
 	_stay = randf_range(20.0, 60.0)
 	_walking = false
 	pet.idle_breathe()
+	print("perch: enter id=", pet.platform_id, " stay=", snappedf(_stay, 0.1))
 
 
 func exit() -> void:
 	pet.platform_id = -1
 	pet.walk_bob(false)
+	pet.jump_cooldown = randf_range(90.0, 240.0)  # 내려온 뒤엔 한동안 지상 생활
 
 
 func update(delta: float) -> void:
@@ -46,6 +48,7 @@ func update(delta: float) -> void:
 
 	_stay -= delta
 	if _stay <= 0.0:
+		print("perch: stay 만료 → fall")
 		machine.transition_to("Fall")  # 다 놀았으면 뛰어내리기
 		return
 

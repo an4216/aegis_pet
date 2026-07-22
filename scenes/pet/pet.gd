@@ -19,6 +19,7 @@ var platform_id := -1             # 올라가 있는 창 핸들 (-1 = 지상)
 var platform_rect := Rect2()
 var jump_target_id := -1
 var jump_target_rect := Rect2()
+var jump_cooldown := 0.0          # 창 위 놀이 사이 휴식 (업무 비방해)
 
 var _sprite: Sprite2D
 var _zzz: Label
@@ -56,6 +57,8 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if _pet_cooldown > 0.0:
 		_pet_cooldown -= delta
+	if jump_cooldown > 0.0:
+		jump_cooldown -= delta
 
 
 func _input(event: InputEvent) -> void:

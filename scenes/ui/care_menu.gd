@@ -37,6 +37,14 @@ func _ready() -> void:
 		button.add_theme_font_size_override("font_size", 14)
 		button.pressed.connect(_on_button.bind(entry[0]))
 		vbox.add_child(button)
+	var close_button := Button.new()
+	close_button.text = "✕ 닫기"
+	close_button.custom_minimum_size = Vector2(110.0, 26.0)
+	close_button.focus_mode = Control.FOCUS_NONE
+	close_button.add_theme_font_size_override("font_size", 12)
+	close_button.add_theme_color_override("font_color", Color(0.55, 0.5, 0.55))
+	close_button.pressed.connect(func(): visible = false)
+	vbox.add_child(close_button)
 
 
 func _process(delta: float) -> void:

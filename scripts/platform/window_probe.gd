@@ -13,8 +13,9 @@ const CSC_PATHS := [
 	"C:/Windows/Microsoft.NET/Framework/v4.0.30319/csc.exe",
 ]
 
-var windows: Array = []      # [{id, rect: Rect2, z, toast}] z 낮을수록 위
+var windows: Array = []      # [{id, rect: Rect2, z, toast}] z 낮을수록 위. rect는 창 로컬 좌표
 var available := false
+var origin := Vector2.ZERO   # 오버레이 창의 전역 원점 (main이 주입)
 
 var _helper_pid := -1
 var _timer := 0.0
@@ -53,6 +54,8 @@ func _process(delta: float) -> void:
 	var text := f.get_as_text()
 	f.close()
 	windows = parse_windows(text)
+	for win in windows:
+		win["rect"] = Rect2((win["rect"] as Rect2).position - origin, (win["rect"] as Rect2).size)
 	_detect_toasts()
 
 
