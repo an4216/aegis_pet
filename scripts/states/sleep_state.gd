@@ -7,10 +7,11 @@ var _corner_x := 0.0
 
 func enter() -> void:
 	_at_corner = false
-	var margin := 90.0
+	var margin: float = pet.horizontal_edge_margin()
 	_corner_x = margin if pet.position.x < pet.screen_size.x * 0.5 else pet.screen_size.x - margin
 	pet.face_towards(_corner_x)
 	pet.ps.activity = pet.ps.Activity.ACTIVE  # 이동 중
+	pet.play_state_animation("Walk")
 
 
 func exit() -> void:
@@ -26,6 +27,7 @@ func update(delta: float) -> void:
 			pet.position.x = _corner_x
 			_at_corner = true
 			pet.ps.activity = pet.ps.Activity.SLEEPING
+			pet.play_state_animation("Sleep")
 			pet.show_zzz(true)
 			pet.set_sprite_tint(Color(0.75, 0.75, 0.85))
 		else:

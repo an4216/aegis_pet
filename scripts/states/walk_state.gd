@@ -6,7 +6,7 @@ var _target_x := 0.0
 
 func enter() -> void:
 	pet.ps.activity = pet.ps.Activity.ACTIVE
-	var margin := 80.0
+	var margin: float = pet.horizontal_edge_margin()
 	_target_x = randf_range(margin, pet.screen_size.x - margin)
 	pet.face_towards(_target_x)
 	pet.walk_bob(true)

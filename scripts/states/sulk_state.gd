@@ -7,7 +7,7 @@ var _corner_x := 0.0
 
 func enter() -> void:
 	_at_corner = false
-	var margin := 90.0
+	var margin: float = pet.horizontal_edge_margin()
 	_corner_x = margin if pet.position.x < pet.screen_size.x * 0.5 else pet.screen_size.x - margin
 	pet.face_towards(_corner_x)
 	pet.ps.activity = pet.ps.Activity.ACTIVE

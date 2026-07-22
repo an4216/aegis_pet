@@ -12,8 +12,9 @@ const STATE_SCRIPTS := {
 	"Sulk": "res://scripts/states/sulk_state.gd",
 	"Dragged": "res://scripts/states/dragged_state.gd",
 	"Fall": "res://scripts/states/fall_state.gd",
+	"Land": "res://scripts/states/land_state.gd",
 }
-const UNINTERRUPTIBLE := ["Egg", "Dragged", "Fall"]
+const UNINTERRUPTIBLE := ["Egg", "Dragged", "Fall", "Land"]
 
 var states := {}
 var current: Node = null
@@ -38,6 +39,7 @@ func transition_to(key: String) -> void:
 	if current != null:
 		current.exit()
 	current = states[key]
+	pet.play_state_animation(key)
 	current.enter()
 
 

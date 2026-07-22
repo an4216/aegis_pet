@@ -51,6 +51,7 @@ godot --headless --path . --script tests/run_tests.gd
 | [기획서](docs/01-plan/features/desktop-tamagotchi.plan.md) | 요구사항 FR-01~20, 범위, 리스크 |
 | [설계서](docs/02-design/features/desktop-tamagotchi.design.md) | 아키텍처, FSM, 저장 스키마, 테스트 계획 |
 | [캐릭터 디자인](docs/02-design/characters.md) | 10종 성격·특성·팔레트·대사 전체 |
+| [펫 스프라이트 제작 기준](docs/02-design/pet-sprite-production-guide.md) | 비숑 완성본의 시트 구성·배치·렌더링·QA 기준과 새 캐릭터 템플릿 |
 
 ## 기술 스택
 

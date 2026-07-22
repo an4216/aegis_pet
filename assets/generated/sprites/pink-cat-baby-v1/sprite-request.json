@@ -1,0 +1,129 @@
+{
+  "version": 1,
+  "kind": "sprite-gen-request",
+  "engine": "component-row",
+  "character": {
+    "id": "pink_cat_baby",
+    "description": "",
+    "base_image": "base-source.png"
+  },
+  "cell": {
+    "shape": "square",
+    "width": 256,
+    "height": 256,
+    "safe_margin_x": 24,
+    "safe_margin_y": 24,
+    "size": 256,
+    "safe_margin": 24
+  },
+  "chroma_key": {
+    "name": "green",
+    "hex": "#00FF00",
+    "rgb": [
+      0,
+      255,
+      0
+    ],
+    "selection": "manual"
+  },
+  "states": {
+    "idle": {
+      "frames": 4,
+      "fps": 4,
+      "loop": true,
+      "action": "standing completely in place; open eyes, tiny relaxed breath, one brief closed-eye blink, then reopen; feet and torso stay fixed"
+    },
+    "walk": {
+      "frames": 12,
+      "fps": 12,
+      "loop": true,
+      "action": "side-profile walk facing screen-left; a continuous gentle 12-frame gait with alternating foot contacts and natural arm swing; every foot contact shares one ground line; no whole-body lateral slide"
+    },
+    "sleep": {
+      "frames": 8,
+      "fps": 5,
+      "loop": true,
+      "action": "curled asleep on the ground, eyes closed, very gentle breathing; compact grounded silhouette"
+    },
+    "eat": {
+      "frames": 12,
+      "fps": 9,
+      "loop": true,
+      "action": "cute standing munching reaction with small open-and-close mouth, tiny head nods and paws near the cream belly; feet and torso remain grounded"
+    },
+    "file_hover": {
+      "frames": 4,
+      "fps": 12,
+      "loop": false,
+      "action": "anticipatory standing reaction as a file hovers overhead; face looks alert and mouth gradually opens wide; no file icon or detached prop in the artwork"
+    },
+    "file_consume": {
+      "frames": 8,
+      "fps": 12,
+      "loop": false,
+      "action": "a clear non-loop consuming reaction after the file is dropped: open mouth, delighted munches, swallow, then settle; no visible file icon or detached prop"
+    },
+    "poop": {
+      "frames": 6,
+      "fps": 8,
+      "loop": true,
+      "action": "small grounded squat and embarrassed expression; pose communicates toilet need without detached effects"
+    },
+    "sick": {
+      "frames": 8,
+      "fps": 6,
+      "loop": true,
+      "action": "tired unwell standing reaction with droopy eyes, slight hunch, weak sway limited to head and shoulders; feet remain on one ground line"
+    },
+    "sulk": {
+      "frames": 8,
+      "fps": 6,
+      "loop": true,
+      "action": "standing pout with lowered brows, tucked hands and a tiny head turn; body remains centered and grounded"
+    },
+    "dragged": {
+      "frames": 4,
+      "fps": 10,
+      "loop": true,
+      "action": "being held in midair: arms lifted, feet dangling close together, surprised but cute face; compact body silhouette"
+    },
+    "fall": {
+      "frames": 4,
+      "fps": 12,
+      "loop": true,
+      "action": "downward falling sequence through body pose only; no speed lines, dust, shadow, or detached effects"
+    },
+    "land": {
+      "frames": 4,
+      "fps": 10,
+      "loop": false,
+      "action": "landing recovery: crouch, soft squash, rise toward a stable standing pose; feet land on one ground line; no impact effect"
+    },
+    "pet": {
+      "frames": 8,
+      "fps": 10,
+      "loop": false,
+      "action": "warm response to being petted: happy closed-eye smile, small shoulder lift and paws clasped near chest; same torso size and baseline as idle; no stars or detached effects"
+    },
+    "play": {
+      "frames": 8,
+      "fps": 10,
+      "loop": false,
+      "action": "joyful playful reaction: clear happy smile and small two-paw clap/bounce while the torso remains centered; no props, stars, or detached effects"
+    }
+  },
+  "style": "soft 3D plush desktop-pet sprite, clean antialiased edges, no outline, childlike proportions, warm pale-pink and cream palette",
+  "motion_phase_guides": true,
+  "layout": "taxonomy/v1",
+  "fit": {
+    "resample": "lanczos",
+    "align_x": "alpha-centroid",
+    "align_y": "bottom",
+    "pixel_perfect": false
+  },
+  "chroma": {
+    "mode": "rgb",
+    "unmix_reach": 4,
+    "spill_max_fraction": 1.0
+  }
+}

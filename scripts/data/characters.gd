@@ -5,6 +5,18 @@ extends RefCounted
 const RARITY_WEIGHT := {"common": 15.0, "uncommon": 8.0, "rare": 4.0}
 
 const CHARACTERS := {
+	"bichon": {
+		"name_kr": "비숑", "rarity": "uncommon",
+		"stat_modifiers": {},
+		"care_modifiers": {},
+		"special": [],
+	},
+	"pink_cat_baby": {
+		"name_kr": "핑냥이", "rarity": "uncommon",
+		"stat_modifiers": {},
+		"care_modifiers": {"pet": 1.2},
+		"special": [],
+	},
 	"mochi": {
 		"name_kr": "모찌", "rarity": "common",
 		"stat_modifiers": {},
