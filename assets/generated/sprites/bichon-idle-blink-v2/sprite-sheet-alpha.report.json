@@ -1,0 +1,196 @@
+{
+  "ok": true,
+  "engine": "component-row",
+  "curation_applied": true,
+  "frame_variant": "pixel",
+  "errors": [],
+  "atlas": "sprite-sheet-alpha.png",
+  "manifest": "manifest.json",
+  "cell": {
+    "shape": "square",
+    "width": 443,
+    "height": 443,
+    "size": 443,
+    "safe_margin": 0
+  },
+  "states": [
+    "idle"
+  ],
+  "cells": [
+    {
+      "state": "idle",
+      "frame": 1,
+      "nontransparent_pixels": 51797,
+      "x": 0,
+      "y": 0,
+      "w": 443,
+      "h": 443
+    },
+    {
+      "state": "idle",
+      "frame": 4,
+      "reuses": true,
+      "x": 0,
+      "y": 0,
+      "w": 443,
+      "h": 443
+    },
+    {
+      "state": "idle",
+      "frame": 5,
+      "reuses": true,
+      "x": 0,
+      "y": 0,
+      "w": 443,
+      "h": 443
+    },
+    {
+      "state": "idle",
+      "frame": 6,
+      "reuses": true,
+      "x": 0,
+      "y": 0,
+      "w": 443,
+      "h": 443
+    },
+    {
+      "state": "idle",
+      "frame": 7,
+      "reuses": true,
+      "x": 0,
+      "y": 0,
+      "w": 443,
+      "h": 443
+    },
+    {
+      "state": "idle",
+      "frame": 8,
+      "reuses": true,
+      "x": 0,
+      "y": 0,
+      "w": 443,
+      "h": 443
+    },
+    {
+      "state": "idle",
+      "frame": 9,
+      "reuses": true,
+      "x": 0,
+      "y": 0,
+      "w": 443,
+      "h": 443
+    },
+    {
+      "state": "idle",
+      "frame": 10,
+      "reuses": true,
+      "x": 0,
+      "y": 0,
+      "w": 443,
+      "h": 443
+    },
+    {
+      "state": "idle",
+      "frame": 11,
+      "reuses": true,
+      "x": 0,
+      "y": 0,
+      "w": 443,
+      "h": 443
+    },
+    {
+      "state": "idle",
+      "frame": 2,
+      "nontransparent_pixels": 50636,
+      "x": 443,
+      "y": 0,
+      "w": 443,
+      "h": 443
+    },
+    {
+      "state": "idle",
+      "frame": 12,
+      "reuses": true,
+      "x": 0,
+      "y": 0,
+      "w": 443,
+      "h": 443
+    }
+  ],
+  "frame_layout": {
+    "sheetWidth": 886,
+    "sheetHeight": 443,
+    "cellWidth": 443,
+    "cellHeight": 443,
+    "rows": {
+      "idle": [
+        {
+          "x": 0,
+          "y": 0,
+          "w": 443,
+          "h": 443
+        },
+        {
+          "x": 0,
+          "y": 0,
+          "w": 443,
+          "h": 443
+        },
+        {
+          "x": 0,
+          "y": 0,
+          "w": 443,
+          "h": 443
+        },
+        {
+          "x": 0,
+          "y": 0,
+          "w": 443,
+          "h": 443
+        },
+        {
+          "x": 0,
+          "y": 0,
+          "w": 443,
+          "h": 443
+        },
+        {
+          "x": 0,
+          "y": 0,
+          "w": 443,
+          "h": 443
+        },
+        {
+          "x": 0,
+          "y": 0,
+          "w": 443,
+          "h": 443
+        },
+        {
+          "x": 0,
+          "y": 0,
+          "w": 443,
+          "h": 443
+        },
+        {
+          "x": 0,
+          "y": 0,
+          "w": 443,
+          "h": 443
+        },
+        {
+          "x": 443,
+          "y": 0,
+          "w": 443,
+          "h": 443
+        },
+        {
+          "x": 0,
+          "y": 0,
+          "w": 443,
+          "h": 443
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,111 @@
+{
+  "version": 1,
+  "kind": "sprite-gen-selected-cycle",
+  "run_dir": "/mnt/c/aegis_dx/reference/aegis_pet/assets/generated/sprites/bichon-seated-idle-v1/run",
+  "state": "idle",
+  "name": "seated-idle-blink-cycle",
+  "selected_user_frames": [
+    1,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    2,
+    11
+  ],
+  "selected_zero_based_frames": [
+    0,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    1,
+    10
+  ],
+  "selection_source": "curation.json",
+  "transforms_applied": {},
+  "duration_ms": 250,
+  "delay_ticks": 25,
+  "loop": true,
+  "note": "Eleven-frame seated still cycle: open eyes held, one blink near the end, then open.",
+  "outputs": {
+    "gif": "qa/seated-idle-blink-cycle.gif",
+    "contact": "qa/seated-idle-blink-cycle-contact.png"
+  },
+  "source_frames": [
+    {
+      "user_frame": 1,
+      "zero_based_frame": 0,
+      "path": "frames/idle/frame-0.png",
+      "sha256": "3333e2de74abb47a660da0a826d0778b5d180f63634f2abfa7fa4e143539ed68"
+    },
+    {
+      "user_frame": 3,
+      "zero_based_frame": 2,
+      "path": "frames/idle/frame-0.png",
+      "sha256": "3333e2de74abb47a660da0a826d0778b5d180f63634f2abfa7fa4e143539ed68"
+    },
+    {
+      "user_frame": 4,
+      "zero_based_frame": 3,
+      "path": "frames/idle/frame-0.png",
+      "sha256": "3333e2de74abb47a660da0a826d0778b5d180f63634f2abfa7fa4e143539ed68"
+    },
+    {
+      "user_frame": 5,
+      "zero_based_frame": 4,
+      "path": "frames/idle/frame-0.png",
+      "sha256": "3333e2de74abb47a660da0a826d0778b5d180f63634f2abfa7fa4e143539ed68"
+    },
+    {
+      "user_frame": 6,
+      "zero_based_frame": 5,
+      "path": "frames/idle/frame-0.png",
+      "sha256": "3333e2de74abb47a660da0a826d0778b5d180f63634f2abfa7fa4e143539ed68"
+    },
+    {
+      "user_frame": 7,
+      "zero_based_frame": 6,
+      "path": "frames/idle/frame-0.png",
+      "sha256": "3333e2de74abb47a660da0a826d0778b5d180f63634f2abfa7fa4e143539ed68"
+    },
+    {
+      "user_frame": 8,
+      "zero_based_frame": 7,
+      "path": "frames/idle/frame-0.png",
+      "sha256": "3333e2de74abb47a660da0a826d0778b5d180f63634f2abfa7fa4e143539ed68"
+    },
+    {
+      "user_frame": 9,
+      "zero_based_frame": 8,
+      "path": "frames/idle/frame-0.png",
+      "sha256": "3333e2de74abb47a660da0a826d0778b5d180f63634f2abfa7fa4e143539ed68"
+    },
+    {
+      "user_frame": 10,
+      "zero_based_frame": 9,
+      "path": "frames/idle/frame-0.png",
+      "sha256": "3333e2de74abb47a660da0a826d0778b5d180f63634f2abfa7fa4e143539ed68"
+    },
+    {
+      "user_frame": 2,
+      "zero_based_frame": 1,
+      "path": "frames/idle/frame-1.png",
+      "sha256": "dc416948a74c558413f2054e5c9a0c99f1c798c3bab3d6e89314fba1be35cee8"
+    },
+    {
+      "user_frame": 11,
+      "zero_based_frame": 10,
+      "path": "frames/idle/frame-0.png",
+      "sha256": "3333e2de74abb47a660da0a826d0778b5d180f63634f2abfa7fa4e143539ed68"
+    }
+  ]
+}

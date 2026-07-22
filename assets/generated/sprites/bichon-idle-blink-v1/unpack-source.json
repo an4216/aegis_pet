@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "kind": "sprite-gen-unpack-source",
+  "layout_source": "grid-explicit",
+  "cell": {
+    "width": 443,
+    "height": 443
+  },
+  "atlas": "/mnt/c/aegis_dx/reference/aegis_pet/assets/sprites/bichon/idle_8f_chromakey.png",
+  "manifest": null,
+  "direction": null
+}

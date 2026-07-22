@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "kind": "sprite-gen-gif-run",
+  "run_dir": "/mnt/c/aegis_dx/reference/aegis_pet/assets/generated/sprites/bichon-idle-blink-v2",
+  "exports": [
+    {
+      "state": "idle",
+      "output": "/mnt/c/aegis_dx/reference/aegis_pet/assets/generated/sprites/bichon-idle-blink-v2/exports/idle.gif",
+      "frames": 11,
+      "fps": 4.0,
+      "loop": true,
+      "gif_report": {
+        "path": "/mnt/c/aegis_dx/reference/aegis_pet/assets/generated/sprites/bichon-idle-blink-v2/exports/idle.gif",
+        "frames": 3,
+        "delay_ticks": [
+          25,
+          25,
+          25
+        ],
+        "loop": 0,
+        "transparent": true,
+        "disposal": [
+          2,
+          2,
+          2
+        ]
+      }
+    }
+  ]
+}

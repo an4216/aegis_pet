@@ -1,0 +1,40 @@
+{
+  "ok": true,
+  "engine": "component-row",
+  "run_dir": "/mnt/c/aegis_dx/reference/aegis_pet/assets/generated/sprites/.bichon-idle-blink-v1.sg-staging",
+  "cell": {
+    "shape": "square",
+    "width": 443,
+    "height": 443,
+    "size": 443,
+    "safe_margin": 0
+  },
+  "rows": [
+    {
+      "state": "row-0",
+      "frames": 4,
+      "method": "unpacked",
+      "files": [
+        "frames/row-0/frame-0.png",
+        "frames/row-0/frame-1.png",
+        "frames/row-0/frame-2.png",
+        "frames/row-0/frame-3.png"
+      ],
+      "ok": true
+    },
+    {
+      "state": "row-1",
+      "frames": 4,
+      "method": "unpacked",
+      "files": [
+        "frames/row-1/frame-0.png",
+        "frames/row-1/frame-1.png",
+        "frames/row-1/frame-2.png",
+        "frames/row-1/frame-3.png"
+      ],
+      "ok": true
+    }
+  ],
+  "errors": [],
+  "warnings": []
+}

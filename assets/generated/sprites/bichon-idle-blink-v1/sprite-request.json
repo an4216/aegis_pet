@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "kind": "sprite-gen-request",
+  "engine": "component-row",
+  "character": {
+    "id": ".bichon-idle-blink-v1.sg-staging",
+    "description": "unpacked from atlas (grid-explicit)"
+  },
+  "cell": {
+    "shape": "square",
+    "width": 443,
+    "height": 443,
+    "size": 443,
+    "safe_margin": 0
+  },
+  "chroma_key": {
+    "name": "magenta",
+    "hex": "#FF00FF",
+    "rgb": [
+      255,
+      0,
+      255
+    ]
+  },
+  "states": {
+    "row-0": {
+      "frames": 4,
+      "fps": 6,
+      "loop": true,
+      "action": ""
+    },
+    "row-1": {
+      "frames": 4,
+      "fps": 6,
+      "loop": true,
+      "action": ""
+    }
+  }
+}
