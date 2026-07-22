@@ -102,7 +102,8 @@ func find_by_id(id: int) -> Dictionary:
 
 
 func _ensure_helper() -> String:
-	var exe_abs := ProjectSettings.globalize_path(HELPER_EXE)
+	# csc는 슬래시(/) 경로를 옵션으로 오인하므로 반드시 백슬래시 경로를 사용한다
+	var exe_abs := ProjectSettings.globalize_path(HELPER_EXE).replace("/", "\\")
 	if FileAccess.file_exists(HELPER_EXE):
 		return exe_abs
 	var csc := ""
@@ -120,12 +121,16 @@ func _ensure_helper() -> String:
 	dst.store_string(src.get_as_text())
 	dst.close()
 	src.close()
+	var output: Array = []
 	var code := OS.execute(csc, [
-		"/nologo", "/optimize", "/target:winexe",
-		"/out:" + exe_abs,
-		ProjectSettings.globalize_path("user://window_probe_helper.cs"),
-	])
-	return exe_abs if code == 0 and FileAccess.file_exists(HELPER_EXE) else ""
+		"-nologo", "-optimize", "-target:winexe",
+		"-out:" + exe_abs,
+		ProjectSettings.globalize_path("user://window_probe_helper.cs").replace("/", "\\"),
+	], output, true)
+	if code != 0 or not FileAccess.file_exists(HELPER_EXE):
+		push_warning("window_probe 빌드 실패 (code %d): %s" % [code, str(output)])
+		return ""
+	return exe_abs
 
 
 func _detect_toasts() -> void:
