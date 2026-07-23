@@ -5,6 +5,7 @@ signal care_menu_requested(pos: Vector2)
 
 const Characters := preload("res://scripts/data/characters.gd")
 const STAGE_SCALE := {"egg": 0.5, "baby": 0.35, "child": 0.42, "adult": 0.5}
+const POSES := ["idle", "walk1", "walk2", "sleep", "happy", "sulk", "sick", "eat"]
 const SPRITE_SIZE := 256.0
 const BASE_SPEED := 120.0
 const PET_COOLDOWN_SECONDS := 30.0
@@ -30,6 +31,8 @@ var _pressed := false
 var _press_pos := Vector2.ZERO
 var _bob_tween: Tween
 var _wiggle_tween: Tween
+var _frames := {}          # pose -> Texture2D (포즈 시트 있는 캐릭터만)
+var _pose := "idle"
 
 
 func _ready() -> void:
@@ -115,12 +118,35 @@ func face_towards(target_x: float) -> void:
 	_sprite.flip_h = target_x < position.x
 
 
+## 포즈 시트(assets/sprites/chars/<종족>/)가 있으면 프레임 시스템, 없으면 단일 컨셉 이미지 폴백
+func has_poses() -> bool:
+	return not _frames.is_empty()
+
+
+func set_pose(pose: String) -> void:
+	_pose = pose
+	if _frames.has(pose):
+		_sprite.texture = _frames[pose]
+
+
 func refresh_appearance() -> void:
-	var tex_key: String = "egg" if ps.stage == "egg" else ps.species
-	var path := "res://assets/sprites/concept/%s.png" % tex_key
-	if not ResourceLoader.exists(path):
-		path = "res://assets/sprites/concept/mochi.png"  # Design §6: 리소스 폴백
-	_sprite.texture = load(path)
+	_frames.clear()
+	if ps.stage == "egg":
+		_sprite.texture = load("res://assets/sprites/concept/egg.png")
+	else:
+		var dir := "res://assets/sprites/chars/%s/" % ps.species
+		for pose in POSES:
+			var frame_path: String = dir + pose + ".png"
+			if ResourceLoader.exists(frame_path):
+				_frames[pose] = load(frame_path)
+		if _frames.has("idle"):
+			_sprite.texture = _frames[_pose if _frames.has(_pose) else "idle"]
+		else:
+			_frames.clear()
+			var path := "res://assets/sprites/concept/%s.png" % ps.species
+			if not ResourceLoader.exists(path):
+				path = "res://assets/sprites/concept/mochi.png"  # Design §6: 리소스 폴백
+			_sprite.texture = load(path)
 	_base_scale = Vector2.ONE * STAGE_SCALE.get(ps.stage, 0.5)
 	_sprite.scale = _base_scale
 	_sprite.position = Vector2(0.0, -SPRITE_SIZE * _base_scale.y * 0.5)
@@ -182,7 +208,9 @@ func land_squish() -> void:
 
 
 func celebrate() -> void:
-	# 신나는 세리머니: 폴짝폴짝 3연속 점프 + 음표
+	# 신나는 세리머니: 폴짝폴짝 3연속 점프 + 음표 + 신남 표정
+	var prev_pose := _pose
+	set_pose("happy")
 	var base_y := -SPRITE_SIZE * _base_scale.y * 0.5
 	var t := create_tween()
 	for i in 3:
@@ -190,6 +218,9 @@ func celebrate() -> void:
 			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
 		t.tween_property(_sprite, "position:y", base_y, 0.14) \
 			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	t.tween_callback(func():
+		if _pose == "happy":
+			set_pose(prev_pose if prev_pose != "happy" else "idle"))
 	_float_text("♪")
 
 

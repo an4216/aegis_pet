@@ -7,7 +7,12 @@ var _timer := 0.0
 func enter() -> void:
 	pet.ps.activity = pet.ps.Activity.IDLE
 	_timer = 2.0
+	pet.set_pose("eat")
 	pet.eat_munch()
+
+
+func exit() -> void:
+	pet.set_pose("idle")
 
 
 func update(delta: float) -> void:

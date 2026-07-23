@@ -7,6 +7,7 @@ var _timer := 0.0
 func enter() -> void:
 	pet.ps.activity = pet.ps.Activity.IDLE
 	pet.show_zzz(false)
+	pet.set_pose("idle")
 	_timer = randf_range(3.0, 8.0)
 	pet.idle_breathe()
 

@@ -7,11 +7,13 @@ var _timer := 0.0
 func enter() -> void:
 	pet.ps.activity = pet.ps.Activity.ACTIVE
 	_timer = 2.6
+	pet.set_pose("happy")
 	pet.play_frolic()
 
 
 func exit() -> void:
 	pet.reset_sprite_pose()
+	pet.set_pose("idle")
 
 
 func update(delta: float) -> void:

@@ -16,6 +16,7 @@ func enter() -> void:
 func exit() -> void:
 	pet.show_zzz(false)
 	pet.set_sprite_tint(Color.WHITE)
+	pet.set_pose("idle")
 
 
 func update(delta: float) -> void:
@@ -26,8 +27,11 @@ func update(delta: float) -> void:
 			pet.position.x = _corner_x
 			_at_corner = true
 			pet.ps.activity = pet.ps.Activity.SLEEPING
-			pet.show_zzz(true)
-			pet.set_sprite_tint(Color(0.75, 0.75, 0.85))
+			if pet.has_poses():
+				pet.set_pose("sleep")  # 아트에 Zzz 포함 — 라벨·틴트 생략
+			else:
+				pet.show_zzz(true)
+				pet.set_sprite_tint(Color(0.75, 0.75, 0.85))
 		else:
 			pet.position.x += signf(dx) * speed * delta
 		return
