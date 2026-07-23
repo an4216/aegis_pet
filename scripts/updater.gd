@@ -64,6 +64,7 @@ func _check() -> void:
 
 func _on_check_done(result: int, code: int, _headers: PackedStringArray, body: PackedByteArray, req: HTTPRequest) -> void:
 	req.queue_free()
+	print("updater: check result=%d http=%d" % [result, code])
 	if result != HTTPRequest.RESULT_SUCCESS or code != 200:
 		return  # 오프라인/미발행 — 조용히 넘어감 (다음 실행 때 재시도)
 	var data = JSON.parse_string(body.get_string_from_utf8())
