@@ -26,6 +26,7 @@ func _init() -> void:
 	_test_probe_parse()
 	_test_region_builder()
 	_test_reset_to_egg()
+	_test_version_compare()
 	print("")
 	print("RESULT: %d passed, %d failed" % [passes, fails])
 	quit(1 if fails > 0 else 0)
@@ -147,6 +148,16 @@ func _test_digest() -> void:
 	pet.care("feed")
 	pet.advance_minutes(Balance.DIGEST_MINUTES_MAX + 1.0, {"hour": 10, "weekday": 2})
 	check(pet.poop_count >= 1, "먹이 후 30분 내 응아")
+
+
+# 업데이트 버전 비교 (FR-29)
+func _test_version_compare() -> void:
+	var Updater := preload("res://scripts/updater.gd")
+	check(Updater.is_newer("v0.3.0", "0.2.0"), "버전 비교: 0.3.0 > 0.2.0")
+	check(Updater.is_newer("1.0.0", "0.9.9"), "버전 비교: 1.0.0 > 0.9.9")
+	check(not Updater.is_newer("v0.2.0", "0.2.0"), "버전 비교: 동일 버전은 미갱신")
+	check(not Updater.is_newer("0.1.9", "0.2.0"), "버전 비교: 구버전은 미갱신")
+	check(Updater.is_newer("0.2.1", "0.2"), "버전 비교: 자릿수 부족 보정")
 
 
 # 알로 리셋: 성체+병듦 상태에서도 완전 초기화

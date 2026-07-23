@@ -16,6 +16,7 @@ var notebook: Control
 var reset_confirm: Control
 var speech: Node
 var assistant: Node
+var updater: Node
 var tray_menu: PopupMenu
 var screen_rect: Rect2i
 var _last_poly := PackedVector2Array()
@@ -111,6 +112,13 @@ func _setup_ui() -> void:
 	assistant.setup(pet, bubble, Vector2(screen_rect.size))
 	notebook.assistant = assistant
 
+	updater = load("res://scripts/updater.gd").new()
+	updater.name = "Updater"
+	add_child(updater)
+	updater.update_available.connect(_on_update_available)
+	updater.update_failed.connect(func(reason):
+		bubble.say("업데이트 실패… %s" % reason, pet, Vector2(screen_rect.size), 8.0))
+
 
 func _setup_tray() -> void:
 	tray_menu = PopupMenu.new()
@@ -177,6 +185,9 @@ func _on_tray_action(id: int) -> void:
 				notebook.open_at_corner(Vector2(screen_rect.size))
 		7:
 			_show_reset_confirm()
+		8:
+			bubble.say("업데이트 다운로드 중… 끝나면 자동으로 다시 켜질게!", pet, Vector2(screen_rect.size), 10.0)
+			updater.start_update()
 
 
 func _open_care_menu(pos: Vector2) -> void:
@@ -205,6 +216,14 @@ func _on_care_action(action: String) -> void:
 			_ps.care(action)
 		_:
 			_ps.care(action)
+
+
+## 새 버전 발견 (FR-29): 펫이 알리고, 트레이에 설치 메뉴 추가
+func _on_update_available(version: String) -> void:
+	bubble.say("새 버전 v%s 나왔대! 트레이 메뉴에서 설치할 수 있어" % version,
+		pet, Vector2(screen_rect.size), 12.0)
+	pet.celebrate()
+	tray_menu.add_item("⬆️ v%s 업데이트 설치" % version, 8)
 
 
 ## 처음부터 다시 키우기 (FR-28): 확인창 → 새 알로 리셋
