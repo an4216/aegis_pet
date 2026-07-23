@@ -14,6 +14,7 @@ run/low_processor_mode=true
 TimeManager="*res://autoload/time_manager.gd"
 PetState="*res://autoload/pet_state.gd"
 SaveManager="*res://autoload/save_manager.gd"
+InputProbe="*res://scripts/platform/input_probe.gd"
 
 [display]
 

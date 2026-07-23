@@ -26,6 +26,12 @@ func _init() -> void:
 	_test_probe_parse()
 	_test_reset_to_egg()
 	_test_version_compare()
+	_test_evolution_keyboard()
+	_test_evolution_distinct_days()
+	_test_evolution_feed_snack()
+	_test_evolution_progress_ratio()
+	_test_evolution_persists_across_save()
+	_test_evolution_gated_by_egg()
 	print("")
 	print("RESULT: %d passed, %d failed" % [passes, fails])
 	quit(1 if fails > 0 else 0)
@@ -147,6 +153,66 @@ func _test_digest() -> void:
 	pet.care("feed")
 	pet.advance_minutes(Balance.DIGEST_MINUTES_MAX + 1.0, {"hour": 10, "weekday": 2})
 	check(pet.poop_count >= 1, "먹이 후 30분 내 응아")
+
+
+# Plan FR-15 v3: 활동 기반 진화
+func _test_evolution_keyboard() -> void:
+	var pet := make_pet("mochi")
+	var got_signal := [false]
+	pet.evolution_ready.connect(func(_s): got_signal[0] = true)
+	pet.add_input_delta({"kb": 15000, "mouse": 0, "active_sec": 0.0, "friday_active_sec": 0.0})
+	check(not pet.evolved, "모찌 진화 미충족 (kb 절반)")
+	pet.add_input_delta({"kb": 15001, "mouse": 0, "active_sec": 0.0, "friday_active_sec": 0.0})
+	check(pet.evolved and got_signal[0], "모찌 진화: 키보드 30,000 달성")
+	check(pet.stage == "adult", "진화 시 성체로 자동 승격")
+
+
+func _test_evolution_distinct_days() -> void:
+	var pet := make_pet("ppiyak")
+	for i in 4:
+		pet.note_activity_day("2026-07-%02d" % (20 + i))
+	check(not pet.evolved, "삐약 진화 미충족 (4일)")
+	pet.note_activity_day("2026-07-24")
+	check(pet.evolved, "삐약 진화: 서로 다른 날 5일")
+	# 중복 날짜는 카운트 안 됨
+	var pet2 := make_pet("ppiyak")
+	for i in 10:
+		pet2.note_activity_day("2026-07-21")
+	check(not pet2.evolved, "중복 날짜는 진화 카운트 안 됨")
+
+
+func _test_evolution_feed_snack() -> void:
+	var pet := make_pet("haemjji")
+	for i in 39:
+		pet.care("feed" if i % 2 == 0 else "snack")
+	check(not pet.evolved, "햄찌 진화 미충족 (39회)")
+	pet.care("feed")
+	check(pet.evolved, "햄찌 진화: 먹이/간식 40회")
+
+
+func _test_evolution_progress_ratio() -> void:
+	var pet := make_pet("kong")
+	pet.add_input_delta({"kb": 0, "mouse": 5000, "active_sec": 0.0, "friday_active_sec": 0.0})
+	var p: Dictionary = pet.evolution_progress()
+	check(approx(p["ratio"], 0.25), "진화 진행률: 5000/20000 = 25%")
+	check(p["hint"] != "", "진행률에 힌트 문구 포함")
+
+
+func _test_evolution_persists_across_save() -> void:
+	var pet := make_pet("mundeok")
+	for i in 30:
+		pet.note_todo_complete()
+	check(pet.evolved, "문덕 진화: 할 일 30개")
+	var restored: Node = PetStateScript.new()
+	restored.deserialize(pet.serialize())
+	check(restored.evolved and restored.work_stats["todos_done"] == 30,
+		"진화 상태·카운터 직렬화 왕복 보존")
+
+
+func _test_evolution_gated_by_egg() -> void:
+	var pet: Node = PetStateScript.new()  # 알 상태
+	pet.add_input_delta({"kb": 999999, "mouse": 999999, "active_sec": 0.0, "friday_active_sec": 0.0})
+	check(not pet.evolved, "알 상태에서는 진화 불가")
 
 
 # 업데이트 버전 비교 (FR-29)

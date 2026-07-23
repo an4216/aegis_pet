@@ -4,6 +4,18 @@ extends RefCounted
 
 const RARITY_WEIGHT := {"common": 15.0, "uncommon": 8.0, "rare": 4.0}
 
+# 진화형 이름 (Plan FR-15 v3, docs/02-design/characters-evolution.md)
+const EVOLVED_NAMES := {
+	"mochi": "프로찌", "ppiyak": "꼬꼬", "haemjji": "함장님",
+	"kkubeok": "꿀잠도사", "nyang": "자유냥", "kong": "라떼님",
+	"mundeok": "문팀장", "geobujang": "거이사님",
+	"bulgeumjo": "불사조", "seureureuk": "스르신",
+}
+
+
+static func get_evolved_name(species: String) -> String:
+	return EVOLVED_NAMES.get(species, species)
+
 const CHARACTERS := {
 	"mochi": {
 		"name_kr": "모찌", "rarity": "common",

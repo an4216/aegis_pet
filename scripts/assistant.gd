@@ -109,6 +109,7 @@ func _tick_pomodoro(delta: float) -> void:
 		pomodoro_left = BREAK_MINUTES * 60.0
 		_sm.pomodoro_work = false
 		_ps.reward_happiness(10.0)
+		_ps.note_pomodoro_complete()
 		pet.celebrate()
 		bubble.say("집중 완료!! 수고했어!! %d분만 쉬자. 기지개 한 번!" % int(BREAK_MINUTES), pet, screen_size, 10.0)
 	else:
@@ -138,6 +139,7 @@ func set_todo_done(index: int, done: bool) -> void:
 	_sm.save_game()
 	if done and not was_done:
 		_ps.reward_happiness(15.0)
+		_ps.note_todo_complete()
 		pet.celebrate()
 		var all_done := true
 		for t in todos:

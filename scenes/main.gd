@@ -5,6 +5,8 @@ const AUTOSTART_REG_KEY := "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\
 const AUTOSTART_REG_NAME := "DesktopTamagotchi"
 const RegionBuilder := preload("res://scripts/platform/region_builder.gd")
 const DialogData := preload("res://scripts/data/dialog.gd")
+const Balance := preload("res://scripts/data/balance.gd")
+const Characters := preload("res://scripts/data/characters.gd")
 
 var pet: Node2D
 var probe: Node
@@ -119,6 +121,15 @@ func _setup_ui() -> void:
 	updater.update_failed.connect(func(reason):
 		bubble.say("업데이트 실패… %s" % reason, pet, Vector2(screen_rect.size), 8.0))
 
+	# Plan FR-15 v3: 업무 활동 추적 시작
+	_ps.evolution_ready.connect(_on_evolution_ready)
+	var today := Time.get_datetime_dict_from_system()
+	_ps.note_activity_day("%04d-%02d-%02d" % [today.year, today.month, today.day])
+	var probe := get_node_or_null("/root/InputProbe")
+	if probe != null:
+		probe.counter_delta.connect(func(delta): _ps.add_input_delta(delta))
+		probe.start()
+
 
 func _setup_tray() -> void:
 	tray_menu = PopupMenu.new()
@@ -170,6 +181,7 @@ func _on_tray_action(id: int) -> void:
 			tray_menu.set_item_checked(3, _sm.settings["autostart"])
 			_sm.save_game()
 		4:
+			_maybe_note_late_shutdown()
 			_sm.save_game()
 			get_tree().quit()
 		5:
@@ -216,6 +228,22 @@ func _on_care_action(action: String) -> void:
 			_ps.care(action)
 		_:
 			_ps.care(action)
+
+
+## 정시퇴근(18~19시 종료)이면 카운트 (Plan FR-15 v3: 스르륵 진화 조건)
+func _maybe_note_late_shutdown() -> void:
+	var h: int = Time.get_datetime_dict_from_system().hour
+	if h in Balance.LATE_SHUTDOWN_HOURS:
+		_ps.note_late_shutdown()
+
+
+## 진화 조건 달성 (Plan FR-15 v3)
+func _on_evolution_ready(species: String) -> void:
+	var evolved_name: String = Characters.get_evolved_name(species)
+	pet.refresh_appearance()  # evolved 스프라이트 로드 (있으면)
+	pet.celebrate()
+	bubble.say("✨ %s(으)로 진화했다!! ✨" % evolved_name, pet, Vector2(screen_rect.size), 12.0)
+	_sm.save_game()
 
 
 ## 새 버전 발견 (FR-29): 펫이 알리고, 트레이에 설치 메뉴 추가

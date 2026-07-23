@@ -10,6 +10,7 @@ signal sickness_changed(is_sick: bool)
 signal condition_changed(condition: String)  # "normal" | "sulk"
 signal care_performed(action: String)
 signal pooped
+signal evolution_ready(species: String)     # Plan FR-15 v3: 진화 조건 달성 시
 
 const Balance := preload("res://scripts/data/balance.gd")
 const Characters := preload("res://scripts/data/characters.gd")
@@ -34,6 +35,17 @@ var poop_count: int = 0
 var care_quality_samples: Array = []
 var activity: int = Activity.IDLE   # 씬(FSM)이 갱신
 var caffeine_until_min: float = -1.0  # 콩이 caffeine_rush 남은 분
+
+# --- Plan FR-15 v3: 업무 활동 카운터 (진화 조건 지표) ---
+var evolved: bool = false
+var work_stats: Dictionary = {
+	"kb": 0, "mouse": 0,
+	"active_sec": 0.0, "friday_active_sec": 0.0,
+	"distinct_days": [],
+	"pomodoro_done": 0, "todos_done": 0,
+	"late_shutdowns": 0,
+	"care_counts": {},
+}
 
 var _minutes_until_poop := 0.0
 var _rng := RandomNumberGenerator.new()
@@ -139,6 +151,8 @@ func care(action: String) -> void:
 		# 소화: 먹으면 15~30분 내 응아 (기존 타이머보다 빠를 때만)
 		var digest := _rng.randf_range(Balance.DIGEST_MINUTES_MIN, Balance.DIGEST_MINUTES_MAX)
 		_minutes_until_poop = minf(_minutes_until_poop, digest)
+	work_stats["care_counts"][action] = int(work_stats["care_counts"].get(action, 0)) + 1
+	_check_evolution()
 	_update_conditions()
 	care_performed.emit(action)
 
@@ -169,6 +183,8 @@ func serialize() -> Dictionary:
 		"stats": stats.duplicate(), "is_sick": is_sick,
 		"poop_count": poop_count,
 		"care_quality_samples": care_quality_samples.duplicate(),
+		"evolved": evolved,
+		"work_stats": work_stats.duplicate(true),
 	}
 
 
@@ -185,10 +201,94 @@ func deserialize(data: Dictionary) -> void:
 	is_sick = data.get("is_sick", false)
 	poop_count = int(data.get("poop_count", 0))
 	care_quality_samples = data.get("care_quality_samples", [])
+	evolved = bool(data.get("evolved", false))
+	var loaded_work: Dictionary = data.get("work_stats", {})
+	for key in loaded_work:
+		if work_stats.has(key):
+			work_stats[key] = loaded_work[key]
 
 
 func has_special(tag: String) -> bool:
 	return Characters.has_special(species, tag)
+
+
+# --- Plan FR-15 v3: 활동 카운터 API ---
+
+func add_input_delta(delta: Dictionary) -> void:
+	work_stats["kb"] = int(work_stats["kb"]) + int(delta.get("kb", 0))
+	work_stats["mouse"] = int(work_stats["mouse"]) + int(delta.get("mouse", 0))
+	work_stats["active_sec"] = float(work_stats["active_sec"]) + float(delta.get("active_sec", 0.0))
+	work_stats["friday_active_sec"] = float(work_stats["friday_active_sec"]) + float(delta.get("friday_active_sec", 0.0))
+	_check_evolution()
+
+
+func note_activity_day(today_str: String) -> void:
+	if today_str == "":
+		return
+	var days: Array = work_stats["distinct_days"]
+	if not (today_str in days):
+		days.append(today_str)
+		_check_evolution()
+
+
+func note_late_shutdown() -> void:
+	work_stats["late_shutdowns"] = int(work_stats["late_shutdowns"]) + 1
+	_check_evolution()
+
+
+func note_pomodoro_complete() -> void:
+	work_stats["pomodoro_done"] = int(work_stats["pomodoro_done"]) + 1
+	_check_evolution()
+
+
+func note_todo_complete() -> void:
+	work_stats["todos_done"] = int(work_stats["todos_done"]) + 1
+	_check_evolution()
+
+
+## 진화 진행률 (stats_popup 표시용)
+func evolution_progress() -> Dictionary:
+	var cond: Dictionary = Balance.EVOLUTION.get(species, {})
+	if cond.is_empty():
+		return {"metric": "", "current": 0.0, "target": 0.0, "ratio": 0.0, "hint": ""}
+	var current := _metric_value(cond["metric"])
+	var target := float(cond["amount"])
+	return {
+		"metric": cond["metric"],
+		"current": current,
+		"target": target,
+		"ratio": clampf(current / target, 0.0, 1.0),
+		"hint": cond["hint"],
+	}
+
+
+func _metric_value(metric: String) -> float:
+	match metric:
+		"kb": return float(work_stats["kb"])
+		"mouse": return float(work_stats["mouse"])
+		"active_sec": return float(work_stats["active_sec"])
+		"friday_active_sec": return float(work_stats["friday_active_sec"])
+		"distinct_days": return float((work_stats["distinct_days"] as Array).size())
+		"pomodoro_done": return float(work_stats["pomodoro_done"])
+		"todos_done": return float(work_stats["todos_done"])
+		"late_shutdowns": return float(work_stats["late_shutdowns"])
+		"feed_snack":
+			var cc: Dictionary = work_stats["care_counts"]
+			return float(int(cc.get("feed", 0)) + int(cc.get("snack", 0)))
+		"pet_care":
+			return float(int((work_stats["care_counts"] as Dictionary).get("pet", 0)))
+	return 0.0
+
+
+func _check_evolution() -> void:
+	if evolved or species == "" or stage == "egg":
+		return
+	if evolution_progress()["ratio"] >= 1.0:
+		evolved = true
+		if stage != "adult":
+			stage = "adult"
+			stage_changed.emit(stage)
+		evolution_ready.emit(species)
 
 
 ## 할 일 완료·뽀모도로 등 생산성 보상 (Plan FR-22, FR-23)
@@ -223,6 +323,15 @@ func reset_to_egg() -> void:
 	care_quality_samples = []
 	caffeine_until_min = -1.0
 	activity = Activity.IDLE
+	evolved = false
+	work_stats = {
+		"kb": 0, "mouse": 0,
+		"active_sec": 0.0, "friday_active_sec": 0.0,
+		"distinct_days": [],
+		"pomodoro_done": 0, "todos_done": 0,
+		"late_shutdowns": 0,
+		"care_counts": {},
+	}
 	_reset_poop_timer()
 	for stat in STATS:
 		stat_changed.emit(stat, stats[stat])
