@@ -25,6 +25,7 @@ func _init() -> void:
 	_test_digest()
 	_test_probe_parse()
 	_test_region_builder()
+	_test_reset_to_egg()
 	print("")
 	print("RESULT: %d passed, %d failed" % [passes, fails])
 	quit(1 if fails > 0 else 0)
@@ -146,6 +147,25 @@ func _test_digest() -> void:
 	pet.care("feed")
 	pet.advance_minutes(Balance.DIGEST_MINUTES_MAX + 1.0, {"hour": 10, "weekday": 2})
 	check(pet.poop_count >= 1, "먹이 후 30분 내 응아")
+
+
+# 알로 리셋: 성체+병듦 상태에서도 완전 초기화
+func _test_reset_to_egg() -> void:
+	var pet := make_pet("haemjji")
+	pet.stage = "adult"
+	pet.stats["health"] = 10.0
+	pet.is_sick = true
+	pet.poop_count = 3
+	pet.age_minutes = 99999.0
+	pet.reset_to_egg()
+	check(
+		pet.stage == "egg" and pet.species == "" and not pet.is_sick
+		and pet.poop_count == 0 and pet.hatch_progress == 0.0
+		and approx(pet.stats["health"], 100.0),
+		"알로 리셋: 전체 상태 초기화"
+	)
+	pet.advance_minutes(Balance.HATCH_HOURS_MAX * 60.0, {"hour": 10, "weekday": 2})
+	check(pet.stage == "baby" and pet.species != "", "알로 리셋 후 재부화 정상")
 
 
 # 창 감지 JSON 파싱

@@ -205,6 +205,33 @@ func care_quality_now() -> float:
 	return total / STATS.size()
 
 
+## 처음부터 다시 키우기 (Plan FR-28) — 모든 상태를 새 알로 초기화
+func reset_to_egg() -> void:
+	species = ""
+	stage = "egg"
+	hatch_progress = 0.0
+	egg_care_clicks = 0
+	birth_at = 0
+	age_minutes = 0.0
+	stats = {
+		"hunger": 80.0, "happiness": 70.0, "cleanliness": 100.0,
+		"energy": 80.0, "health": 100.0,
+	}
+	is_sick = false
+	is_sulking = false
+	poop_count = 0
+	care_quality_samples = []
+	caffeine_until_min = -1.0
+	activity = Activity.IDLE
+	_reset_poop_timer()
+	for stat in STATS:
+		stat_changed.emit(stat, stats[stat])
+	sickness_changed.emit(false)
+	condition_changed.emit("normal")
+	hatch_progress_changed.emit(0.0)
+	stage_changed.emit(stage)
+
+
 # --- 테스트/디버그 ---
 
 func debug_set_species(new_species: String, new_stage: String = "baby") -> void:

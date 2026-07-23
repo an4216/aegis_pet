@@ -13,6 +13,7 @@ var care_menu: Control
 var stats_popup: Control
 var bubble: Control
 var notebook: Control
+var reset_confirm: Control
 var speech: Node
 var assistant: Node
 var tray_menu: PopupMenu
@@ -120,6 +121,7 @@ func _setup_tray() -> void:
 	tray_menu.add_check_item("창 위 놀이 (점프)", 5)
 	tray_menu.add_item("📔 수첩 (할 일·리마인더·집중)", 6)
 	tray_menu.add_separator()
+	tray_menu.add_item("🥚 처음부터 다시 키우기", 7)
 	tray_menu.add_item("종료", 4)
 	tray_menu.set_item_checked(1, _sm.settings.get("focus_mode", false))
 	tray_menu.set_item_checked(2, _sm.settings.get("always_on_top", true))
@@ -173,6 +175,8 @@ func _on_tray_action(id: int) -> void:
 				notebook.visible = false
 			else:
 				notebook.open_at_corner(Vector2(screen_rect.size))
+		7:
+			_show_reset_confirm()
 
 
 func _open_care_menu(pos: Vector2) -> void:
@@ -201,6 +205,67 @@ func _on_care_action(action: String) -> void:
 			_ps.care(action)
 		_:
 			_ps.care(action)
+
+
+## 처음부터 다시 키우기 (FR-28): 확인창 → 새 알로 리셋
+func _show_reset_confirm() -> void:
+	if reset_confirm != null:
+		reset_confirm.queue_free()
+	reset_confirm = PanelContainer.new()
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(1.0, 0.99, 0.95, 0.98)
+	style.set_corner_radius_all(12)
+	style.border_color = Color(0.75, 0.4, 0.45)
+	style.set_border_width_all(3)
+	style.set_content_margin_all(16)
+	style.shadow_size = 6
+	style.shadow_color = Color(0.0, 0.0, 0.0, 0.2)
+	reset_confirm.add_theme_stylebox_override("panel", style)
+	reset_confirm.z_index = 110
+
+	var vbox := VBoxContainer.new()
+	vbox.add_theme_constant_override("separation", 10)
+	var label := Label.new()
+	label.text = "정말 처음부터 다시 키울까요?\n지금 펫과는 영영 헤어지게 돼요…"
+	label.add_theme_font_size_override("font_size", 14)
+	label.add_theme_color_override("font_color", Color(0.35, 0.28, 0.3))
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	vbox.add_child(label)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	var yes_button := Button.new()
+	yes_button.text = "🥚 다시 키우기"
+	yes_button.focus_mode = Control.FOCUS_NONE
+	yes_button.pressed.connect(_do_reset)
+	var no_button := Button.new()
+	no_button.text = "취소"
+	no_button.focus_mode = Control.FOCUS_NONE
+	no_button.pressed.connect(func():
+		reset_confirm.queue_free()
+		reset_confirm = null)
+	row.add_child(yes_button)
+	row.add_child(no_button)
+	vbox.add_child(row)
+	reset_confirm.add_child(vbox)
+	add_child(reset_confirm)
+	await get_tree().process_frame
+	reset_confirm.position = Vector2(
+		(screen_rect.size.x - reset_confirm.size.x) * 0.5,
+		screen_rect.size.y * 0.62,
+	)
+
+
+func _do_reset() -> void:
+	if reset_confirm != null:
+		reset_confirm.queue_free()
+		reset_confirm = null
+	_ps.reset_to_egg()
+	for poop in get_tree().get_nodes_in_group("poop"):
+		poop.queue_free()
+	pet.machine.transition_to("Egg")
+	_sm.save_game()
+	bubble.say("새 알이 도착했어! 소중히 돌봐줘", pet, Vector2(screen_rect.size), 8.0)
 
 
 ## 파일 먹이기: 펫 위에 파일을 드롭하면 휴지통으로 이동(복구 가능) + 먹이 효과.
@@ -273,7 +338,7 @@ func _update_passthrough() -> void:
 	var rects: Array = [pet.get_click_rect().grow_individual(12.0, 70.0, 12.0, 0.0)]
 	for poop in get_tree().get_nodes_in_group("poop"):
 		rects.append(poop.get_click_rect())
-	for control in [care_menu, stats_popup, bubble, notebook]:
+	for control in [care_menu, stats_popup, bubble, notebook, reset_confirm]:
 		if control != null and control.visible:
 			rects.append(control.get_global_rect().grow(12.0))  # 말꼬리 포함 여유
 
