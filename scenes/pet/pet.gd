@@ -133,7 +133,7 @@ func set_pose(pose: String) -> void:
 func refresh_appearance() -> void:
 	_frames.clear()
 	_pose = "idle"
-	var char_key := "egg" if ps.stage == "egg" else ps.species
+	var char_key: String = "egg" if ps.stage == "egg" else ps.species
 	var pose_list: Array = EGG_POSES if ps.stage == "egg" else POSES
 	var dir := "res://assets/sprites/chars/%s/" % char_key
 	for pose in pose_list:
