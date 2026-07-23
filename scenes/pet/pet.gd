@@ -6,6 +6,7 @@ signal care_menu_requested(pos: Vector2)
 const Characters := preload("res://scripts/data/characters.gd")
 const STAGE_SCALE := {"egg": 0.5, "baby": 0.35, "child": 0.42, "adult": 0.5}
 const POSES := ["idle", "walk1", "walk2", "sleep", "happy", "sulk", "sick", "eat"]
+const EGG_POSES := ["idle", "tilt1", "tilt2", "crack"]
 const SPRITE_SIZE := 256.0
 const BASE_SPEED := 120.0
 const PET_COOLDOWN_SECONDS := 30.0
@@ -131,22 +132,22 @@ func set_pose(pose: String) -> void:
 
 func refresh_appearance() -> void:
 	_frames.clear()
-	if ps.stage == "egg":
-		_sprite.texture = load("res://assets/sprites/concept/egg.png")
+	_pose = "idle"
+	var char_key := "egg" if ps.stage == "egg" else ps.species
+	var pose_list: Array = EGG_POSES if ps.stage == "egg" else POSES
+	var dir := "res://assets/sprites/chars/%s/" % char_key
+	for pose in pose_list:
+		var frame_path: String = dir + pose + ".png"
+		if ResourceLoader.exists(frame_path):
+			_frames[pose] = load(frame_path)
+	if _frames.has("idle"):
+		_sprite.texture = _frames["idle"]
 	else:
-		var dir := "res://assets/sprites/chars/%s/" % ps.species
-		for pose in POSES:
-			var frame_path: String = dir + pose + ".png"
-			if ResourceLoader.exists(frame_path):
-				_frames[pose] = load(frame_path)
-		if _frames.has("idle"):
-			_sprite.texture = _frames[_pose if _frames.has(_pose) else "idle"]
-		else:
-			_frames.clear()
-			var path := "res://assets/sprites/concept/%s.png" % ps.species
-			if not ResourceLoader.exists(path):
-				path = "res://assets/sprites/concept/mochi.png"  # Design §6: 리소스 폴백
-			_sprite.texture = load(path)
+		_frames.clear()
+		var path := "res://assets/sprites/concept/%s.png" % char_key
+		if not ResourceLoader.exists(path):
+			path = "res://assets/sprites/concept/mochi.png"  # Design §6: 리소스 폴백
+		_sprite.texture = load(path)
 	_base_scale = Vector2.ONE * STAGE_SCALE.get(ps.stage, 0.5)
 	_sprite.scale = _base_scale
 	_sprite.position = Vector2(0.0, -SPRITE_SIZE * _base_scale.y * 0.5)
@@ -174,6 +175,17 @@ func walk_bob(on: bool) -> void:
 
 
 func shake() -> void:
+	if _frames.has("tilt1") and _frames.has("tilt2"):
+		# 알 프레임 흔들기: 갸우뚱 좌우 교차, 80% 이상이면 금 간 모습으로 복귀
+		var base := "crack" if ps.hatch_progress >= 80.0 and _frames.has("crack") else "idle"
+		var t := create_tween()
+		for i in 2:
+			t.tween_callback(set_pose.bind("tilt1"))
+			t.tween_interval(0.14)
+			t.tween_callback(set_pose.bind("tilt2"))
+			t.tween_interval(0.14)
+		t.tween_callback(set_pose.bind(base))
+		return
 	var t := create_tween()
 	for i in 3:
 		t.tween_property(_sprite, "rotation", 0.12, 0.06)
