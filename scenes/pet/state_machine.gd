@@ -14,6 +14,7 @@ const STATE_SCRIPTS := {
 	"Fall": "res://scripts/states/fall_state.gd",
 	"Jump": "res://scripts/states/jump_state.gd",
 	"Perch": "res://scripts/states/perch_state.gd",
+	"Play": "res://scripts/states/play_state.gd",
 }
 # Jump는 공중이라 중단 불가. Perch는 하강(Fall)을 통해서만 지상 상태로 복귀한다.
 const UNINTERRUPTIBLE := ["Egg", "Dragged", "Fall", "Jump", "Perch"]

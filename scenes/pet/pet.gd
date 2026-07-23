@@ -193,6 +193,26 @@ func celebrate() -> void:
 	_float_text("♪")
 
 
+func play_frolic() -> void:
+	# 좌우로 기울며 폴짝폴짝 4연속 (놀기 리액션)
+	var base_y := -SPRITE_SIZE * _base_scale.y * 0.5
+	var t := create_tween()
+	for i in 4:
+		var dir := 1.0 if i % 2 == 0 else -1.0
+		t.tween_property(_sprite, "rotation", 0.22 * dir, 0.13)
+		t.parallel().tween_property(_sprite, "position:y", base_y - 26.0, 0.13) \
+			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		t.tween_property(_sprite, "position:y", base_y, 0.14) \
+			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	t.tween_property(_sprite, "rotation", 0.0, 0.1)
+	_float_text("신난다~♪")
+
+
+func reset_sprite_pose() -> void:
+	_sprite.rotation = 0.0
+	_sprite.position.y = -SPRITE_SIZE * _base_scale.y * 0.5
+
+
 func sulk_crouch() -> void:
 	var t := create_tween()
 	t.tween_property(_sprite, "scale", _base_scale * Vector2(1.05, 0.88), 0.4)
@@ -240,6 +260,9 @@ func _on_care_performed(action: String) -> void:
 	if action == "feed" or action == "snack":
 		if machine.current_name() not in machine.UNINTERRUPTIBLE:
 			machine.transition_to("Eat")
+	elif action == "play":
+		if not ps.is_sick and machine.current_name() not in machine.UNINTERRUPTIBLE:
+			machine.transition_to("Play")
 	elif action == "medicine":
 		_float_text("+HP")
 
