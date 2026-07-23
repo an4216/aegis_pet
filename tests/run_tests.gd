@@ -24,7 +24,6 @@ func _init() -> void:
 	_test_stage_progression()
 	_test_digest()
 	_test_probe_parse()
-	_test_region_builder()
 	_test_reset_to_egg()
 	_test_version_compare()
 	print("")
@@ -189,20 +188,6 @@ func _test_probe_parse() -> void:
 	check(parsed[0]["rect"] == Rect2(100, 200, 800, 600) and not parsed[0]["toast"], "probe 파싱: 일반 창")
 	check(parsed[1]["toast"], "probe 파싱: 토스트 판별")
 	check(Probe.parse_windows("깨진 json").is_empty(), "probe 파싱: 손상 입력 → 빈 배열")
-
-
-# 클릭영역 폴리곤: 사각형 n개 → 8n 정점, 공중 사각형도 기둥으로 바닥과 연결
-func _test_region_builder() -> void:
-	var RB := preload("res://scripts/platform/region_builder.gd")
-	var poly := RB.build([Rect2(100, 900, 150, 150), Rect2(600, 300, 200, 100)], 1080.0)
-	check(poly.size() == 16, "region: 분리된 사각형 2개 → 정점 16개")
-	var grounded := 0
-	for p in poly:
-		if p.y == 1080.0:
-			grounded += 1
-	check(grounded == 4, "region: 기둥 접지점 4개")
-	var merged_poly := RB.build([Rect2(100, 900, 150, 150), Rect2(180, 850, 150, 150)], 1080.0)
-	check(merged_poly.size() == 8, "region: 겹치는 사각형은 병합 → 정점 8개")
 
 
 # 성장: 3일 → 소년기, 7일 → 성체

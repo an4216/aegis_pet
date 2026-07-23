@@ -3,7 +3,6 @@ extends Node2D
 
 const AUTOSTART_REG_KEY := "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run"
 const AUTOSTART_REG_NAME := "DesktopTamagotchi"
-const RegionBuilder := preload("res://scripts/platform/region_builder.gd")
 const DialogData := preload("res://scripts/data/dialog.gd")
 
 var pet: Node2D
@@ -19,7 +18,7 @@ var assistant: Node
 var updater: Node
 var tray_menu: PopupMenu
 var screen_rect: Rect2i
-var _last_poly := PackedVector2Array()
+var _interactive := false
 
 @onready var _sm: Node = get_node("/root/SaveManager")
 @onready var _ps: Node = get_node("/root/PetState")
@@ -84,6 +83,10 @@ func _setup_window() -> void:
 	ground_bottom = min_bottom - float(screen_rect.position.y)
 	win.position = screen_rect.position
 	win.size = screen_rect.size
+	# 클릭 통과: SetWindowRgn(폴리곤) 방식은 창 이동 시 경계에 흰 줄 아티팩트가 생기고
+	# 렌더링도 잘린다. 대신 창 전체 통과 플래그를 마우스 위치에 따라 토글한다.
+	win.mouse_passthrough = true
+	_interactive = false
 	Engine.max_fps = 30
 
 
@@ -349,22 +352,25 @@ func _spawn_poop_at(pos: Vector2) -> void:
 	poop_container.add_child(poop)
 
 
-## 클릭 가능한 영역(펫+응아+열린 UI)만 마우스를 받고, 나머지는 아래 창으로 통과.
-## 주의: Windows에서 이 영역은 입력뿐 아니라 "그리기 영역"도 잘라낸다 (SetWindowRgn).
-## 따라서 말풍선·머리 위 이펙트(Zzz/하트)도 반드시 영역에 포함해야 화면에 보인다.
+## 마우스가 상호작용 대상(펫·응아·열린 UI) 위에 있을 때만 창이 입력을 받고,
+## 그 외에는 창 전체가 클릭 통과된다. region 클리핑이 없어 렌더링은 항상 온전하다.
 func _update_passthrough() -> void:
-	# 펫 영역을 위로 70px 확장: Zzz·하트·탄생! 등 머리 위 이펙트 포함
-	var rects: Array = [pet.get_click_rect().grow_individual(12.0, 70.0, 12.0, 0.0)]
-	for poop in get_tree().get_nodes_in_group("poop"):
-		rects.append(poop.get_click_rect())
-	for control in [care_menu, stats_popup, bubble, notebook, reset_confirm]:
-		if control != null and control.visible:
-			rects.append(control.get_global_rect().grow(12.0))  # 말꼬리 포함 여유
-
-	var poly := RegionBuilder.build(rects, ground_bottom + 4.0)
-	if poly != _last_poly:
-		DisplayServer.window_set_mouse_passthrough(poly)
-		_last_poly = poly
+	var want: bool = pet.is_mouse_pressed()  # 드래그 중에는 항상 유지
+	if not want:
+		var mouse_local := Vector2(DisplayServer.mouse_get_position() - screen_rect.position)
+		var rects: Array = [pet.get_click_rect()]
+		for poop in get_tree().get_nodes_in_group("poop"):
+			rects.append(poop.get_click_rect())
+		for control in [care_menu, stats_popup, notebook, reset_confirm]:
+			if control != null and control.visible:
+				rects.append(control.get_global_rect().grow(8.0))
+		for r in rects:
+			if (r as Rect2).has_point(mouse_local):
+				want = true
+				break
+	if want != _interactive:
+		_interactive = want
+		get_window().mouse_passthrough = not want
 
 
 ## 알림 토스트가 뜨면 달려가서 올라탄다 (Phase 2)

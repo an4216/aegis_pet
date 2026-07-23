@@ -259,7 +259,7 @@ const HATCH_HOURS_RANGE := [1.0, 4.0]
 |------|-----|------|
 | `transparent_bg`, per_pixel_transparency | on | 투명 오버레이 |
 | borderless, always_on_top | on | 테두리 없음·최상위 |
-| `window_set_mouse_passthrough(polygon)` | 펫+UI+말풍선 영역 | 클릭 통과. **주의: Windows에서는 이 영역 밖은 렌더링도 잘림(SetWindowRgn)** — 화면에 보여야 할 모든 요소(말풍선·이펙트 포함)를 폴리곤에 포함할 것 |
+| `Window.mouse_passthrough` (전체 토글) | 마우스가 펫·응아·UI 위에 있을 때만 false | 클릭 통과. **폴리곤(SetWindowRgn) 방식은 사용 금지** — 창 이동 시 경계 흰 줄 아티팩트 + 렌더링 잘림. 마우스 위치 폴링 후 창 전체 플래그를 토글하는 방식이 안정적 |
 | unfocusable(no_focus) | on | 포커스 탈취 방지 |
 | low_processor_mode | on | 상주 리소스 절약 |
 | max_fps | 활동 30 / 대기 10 | CPU 절약 |
