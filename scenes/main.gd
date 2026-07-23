@@ -37,6 +37,7 @@ func _ready() -> void:
 	pet = load("res://scenes/pet/pet.tscn").instantiate()
 	pet.screen_size = Vector2(screen_rect.size)
 	pet.ground_y = ground_bottom - 6.0
+	pet.primary_local = primary_local
 	add_child(pet)
 
 	probe = load("res://scripts/platform/window_probe.gd").new()
@@ -66,7 +67,8 @@ func _process(_delta: float) -> void:
 	_update_passthrough()
 
 
-var ground_bottom := 0.0  # 로컬 좌표 기준 바닥 (가장 낮은 작업표시줄 위)
+var ground_bottom := 0.0    # 로컬 좌표 기준 바닥 (가장 낮은 작업표시줄 위)
+var primary_local: Rect2    # 1번 모니터의 오버레이-로컬 좌표 (알 스폰·다이얼로그 중앙 배치용)
 
 
 func _setup_window() -> void:
@@ -78,11 +80,16 @@ func _setup_window() -> void:
 	win.unfocusable = true
 	# 모든 모니터를 덮는 하나의 오버레이 (Phase 2: 멀티모니터)
 	screen_rect = DisplayServer.screen_get_usable_rect(0)
+	var primary := screen_rect
 	var min_bottom := float((screen_rect as Rect2i).end.y)
 	for i in range(1, DisplayServer.get_screen_count()):
 		var usable := DisplayServer.screen_get_usable_rect(i)
 		screen_rect = (screen_rect as Rect2i).merge(usable)
 		min_bottom = minf(min_bottom, float(usable.end.y))
+	# 오버레이-로컬 좌표계에서 1번 모니터 영역
+	primary_local = Rect2(
+		Vector2(primary.position - screen_rect.position),
+		Vector2(primary.size))
 	ground_bottom = min_bottom - float(screen_rect.position.y)
 	win.position = screen_rect.position
 	win.size = screen_rect.size
@@ -297,9 +304,10 @@ func _show_reset_confirm() -> void:
 	reset_confirm.add_child(vbox)
 	add_child(reset_confirm)
 	await get_tree().process_frame
+	# 1번 모니터 중앙에 배치 (듀얼 모니터에서 모니터 경계에 뜨는 문제 방지)
 	reset_confirm.position = Vector2(
-		(screen_rect.size.x - reset_confirm.size.x) * 0.5,
-		screen_rect.size.y * 0.62,
+		primary_local.position.x + (primary_local.size.x - reset_confirm.size.x) * 0.5,
+		primary_local.position.y + primary_local.size.y * 0.55,
 	)
 
 

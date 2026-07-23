@@ -17,6 +17,7 @@ var machine: Node
 var probe: Node = null            # scripts/platform/window_probe.gd (main이 주입)
 var ground_y := 0.0
 var screen_size := Vector2.ZERO
+var primary_local: Rect2          # 1번 모니터 로컬 영역 (알 스폰 중앙 계산용)
 var platform_id := -1             # 올라가 있는 창 핸들 (-1 = 지상)
 var platform_rect := Rect2()
 var jump_target_id := -1
@@ -57,7 +58,9 @@ func _ready() -> void:
 	add_child(machine)
 	machine.setup(self)
 
-	position = Vector2(screen_size.x * 0.5, ground_y)
+	# 초기 스폰: 1번 모니터 중앙 (setup 후 state가 재배치할 수 있음)
+	var start_x: float = primary_local.get_center().x if primary_local.size.x > 0.0 else screen_size.x * 0.5
+	position = Vector2(start_x, ground_y)
 
 
 func _process(delta: float) -> void:

@@ -6,7 +6,9 @@ var _shake_timer := 0.0
 
 func enter() -> void:
 	pet.ps.activity = pet.ps.Activity.IDLE
-	pet.position = Vector2(pet.screen_size.x * 0.5, pet.ground_y)
+	# 알은 1번 모니터 중앙 하단에 스폰 (듀얼모니터에서 경계에 뜨는 문제 방지)
+	var center_x: float = pet.primary_local.get_center().x if pet.primary_local.size.x > 0.0 else pet.screen_size.x * 0.5
+	pet.position = Vector2(center_x, pet.ground_y)
 	_shake_timer = _next_shake()
 
 
