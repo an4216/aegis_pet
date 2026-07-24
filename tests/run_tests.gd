@@ -29,6 +29,15 @@ func _init() -> void:
 	_test_serialize_roundtrip()
 	_test_stage_progression()
 	_test_digest()
+	_test_probe_parse()
+	_test_reset_to_egg()
+	_test_version_compare()
+	_test_evolution_keyboard()
+	_test_evolution_distinct_days()
+	_test_evolution_feed_snack()
+	_test_evolution_progress_ratio()
+	_test_evolution_persists_across_save()
+	_test_evolution_gated_by_egg()
 	call_deferred("_test_pink_cat_baby_care_reactions")
 
 
@@ -227,6 +236,107 @@ func _test_digest() -> void:
 	pet.care("feed")
 	pet.advance_minutes(Balance.DIGEST_MINUTES_MAX + 1.0, {"hour": 10, "weekday": 2})
 	check(pet.poop_count >= 1, "먹이 후 30분 내 응아")
+
+
+# Plan FR-15 v3: 활동 기반 진화
+func _test_evolution_keyboard() -> void:
+	var pet := make_pet("mochi")
+	var got_signal := [false]
+	pet.evolution_ready.connect(func(_s): got_signal[0] = true)
+	pet.add_input_delta({"kb": 15000, "mouse": 0, "active_sec": 0.0, "friday_active_sec": 0.0})
+	check(not pet.evolved, "모찌 진화 미충족 (kb 절반)")
+	pet.add_input_delta({"kb": 15001, "mouse": 0, "active_sec": 0.0, "friday_active_sec": 0.0})
+	check(pet.evolved and got_signal[0], "모찌 진화: 키보드 30,000 달성")
+	check(pet.stage == "adult", "진화 시 성체로 자동 승격")
+
+
+func _test_evolution_distinct_days() -> void:
+	var pet := make_pet("ppiyak")
+	for i in 4:
+		pet.note_activity_day("2026-07-%02d" % (20 + i))
+	check(not pet.evolved, "삐약 진화 미충족 (4일)")
+	pet.note_activity_day("2026-07-24")
+	check(pet.evolved, "삐약 진화: 서로 다른 날 5일")
+	# 중복 날짜는 카운트 안 됨
+	var pet2 := make_pet("ppiyak")
+	for i in 10:
+		pet2.note_activity_day("2026-07-21")
+	check(not pet2.evolved, "중복 날짜는 진화 카운트 안 됨")
+
+
+func _test_evolution_feed_snack() -> void:
+	var pet := make_pet("haemjji")
+	for i in 39:
+		pet.care("feed" if i % 2 == 0 else "snack")
+	check(not pet.evolved, "햄찌 진화 미충족 (39회)")
+	pet.care("feed")
+	check(pet.evolved, "햄찌 진화: 먹이/간식 40회")
+
+
+func _test_evolution_progress_ratio() -> void:
+	var pet := make_pet("kong")
+	pet.add_input_delta({"kb": 0, "mouse": 5000, "active_sec": 0.0, "friday_active_sec": 0.0})
+	var p: Dictionary = pet.evolution_progress()
+	check(approx(p["ratio"], 0.25), "진화 진행률: 5000/20000 = 25%")
+	check(p["hint"] != "", "진행률에 힌트 문구 포함")
+
+
+func _test_evolution_persists_across_save() -> void:
+	var pet := make_pet("mundeok")
+	for i in 30:
+		pet.note_todo_complete()
+	check(pet.evolved, "문덕 진화: 할 일 30개")
+	var restored: Node = PetStateScript.new()
+	restored.deserialize(pet.serialize())
+	check(restored.evolved and restored.work_stats["todos_done"] == 30,
+		"진화 상태·카운터 직렬화 왕복 보존")
+
+
+func _test_evolution_gated_by_egg() -> void:
+	var pet: Node = PetStateScript.new()  # 알 상태
+	pet.add_input_delta({"kb": 999999, "mouse": 999999, "active_sec": 0.0, "friday_active_sec": 0.0})
+	check(not pet.evolved, "알 상태에서는 진화 불가")
+
+
+# 업데이트 버전 비교 (FR-29)
+func _test_version_compare() -> void:
+	var Updater := preload("res://scripts/updater.gd")
+	check(Updater.is_newer("v0.3.0", "0.2.0"), "버전 비교: 0.3.0 > 0.2.0")
+	check(Updater.is_newer("1.0.0", "0.9.9"), "버전 비교: 1.0.0 > 0.9.9")
+	check(not Updater.is_newer("v0.2.0", "0.2.0"), "버전 비교: 동일 버전은 미갱신")
+	check(not Updater.is_newer("0.1.9", "0.2.0"), "버전 비교: 구버전은 미갱신")
+	check(Updater.is_newer("0.2.1", "0.2"), "버전 비교: 자릿수 부족 보정")
+
+
+# 알로 리셋: 성체+병듦 상태에서도 완전 초기화
+func _test_reset_to_egg() -> void:
+	var pet := make_pet("haemjji")
+	pet.stage = "adult"
+	pet.stats["health"] = 10.0
+	pet.is_sick = true
+	pet.poop_count = 3
+	pet.age_minutes = 99999.0
+	pet.reset_to_egg()
+	check(
+		pet.stage == "egg" and pet.species == "" and not pet.is_sick
+		and pet.poop_count == 0 and pet.hatch_progress == 0.0
+		and approx(pet.stats["health"], 100.0),
+		"알로 리셋: 전체 상태 초기화"
+	)
+	pet.advance_minutes(Balance.HATCH_HOURS_MAX * 60.0, {"hour": 10, "weekday": 2})
+	check(pet.stage == "baby" and pet.species != "", "알로 리셋 후 재부화 정상")
+
+
+# 창 감지 JSON 파싱
+func _test_probe_parse() -> void:
+	var Probe := preload("res://scripts/platform/window_probe.gd")
+	var parsed: Array = Probe.parse_windows(
+		'[{"i":123,"x":100,"y":200,"w":800,"h":600,"z":0,"t":0},{"i":9,"x":1500,"y":900,"w":360,"h":150,"z":1,"t":1}]'
+	)
+	check(parsed.size() == 2, "probe 파싱: 창 2개")
+	check(parsed[0]["rect"] == Rect2(100, 200, 800, 600) and not parsed[0]["toast"], "probe 파싱: 일반 창")
+	check(parsed[1]["toast"], "probe 파싱: 토스트 판별")
+	check(Probe.parse_windows("깨진 json").is_empty(), "probe 파싱: 손상 입력 → 빈 배열")
 
 
 # 성장: 3일 → 소년기, 7일 → 성체

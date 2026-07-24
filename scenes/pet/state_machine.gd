@@ -13,8 +13,12 @@ const STATE_SCRIPTS := {
 	"Dragged": "res://scripts/states/dragged_state.gd",
 	"Fall": "res://scripts/states/fall_state.gd",
 	"Land": "res://scripts/states/land_state.gd",
+	"Jump": "res://scripts/states/jump_state.gd",
+	"Perch": "res://scripts/states/perch_state.gd",
+	"Play": "res://scripts/states/play_state.gd",
 }
-const UNINTERRUPTIBLE := ["Egg", "Dragged", "Fall", "Land"]
+# Jump/Perch는 공중이라 중단 불가. Land는 착지 연출을 끝낸 뒤 지상 상태로 복귀한다.
+const UNINTERRUPTIBLE := ["Egg", "Dragged", "Fall", "Land", "Jump", "Perch"]
 
 var states := {}
 var current: Node = null

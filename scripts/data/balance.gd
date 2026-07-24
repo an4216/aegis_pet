@@ -48,3 +48,18 @@ const AFTER_WORK_HAPPINESS_REGEN_PER_HOUR := 3.0  # 스르륵 after_work_boost
 const BURNOUT_ENERGY_MULT := 1.5              # 문덕 burnout_link (행복<30일 때 에너지 감소 배율)
 const SELF_SNACK_CHANCE_PER_HOUR := 0.1       # 햄찌 self_snack
 const SELF_SNACK_HUNGER := 8.0
+
+# --- 진화 조건 (Plan FR-15 v3) — 캐릭터 성격에 맞춘 업무 활동 지표 ---
+const EVOLUTION := {
+	"mochi":      {"metric": "kb",                "amount": 30000,    "hint": "키보드 30,000번 두드리기"},
+	"ppiyak":     {"metric": "distinct_days",     "amount": 5,        "hint": "서로 다른 날 5번 출근"},
+	"haemjji":    {"metric": "feed_snack",        "amount": 40,       "hint": "먹이·간식 40번 챙기기"},
+	"kkubeok":    {"metric": "pomodoro_done",     "amount": 10,       "hint": "뽀모도로 10회 완료"},
+	"nyang":      {"metric": "pet_care",          "amount": 100,      "hint": "쓰다듬기 100번"},
+	"kong":       {"metric": "mouse",             "amount": 20000,    "hint": "마우스 클릭 20,000번"},
+	"mundeok":    {"metric": "todos_done",        "amount": 30,       "hint": "할 일 30개 완료"},
+	"geobujang":  {"metric": "active_sec",        "amount": 360000.0, "hint": "함께한 시간 100시간"},
+	"bulgeumjo":  {"metric": "friday_active_sec", "amount": 28800.0,  "hint": "금요일에 총 8시간 함께"},
+	"seureureuk": {"metric": "late_shutdowns",    "amount": 3,        "hint": "정시퇴근(18~19시 종료) 3번"},
+}
+const LATE_SHUTDOWN_HOURS := [18, 19]

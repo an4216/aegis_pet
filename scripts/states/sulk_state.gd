@@ -11,11 +11,15 @@ func enter() -> void:
 	_corner_x = margin if pet.position.x < pet.screen_size.x * 0.5 else pet.screen_size.x - margin
 	pet.face_towards(_corner_x)
 	pet.ps.activity = pet.ps.Activity.ACTIVE
-	pet.set_sprite_tint(Color(0.8, 0.8, 0.8))
+	if pet.has_poses():
+		pet.set_pose("sulk")
+	else:
+		pet.set_sprite_tint(Color(0.8, 0.8, 0.8))
 
 
 func exit() -> void:
 	pet.set_sprite_tint(Color.WHITE)
+	pet.set_pose("idle")
 
 
 func update(delta: float) -> void:

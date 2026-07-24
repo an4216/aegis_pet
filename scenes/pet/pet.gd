@@ -5,6 +5,8 @@ signal care_menu_requested(pos: Vector2)
 
 const Characters := preload("res://scripts/data/characters.gd")
 const STAGE_SCALE := {"egg": 0.5, "baby": 0.35, "child": 0.42, "adult": 0.5}
+const POSES := ["idle", "walk1", "walk2", "sleep", "happy", "sulk", "sick", "eat"]
+const EGG_POSES := ["idle", "tilt1", "tilt2", "crack"]
 const SPRITE_SIZE := 256.0
 const BICHON_VISIBLE_SIZE_MULTIPLIER := 1.25
 const BICHON_EDGE_BUFFER := 28.0
@@ -54,12 +56,20 @@ const PINK_CAT_BABY_ANIMATIONS := {
 
 var ps: Node
 var machine: Node
+var probe: Node = null            # scripts/platform/window_probe.gd (main이 주입)
 var ground_y := 0.0
 var screen_size := Vector2.ZERO
+var primary_local: Rect2          # 1번 모니터 로컬 영역 (알 스폰 중앙 계산용)
+var platform_id := -1             # 올라가 있는 창 핸들 (-1 = 지상)
+var platform_rect := Rect2()
+var jump_target_id := -1
+var jump_target_rect := Rect2()
+var jump_cooldown := 0.0          # 창 위 놀이 사이 휴식 (업무 비방해)
 
 var _sprite: Sprite2D
 var _zzz: Label
 var _sick_mark: Label
+var _evolved_badge: Label
 var _base_scale := Vector2.ONE
 var _frame_size := Vector2.ONE * SPRITE_SIZE
 var _pet_cooldown := 0.0
@@ -67,6 +77,8 @@ var _pressed := false
 var _press_pos := Vector2.ZERO
 var _bob_tween: Tween
 var _wiggle_tween: Tween
+var _frames := {}          # pose -> Texture2D (포즈 시트 있는 캐릭터만)
+var _pose := "idle"
 var _bichon_animation := ""
 var _bichon_elapsed := 0.0
 var _bichon_frame := 0
@@ -85,6 +97,7 @@ func _ready() -> void:
 	add_child(_sprite)
 	_zzz = _make_mark("Zzz", Color(0.55, 0.62, 0.85))
 	_sick_mark = _make_mark("@_@", Color(0.45, 0.65, 0.45))
+	_evolved_badge = _make_mark("✨", Color(0.95, 0.75, 0.35))
 	refresh_appearance()
 
 	ps.species_assigned.connect(func(_s): refresh_appearance())
@@ -97,13 +110,17 @@ func _ready() -> void:
 	add_child(machine)
 	machine.setup(self)
 
-	position = Vector2(screen_size.x * 0.5, ground_y)
+	# 초기 스폰: 1번 모니터 중앙 (setup 후 state가 재배치할 수 있음)
+	var start_x: float = primary_local.get_center().x if primary_local.size.x > 0.0 else screen_size.x * 0.5
+	position = Vector2(start_x, ground_y)
 
 
 func _process(delta: float) -> void:
 	if _pet_cooldown > 0.0:
 		_pet_cooldown -= delta
 	_advance_bichon_animation(delta)
+	if jump_cooldown > 0.0:
+		jump_cooldown -= delta
 
 
 func _input(event: InputEvent) -> void:
@@ -134,6 +151,12 @@ func is_mouse_pressed() -> bool:
 	return _pressed
 
 
+func start_jump(target_id: int, target_rect: Rect2) -> void:
+	jump_target_id = target_id
+	jump_target_rect = target_rect
+	machine.transition_to("Jump")
+
+
 func get_click_rect() -> Rect2:
 	var animated_size_multiplier := _animated_visible_size_multiplier() if _is_animated_pet() else 1.0
 	var size := SPRITE_SIZE * float(STAGE_SCALE.get(ps.stage, 0.5)) * animated_size_multiplier
@@ -161,28 +184,72 @@ func face_towards(target_x: float) -> void:
 	_sprite.flip_h = target_x > position.x
 
 
+## 포즈 시트(assets/sprites/chars/<종족>/)가 있으면 프레임 시스템, 없으면 단일 컨셉 이미지 폴백
+func has_poses() -> bool:
+	return not _frames.is_empty()
+
+
+func set_pose(pose: String) -> void:
+	_pose = pose
+	if _frames.has(pose):
+		_sprite.texture = _frames[pose]
+
+
 func refresh_appearance() -> void:
+	_frames.clear()
+	_pose = "idle"
 	if _is_animated_pet():
+		_update_evolved_badge()
 		var state_name: String = machine.current_name() if machine != null else "Idle"
 		var animation_name := _bichon_override if not _bichon_override.is_empty() else _animation_for_state(state_name)
 		_set_bichon_animation(animation_name)
 		return
 
-	var tex_key: String = "egg" if ps.stage == "egg" else ps.species
-	var path := "res://assets/sprites/concept/%s.png" % tex_key
-	if not ResourceLoader.exists(path):
-		path = "res://assets/sprites/concept/mochi.png"  # Design §6: 리소스 폴백
+	var char_key: String = "egg" if ps.stage == "egg" else ps.species
+	var pose_list: Array = EGG_POSES if ps.stage == "egg" else POSES
+	# 진화 완료 시 evolved 프레임 폴더를 우선 시도 (아트 없으면 기본 폴더로 폴백)
+	var dirs: Array = ["res://assets/sprites/chars/%s/" % char_key]
+	if ps.evolved and ps.stage != "egg":
+		dirs.push_front("res://assets/sprites/chars/%s_evolved/" % char_key)
+	for dir_path in dirs:
+		if not ResourceLoader.exists(dir_path + "idle.png"):
+			continue
+		for pose in pose_list:
+			var frame_path: String = dir_path + pose + ".png"
+			if ResourceLoader.exists(frame_path):
+				_frames[pose] = load(frame_path)
+		break
+	if _frames.has("idle"):
+		_sprite.texture = _frames["idle"]
+	else:
+		_frames.clear()
+		var path := "res://assets/sprites/concept/%s.png" % char_key
+		if not ResourceLoader.exists(path):
+			path = "res://assets/sprites/concept/mochi.png"  # Design §6: 리소스 폴백
+		_sprite.texture = load(path)
 	_sprite.hframes = 1
 	_sprite.vframes = 1
 	_sprite.frame = 0
 	_bichon_frame = 0
 	_bichon_sprite_frame_sequence = []
-	_sprite.texture = load(path)
+	_bichon_frame_foot_padding = []
+	_bichon_frame_horizontal_offsets = []
 	_frame_size = _sprite.texture.get_size()
+	_update_evolved_badge()
 	_base_scale = Vector2.ONE * STAGE_SCALE.get(ps.stage, 0.5)
 	_sprite.scale = _base_scale
 	_sprite.position = _sprite_anchor()
 	_update_mark_positions()
+	# 진화 배지는 스프라이트 오른쪽 위 (약간 반짝)
+	var half_w := _frame_size.x * _base_scale.x * 0.5
+	var half_h := _frame_size.y * _base_scale.y
+	_evolved_badge.position = Vector2(half_w - 24.0, -half_h - 6.0)
+
+
+func _update_evolved_badge() -> void:
+	if _evolved_badge == null:
+		return
+	_evolved_badge.visible = ps != null and ps.evolved and ps.stage != "egg"
 
 
 # --- 상태별 표현 (states/*.gd에서 호출) ---
@@ -353,6 +420,17 @@ func walk_bob(_on: bool) -> void:
 
 
 func shake() -> void:
+	if _frames.has("tilt1") and _frames.has("tilt2"):
+		# 알 프레임 흔들기: 갸우뚱 좌우 교차, 80% 이상이면 금 간 모습으로 복귀
+		var base := "crack" if ps.hatch_progress >= 80.0 and _frames.has("crack") else "idle"
+		var t := create_tween()
+		for i in 2:
+			t.tween_callback(set_pose.bind("tilt1"))
+			t.tween_interval(0.14)
+			t.tween_callback(set_pose.bind("tilt2"))
+			t.tween_interval(0.14)
+		t.tween_callback(set_pose.bind(base))
+		return
 	var t := create_tween()
 	for i in 3:
 		t.tween_property(_sprite, "rotation", 0.12, 0.06)
@@ -392,6 +470,43 @@ func land_squish() -> void:
 	var t := create_tween()
 	t.tween_property(_sprite, "scale", _base_scale * Vector2(1.25, 0.7), 0.08)
 	t.tween_property(_sprite, "scale", _base_scale, 0.2)
+
+
+func celebrate() -> void:
+	# 신나는 세리머니: 폴짝폴짝 3연속 점프 + 음표 + 신남 표정
+	var prev_pose := _pose
+	set_pose("happy")
+	var base_y := -SPRITE_SIZE * _base_scale.y * 0.5
+	var t := create_tween()
+	for i in 3:
+		t.tween_property(_sprite, "position:y", base_y - 22.0, 0.14) \
+			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		t.tween_property(_sprite, "position:y", base_y, 0.14) \
+			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	t.tween_callback(func():
+		if _pose == "happy":
+			set_pose(prev_pose if prev_pose != "happy" else "idle"))
+	_float_text("♪")
+
+
+func play_frolic() -> void:
+	# 좌우로 기울며 폴짝폴짝 4연속 (놀기 리액션)
+	var base_y := -SPRITE_SIZE * _base_scale.y * 0.5
+	var t := create_tween()
+	for i in 4:
+		var dir := 1.0 if i % 2 == 0 else -1.0
+		t.tween_property(_sprite, "rotation", 0.22 * dir, 0.13)
+		t.parallel().tween_property(_sprite, "position:y", base_y - 26.0, 0.13) \
+			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_OUT)
+		t.tween_property(_sprite, "position:y", base_y, 0.14) \
+			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+	t.tween_property(_sprite, "rotation", 0.0, 0.1)
+	_float_text("신난다~♪")
+
+
+func reset_sprite_pose() -> void:
+	_sprite.rotation = 0.0
+	_sprite.position.y = -SPRITE_SIZE * _base_scale.y * 0.5
 
 
 func sulk_crouch() -> void:
@@ -446,7 +561,10 @@ func _on_care_performed(action: String) -> void:
 	elif action == "pet":
 		_play_care_reaction("Pet", 0.8)
 	elif action == "play":
-		_play_care_reaction("Play", 0.8)
+		if _is_animated_pet():
+			_play_care_reaction("Play", 0.8)
+		elif not ps.is_sick and machine.current_name() not in machine.UNINTERRUPTIBLE:
+			machine.transition_to("Play")
 	elif action == "medicine":
 		_float_text("+HP")
 

@@ -30,9 +30,8 @@ func setup(bubble_node: Node, pet_node: Node2D, size: Vector2) -> void:
 	_sm = get_node("/root/SaveManager")
 	_ps.species_assigned.connect(_on_hatched)
 	_schedule()
-	# 세션 첫 말풍선은 1~3분 내로 빠르게 (이후 빈도 설정 따름)
-	if _ps.stage != "egg":
-		_next_in = minf(_next_in, randf_range(60.0, 180.0))
+	# 세션 첫 말풍선은 15~40초 내로 빠르게 (이후 빈도 설정 따름)
+	_next_in = minf(_next_in, randf_range(15.0, 40.0))
 
 
 func _process(delta: float) -> void:
@@ -56,9 +55,9 @@ func _on_hatched(species: String) -> void:
 func _can_speak() -> bool:
 	if _sm.settings.get("focus_mode", false):
 		return false
+	if _sm.pomodoro_work:
+		return false  # 집중 시간엔 조용히 (FR-22)
 	if _sm.settings.get("bubble_frequency", "normal") == "off":
-		return false
-	if _ps.stage == "egg":
 		return false
 	if _ps.activity == _ps.Activity.SLEEPING:
 		return false
@@ -72,6 +71,13 @@ func _schedule() -> void:
 
 
 func _pick_line() -> String:
+	if _ps.stage == "egg":
+		var egg_pool: Array = Dialog.COMMON["egg"]
+		for i in 8:
+			var egg_line: String = egg_pool[randi() % egg_pool.size()]
+			if egg_line not in _recent:
+				return egg_line
+		return ""
 	var dt := Time.get_datetime_dict_from_system()
 	var trigger := _match_trigger(dt)
 	if trigger != "":
@@ -110,6 +116,7 @@ func _match_trigger(dt: Dictionary) -> String:
 
 
 func _say(line: String) -> void:
+	print("bubble: ", line)
 	_recent.append(line)
 	if _recent.size() > RECENT_LIMIT:
 		_recent.pop_front()

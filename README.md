@@ -6,7 +6,7 @@
 
 > "일하기 싫지? 몰래 집에 가버려~" — 나른냥
 
-![캐릭터 10종](assets/sprites/concept/sheet.png)
+![캐릭터 10종 + 알](assets/sprites/concept/sheet.png)
 
 ## 특징
 
