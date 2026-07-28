@@ -19,32 +19,40 @@ def is_neutral_light(px):
     return r > 190 and g > 190 and b > 190 and (max(r, g, b) - min(r, g, b)) < 14
 
 
-def remove_checkerboard(im):
-    """테두리에서 연결된 중립 밝은 픽셀만 배경으로 제거 (눈 하이라이트 등 내부 흰색 보존)."""
+def remove_bg(im, tolerance=22):
+    """테두리에서 연결된 배경 픽셀을 이웃 유사도(tolerance) 기반 flood fill로 제거.
+    - 단색·그라데이션 배경 모두 처리 가능 (이웃 픽셀 색차가 tolerance 이하일 때만 배경으로 확장)
+    - 캐릭터 내부 하이라이트·흰색은 배경과 색차가 커서 보존됨
+    """
     im = im.convert("RGB")
     w, h = im.size
     px = im.load()
     bg = bytearray(w * h)
     queue = deque()
+    # 사방 테두리 픽셀을 모두 시드로 (가장자리 어디든 캐릭터가 아니라고 가정)
     for x in range(w):
         for y in (0, h - 1):
-            if is_neutral_light(px[x, y]) and not bg[y * w + x]:
+            if not bg[y * w + x]:
                 bg[y * w + x] = 1
                 queue.append((x, y))
     for y in range(h):
         for x in (0, w - 1):
-            if is_neutral_light(px[x, y]) and not bg[y * w + x]:
+            if not bg[y * w + x]:
                 bg[y * w + x] = 1
                 queue.append((x, y))
     while queue:
         x, y = queue.popleft()
+        cr, cg, cb = px[x, y]
         for nx, ny in ((x+1, y), (x-1, y), (x, y+1), (x, y-1)):
-            if 0 <= nx < w and 0 <= ny < h and not bg[ny * w + nx] and is_neutral_light(px[nx, ny]):
-                bg[ny * w + nx] = 1
-                queue.append((nx, ny))
+            if 0 <= nx < w and 0 <= ny < h and not bg[ny * w + nx]:
+                nr, ng, nb = px[nx, ny]
+                # 그라데이션이라도 이웃 픽셀은 색차가 작음. 캐릭터 경계는 급변하니 여기서 멈춤
+                if max(abs(nr - cr), abs(ng - cg), abs(nb - cb)) <= tolerance:
+                    bg[ny * w + nx] = 1
+                    queue.append((nx, ny))
     alpha = Image.new("L", (w, h), 255)
     alpha.putdata([0 if v else 255 for v in bg])
-    # 경계 부드럽게 (체커보드 프린지 완화)
+    # 경계 프린지 완화
     alpha = alpha.filter(ImageFilter.MinFilter(3)).filter(ImageFilter.GaussianBlur(0.7))
     out = im.convert("RGBA")
     out.putalpha(alpha)
@@ -57,7 +65,7 @@ def ensure_alpha(im):
         lo = sum(a.histogram()[:16])
         if lo > im.size[0] * im.size[1] * 0.05:
             return im  # 진짜 투명
-    return remove_checkerboard(im)
+    return remove_bg(im)
 
 
 def drop_stray_fragments(cell, near_ratio=0.18):
