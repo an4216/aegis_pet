@@ -51,7 +51,7 @@ def remove_checkerboard(im):
     return out
 
 
-def remove_bg_gradient(im, tolerance=22):
+def remove_bg_gradient(im, tolerance=12):
     """테두리에서 연결된 배경 픽셀을 이웃 유사도(tolerance) 기반 flood fill로 제거.
     단색·그라데이션 배경 모두 처리. 캐릭터 경계 색차가 급변하면 여기서 멈춤."""
     im = im.convert("RGB")
@@ -86,13 +86,23 @@ def remove_bg_gradient(im, tolerance=22):
     return out
 
 
-def remove_bg(im):
-    """이미지 코너로 체커보드 vs 유색/그라데이션 배경 자동 판별 후 적절한 제거기 호출."""
+def _detect_checker(im):
+    """실제 체커 패턴은 인접 픽셀 색차가 크게 alternating함. 균일한 흰 배경은 색차가 작음.
+    상단 행에서 색차 30 이상인 픽셀이 5% 넘으면 체커 패턴으로 판정."""
     rgb = im.convert("RGB")
-    w, h = rgb.size
-    corners = [rgb.getpixel((0, 0)), rgb.getpixel((w - 1, 0)),
-               rgb.getpixel((0, h - 1)), rgb.getpixel((w - 1, h - 1))]
-    if sum(1 for c in corners if is_neutral_light(c)) >= 3:
+    w = rgb.size[0]
+    sample = [rgb.getpixel((x, 4)) for x in range(0, w, 2)]
+    high_diff = 0
+    for i in range(1, len(sample)):
+        a, b = sample[i-1], sample[i]
+        if max(abs(a[0]-b[0]), abs(a[1]-b[1]), abs(a[2]-b[2])) > 30:
+            high_diff += 1
+    return high_diff > len(sample) * 0.05
+
+
+def remove_bg(im):
+    """실제 체커 패턴 감지 시 remove_checkerboard, 그 외 (균일·그라데이션)는 remove_bg_gradient."""
+    if _detect_checker(im):
         return remove_checkerboard(im)
     return remove_bg_gradient(im)
 
