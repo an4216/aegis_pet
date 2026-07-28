@@ -30,8 +30,18 @@ func _ready() -> void:
 	vbox.add_theme_constant_override("separation", 6)
 	add_child(vbox)
 
+	var header_row := HBoxContainer.new()
 	_header = UITheme.make_label("", UITheme.FONT_TITLE, UITheme.INK)
-	vbox.add_child(_header)
+	_header.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header_row.add_child(_header)
+	var close_x := Button.new()
+	close_x.text = "✕"
+	UITheme.style_button(close_x)
+	close_x.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
+	close_x.add_theme_color_override("font_color", UITheme.MUTED)
+	close_x.pressed.connect(func(): visible = false)
+	header_row.add_child(close_x)
+	vbox.add_child(header_row)
 
 	for entry in STAT_LABELS:
 		var row := HBoxContainer.new()
