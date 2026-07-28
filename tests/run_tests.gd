@@ -35,6 +35,7 @@ func _init() -> void:
 	_test_evolution_2_tier()
 	_test_consecutive_days()
 	_test_rabbit_full_evolution()
+	_test_dialog_evolution_pools()
 	print("")
 	print("RESULT: %d passed, %d failed" % [passes, fails])
 	quit(1 if fails > 0 else 0)
@@ -194,6 +195,23 @@ func _test_consecutive_days() -> void:
 	check(pet.work_stats["consecutive_days"] == 3, "연속 3일: 3")
 	pet.note_activity_day("2026-07-29")  # 하루 건너뜀
 	check(pet.work_stats["consecutive_days"] == 1, "하루 공백 → 리셋")
+
+
+# 대사 pool: 11 종족 x 3 단계(base/e1/e2)가 모두 존재해야 함
+func _test_dialog_evolution_pools() -> void:
+	var Dialog := preload("res://scripts/data/dialog.gd")
+	var Chars := preload("res://scripts/data/characters.gd")
+	var missing: Array = []
+	for species in Chars.CHARACTERS.keys():
+		var entry = Dialog.BY_CHARACTER.get(species)
+		if not (entry is Dictionary):
+			missing.append(species + ":not-dict")
+			continue
+		for key in ["base", "e1", "e2"]:
+			var lines: Array = entry.get(key, [])
+			if lines.size() < 3:
+				missing.append("%s.%s(%d)" % [species, key, lines.size()])
+	check(missing.is_empty(), "모든 캐릭터에 base/e1/e2 대사 3줄 이상: %s" % str(missing))
 
 
 # 토끼: 3일 연속 → 다이어토, 14일 연속 → 헬토

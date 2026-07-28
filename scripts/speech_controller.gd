@@ -45,8 +45,8 @@ func _process(delta: float) -> void:
 
 
 func _on_hatched(species: String) -> void:
-	# 부화 인사: 캐릭터 첫 대사
-	var lines: Array = Dialog.BY_CHARACTER.get(species, [])
+	# 부화 인사: 캐릭터 첫 대사 (base pool의 첫 줄)
+	var lines: Array = _lines_for_species(species)
 	if not lines.is_empty():
 		await get_tree().create_timer(1.2).timeout
 		_say(lines[0])
@@ -84,14 +84,36 @@ func _pick_line() -> String:
 		_fired_today[trigger] = dt.day
 		var pool: Array = Dialog.COMMON[trigger]
 		return pool[randi() % pool.size()]
-	# 랜덤: 캐릭터 전용 60% / 공통 40%
-	var char_lines: Array = Dialog.BY_CHARACTER.get(_ps.species, [])
+	# 랜덤: 캐릭터 전용 60% / 공통 40% (진화 단계에 맞는 pool 선택)
+	var char_lines: Array = _lines_for_species(_ps.species)
 	var pool2: Array = char_lines if (randf() < 0.6 and not char_lines.is_empty()) else Dialog.COMMON["random"]
 	for i in 8:
 		var line: String = pool2[randi() % pool2.size()]
 		if line not in _recent:
 			return line
 	return ""
+
+
+## 캐릭터의 현재 진화 단계에 맞는 대사 pool 반환 (evolved_2 > evolved > base)
+func _lines_for_species(species: String) -> Array:
+	var entry = Dialog.BY_CHARACTER.get(species)
+	if entry == null:
+		return []
+	# 신형 구조: {"base": [], "e1": [], "e2": []}
+	if entry is Dictionary:
+		var key := "base"
+		if _ps.evolved_2:
+			key = "e2"
+		elif _ps.evolved:
+			key = "e1"
+		var lines: Array = entry.get(key, entry.get("base", []))
+		if lines.is_empty():
+			lines = entry.get("base", [])
+		return lines
+	# 구형(단순 리스트) 호환
+	if entry is Array:
+		return entry
+	return []
 
 
 func _match_trigger(dt: Dictionary) -> String:
