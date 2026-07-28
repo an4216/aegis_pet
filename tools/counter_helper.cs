@@ -33,6 +33,7 @@ class CounterHelper
         double activeSec = 0.0, fridayActiveSec = 0.0;
         bool[] prev = new bool[256];
         int msSinceWrite = 0;
+        long lastIdleMs = 0;
 
         while (true)
         {
@@ -50,8 +51,8 @@ class CounterHelper
             lii.cbSize = (uint)Marshal.SizeOf(lii);
             if (GetLastInputInfo(ref lii))
             {
-                uint idle = (uint)Environment.TickCount - lii.dwTime;
-                if (idle < IDLE_THRESHOLD_MS)
+                lastIdleMs = (uint)Environment.TickCount - lii.dwTime;
+                if (lastIdleMs < IDLE_THRESHOLD_MS)
                 {
                     double dt = POLL_MS / 1000.0;
                     activeSec += dt;
@@ -69,7 +70,8 @@ class CounterHelper
                 {
                     string json = "{\"kb\":" + kb + ",\"mouse\":" + mouse
                         + ",\"active_sec\":" + activeSec.ToString("F1")
-                        + ",\"friday_active_sec\":" + fridayActiveSec.ToString("F1") + "}";
+                        + ",\"friday_active_sec\":" + fridayActiveSec.ToString("F1")
+                        + ",\"idle_ms\":" + lastIdleMs + "}";
                     File.WriteAllText(outPath + ".tmp", json);
                     if (File.Exists(outPath)) File.Delete(outPath);
                     File.Move(outPath + ".tmp", outPath);

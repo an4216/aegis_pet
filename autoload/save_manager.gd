@@ -19,6 +19,8 @@ var settings := {
 	"reminders": [],       # [{text, hour, minute, repeat: once|daily|weekdays, last_fired}]
 	"todos": [],           # [{text, done}] 최대 3개, 매일 리셋
 	"todos_date": "",      # 할 일 목록 기준 날짜 (YYYY-MM-DD)
+	"night_auto_update": true,   # 새벽 자동 업데이트 설치 (FR-30). 기본 켜짐
+	"last_night_update": "",     # 마지막 자동 재시작 날짜 (하루 1회 제한)
 }
 
 var pomodoro_work := false  # 뽀모도로 집중 중 (비영속, 말풍선·산책 억제용)

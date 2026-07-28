@@ -122,6 +122,7 @@ Windows 데스크톱에서 상시 실행되는 육성형 데스크톱 마스코�
 | FR-27 | 건강 루틴: 물 마시기·스트레칭 주기 알림 (설정 가능) | Low | Pending |
 | FR-28 | 처음부터 다시 키우기: 트레이 메뉴에서 확인 절차 후 새 알로 리셋 | Medium | Pending |
 | FR-29 | 반자동 업데이트: GitHub Releases 버전 확인 → 알림 → 트레이 원클릭 다운로드·교체·재시작 (저장 데이터 유지) | High | Pending |
+| FR-30 | 새벽 자동 업데이트: 새벽 3~5시 · 사용자 30분+ 무입력 · 새 버전 감지 시 자동 설치 (트레이 토글, 기본 켜짐) | Medium | Pending |
 
 ### 3.2 Non-Functional Requirements
 

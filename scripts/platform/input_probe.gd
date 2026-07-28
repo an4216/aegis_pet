@@ -15,10 +15,12 @@ const CSC_PATHS := [
 ]
 
 var available := false
+var idle_ms := 0   # 마지막 입력 이후 경과 시간 (자동 재시작 조건 판단용)
 
 var _helper_pid := -1
 var _timer := 0.0
 var _last := {"kb": 0, "mouse": 0, "active_sec": 0.0, "friday_active_sec": 0.0}
+const HELPER_VERSION := 2   # counter_helper.cs 변경 시 증가 → 낡은 exe 자동 재빌드
 
 
 func start() -> void:
@@ -76,14 +78,19 @@ func _read_and_emit() -> void:
 	if delta["kb"] < 0 or delta["mouse"] < 0:
 		delta = current.duplicate()
 	_last = current
+	idle_ms = int(parsed.get("idle_ms", 0))
 	if delta["kb"] > 0 or delta["mouse"] > 0 or delta["active_sec"] > 0.0:
 		counter_delta.emit(delta)
 
 
 func _ensure_helper() -> String:
 	var exe_abs := ProjectSettings.globalize_path(HELPER_EXE).replace("/", "\\")
-	if FileAccess.file_exists(HELPER_EXE):
+	var stamp_path := "user://counter_helper_v%d.stamp" % HELPER_VERSION
+	if FileAccess.file_exists(HELPER_EXE) and FileAccess.file_exists(stamp_path):
 		return exe_abs
+	# 낡은 exe 삭제 → 재빌드 유도
+	if FileAccess.file_exists(HELPER_EXE):
+		DirAccess.remove_absolute(exe_abs)
 	var csc := ""
 	for path in CSC_PATHS:
 		if FileAccess.file_exists(path):
@@ -107,4 +114,9 @@ func _ensure_helper() -> String:
 	if code != 0 or not FileAccess.file_exists(HELPER_EXE):
 		push_warning("counter helper build failed (code %d): %s" % [code, str(output)])
 		return ""
+	# 버전 스탬프 기록 (다음 실행 시 재빌드 안 함)
+	var stamp := FileAccess.open("user://counter_helper_v%d.stamp" % HELPER_VERSION, FileAccess.WRITE)
+	if stamp != null:
+		stamp.store_string("built")
+		stamp.close()
 	return exe_abs
