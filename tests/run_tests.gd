@@ -32,6 +32,9 @@ func _init() -> void:
 	_test_evolution_progress_ratio()
 	_test_evolution_persists_across_save()
 	_test_evolution_gated_by_egg()
+	_test_evolution_2_tier()
+	_test_consecutive_days()
+	_test_rabbit_full_evolution()
 	print("")
 	print("RESULT: %d passed, %d failed" % [passes, fails])
 	quit(1 if fails > 0 else 0)
@@ -158,13 +161,52 @@ func _test_digest() -> void:
 # Plan FR-15 v3: 활동 기반 진화
 func _test_evolution_keyboard() -> void:
 	var pet := make_pet("mochi")
-	var got_signal := [false]
-	pet.evolution_ready.connect(func(_s): got_signal[0] = true)
+	var got_tier := [0]
+	pet.evolution_ready.connect(func(_s, tier): got_tier[0] = tier)
 	pet.add_input_delta({"kb": 15000, "mouse": 0, "active_sec": 0.0, "friday_active_sec": 0.0})
 	check(not pet.evolved, "모찌 진화 미충족 (kb 절반)")
 	pet.add_input_delta({"kb": 15001, "mouse": 0, "active_sec": 0.0, "friday_active_sec": 0.0})
-	check(pet.evolved and got_signal[0], "모찌 진화: 키보드 30,000 달성")
+	check(pet.evolved and got_tier[0] == 1, "모찌 1차 진화: 키보드 30,000 달성 (tier=1)")
 	check(pet.stage == "adult", "진화 시 성체로 자동 승격")
+
+
+# 최종 진화 (2단계) — 1차 완료 후 임계값 상향된 조건 달성
+func _test_evolution_2_tier() -> void:
+	var pet := make_pet("mochi")
+	var tiers: Array = []
+	pet.evolution_ready.connect(func(_s, tier): tiers.append(tier))
+	pet.add_input_delta({"kb": 30000, "mouse": 0, "active_sec": 0.0, "friday_active_sec": 0.0})
+	check(pet.evolved and not pet.evolved_2, "1차 진화만 완료 상태")
+	pet.add_input_delta({"kb": 70000, "mouse": 0, "active_sec": 0.0, "friday_active_sec": 0.0})
+	check(pet.evolved_2, "모찌 최종 진화: 키보드 누적 100,000 달성")
+	check(tiers == [1, 2], "진화 신호가 1→2 순서로 발화")
+
+
+# 연속 출근일수 지표 (당근이 진화 조건)
+func _test_consecutive_days() -> void:
+	var pet := make_pet("tokki")
+	pet.note_activity_day("2026-07-25")
+	check(pet.work_stats["consecutive_days"] == 1, "첫 활성일: 연속 1일")
+	pet.note_activity_day("2026-07-25")
+	check(pet.work_stats["consecutive_days"] == 1, "같은 날 중복: 카운트 유지")
+	pet.note_activity_day("2026-07-26")
+	pet.note_activity_day("2026-07-27")
+	check(pet.work_stats["consecutive_days"] == 3, "연속 3일: 3")
+	pet.note_activity_day("2026-07-29")  # 하루 건너뜀
+	check(pet.work_stats["consecutive_days"] == 1, "하루 공백 → 리셋")
+
+
+# 토끼: 3일 연속 → 다이어토, 14일 연속 → 헬토
+func _test_rabbit_full_evolution() -> void:
+	var pet := make_pet("tokki")
+	pet.note_activity_day("2026-07-01")
+	pet.note_activity_day("2026-07-02")
+	check(not pet.evolved, "당근이: 2일 연속 (미충족)")
+	pet.note_activity_day("2026-07-03")
+	check(pet.evolved, "당근이 → 다이어토: 3일 연속")
+	for d in range(4, 15):
+		pet.note_activity_day("2026-07-%02d" % d)
+	check(pet.evolved_2, "다이어토 → 헬토: 14일 연속")
 
 
 func _test_evolution_distinct_days() -> void:

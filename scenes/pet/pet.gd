@@ -140,10 +140,12 @@ func refresh_appearance() -> void:
 	_pose = "idle"
 	var char_key: String = "egg" if ps.stage == "egg" else ps.species
 	var pose_list: Array = EGG_POSES if ps.stage == "egg" else POSES
-	# 진화 완료 시 evolved 프레임 폴더를 우선 시도 (아트 없으면 기본 폴더로 폴백)
+	# 진화 완료 시 우선순위: evolved2 > evolved > 기본 (아트 없으면 순차 폴백)
 	var dirs: Array = ["res://assets/sprites/chars/%s/" % char_key]
 	if ps.evolved and ps.stage != "egg":
 		dirs.push_front("res://assets/sprites/chars/%s_evolved/" % char_key)
+	if ps.evolved_2 and ps.stage != "egg":
+		dirs.push_front("res://assets/sprites/chars/%s_evolved2/" % char_key)
 	for dir_path in dirs:
 		if not ResourceLoader.exists(dir_path + "idle.png"):
 			continue
@@ -176,7 +178,17 @@ func refresh_appearance() -> void:
 func _update_evolved_badge() -> void:
 	if _evolved_badge == null:
 		return
-	_evolved_badge.visible = ps != null and ps.evolved and ps.stage != "egg"
+	if ps == null or ps.stage == "egg":
+		_evolved_badge.visible = false
+		return
+	if ps.evolved_2:
+		_evolved_badge.text = "✨✨"
+		_evolved_badge.visible = true
+	elif ps.evolved:
+		_evolved_badge.text = "✨"
+		_evolved_badge.visible = true
+	else:
+		_evolved_badge.visible = false
 
 
 # --- 상태별 표현 (states/*.gd에서 호출) ---

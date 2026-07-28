@@ -107,7 +107,9 @@ func toggle(screen_size: Vector2) -> void:
 
 func refresh() -> void:
 	var name_kr := "?"
-	if _ps.evolved and _ps.species != "":
+	if _ps.evolved_2 and _ps.species != "":
+		name_kr = "✨✨ %s" % Characters.get_evolved_2_name(_ps.species)
+	elif _ps.evolved and _ps.species != "":
 		name_kr = "✨ %s" % Characters.get_evolved_name(_ps.species)
 	elif _ps.species != "" and Characters.CHARACTERS.has(_ps.species):
 		name_kr = Characters.CHARACTERS[_ps.species]["name_kr"]
@@ -127,15 +129,22 @@ func _refresh_evolution() -> void:
 	if _ps.stage == "egg" or _ps.species == "":
 		_evo_section.visible = false
 		return
-	if _ps.evolved:
+	if _ps.evolved_2:
 		_evo_section.visible = true
-		_evo_hint.text = "✨ 진화 완료 — %s" % Characters.get_evolved_name(_ps.species)
+		_evo_hint.text = "✨✨ 최종 진화 완료 — %s" % Characters.get_evolved_2_name(_ps.species)
 		_evo_bar.value = 100.0
 		_evo_progress_label.text = ""
 		return
 	_evo_section.visible = true
-	var p: Dictionary = _ps.evolution_progress()
-	_evo_hint.text = "📈 진화까지: %s" % p["hint"]
+	var p: Dictionary
+	var label_prefix: String
+	if _ps.evolved:
+		p = _ps.evolution_2_progress()
+		label_prefix = "✨ 최종 진화까지"
+	else:
+		p = _ps.evolution_progress()
+		label_prefix = "📈 진화까지"
+	_evo_hint.text = "%s: %s" % [label_prefix, p["hint"]]
 	_evo_bar.value = p["ratio"] * 100.0
 	_evo_progress_label.text = "%s / %s (%d%%)" % [
 		_fmt_number(p["current"]), _fmt_number(p["target"]), int(p["ratio"] * 100.0)

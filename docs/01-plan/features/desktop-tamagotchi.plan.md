@@ -107,9 +107,9 @@ Windows 데스크톱에서 상시 실행되는 육성형 데스크톱 마스코�
 | FR-12 | 밤 시간(기본 22:00~07:00, 설정 가능)에는 자동 취침 | Medium | Pending |
 | FR-13 | 창 감지: 최상위 창들의 타이틀바 위를 플랫폼처럼 걷기/앉기 (Phase 2) | Medium | Pending |
 | FR-14 | 창 이동/닫힘 시 펫 낙하 처리 (Phase 2) | Medium | Pending |
-| FR-15 | 활동 기반 진화: 캐릭터별 업무 활동 지표 달성 시 진화형으로 변신 (개인정보: 개수만 집계, 상세: `docs/02-design/characters-evolution.md`) | High | Pending |
+| FR-15 | 활동 기반 3단계 진화: 캐릭터별 업무 활동 지표 달성 시 1차/최종 진화형으로 변신 (개인정보: 개수만 집계, 상세: `docs/02-design/characters-evolution.md`) | High | Pending |
 | FR-16 | Windows 시작 시 자동 실행 옵션 (레지스트리 Run 키, 관리자 권한 불필요) | Medium | Pending |
-| FR-17 | 부화 캐릭터 10종: 부화 시 확률 + 히든 가중치로 종족 결정, 종족별 스탯 보정·시그니처 행동 (상세: `docs/02-design/characters.md`) | High | Pending |
+| FR-17 | 부화 캐릭터 11종: 부화 시 확률 + 히든 가중치로 종족 결정, 종족별 스탯 보정·시그니처 행동 (상세: `docs/02-design/characters.md`) | High | Pending |
 | FR-18 | 말풍선 시스템: 요일·시간대 트리거 기반 직장인 공감 대사 출력, 집중 모드 시 비활성 | Medium | Pending |
 | FR-19 | 파일 먹이기: 파일을 펫에 드래그하면 휴지통 이동(복구 가능) + 먹이 효과 (1MB 이상=먹이, 미만=간식. 폴더 제외, 최대 5개) | Medium | Pending |
 | FR-20 | 소화 시스템: 먹이/간식 섭취 후 15~30분 내 응아 생성 | Medium | Pending |

@@ -244,12 +244,19 @@ func _maybe_note_late_shutdown() -> void:
 		_ps.note_late_shutdown()
 
 
-## 진화 조건 달성 (Plan FR-15 v3)
-func _on_evolution_ready(species: String) -> void:
-	var evolved_name: String = Characters.get_evolved_name(species)
-	pet.refresh_appearance()  # evolved 스프라이트 로드 (있으면)
+## 진화 조건 달성 (Plan FR-15 v4)
+func _on_evolution_ready(species: String, tier: int) -> void:
+	var evolved_name: String
+	var text: String
+	if tier == 2:
+		evolved_name = Characters.get_evolved_2_name(species)
+		text = "✨✨ 최종 진화! %s(으)로 성장했다!! ✨✨" % evolved_name
+	else:
+		evolved_name = Characters.get_evolved_name(species)
+		text = "✨ %s(으)로 진화했다!! ✨" % evolved_name
+	pet.refresh_appearance()
 	pet.celebrate()
-	bubble.say("✨ %s(으)로 진화했다!! ✨" % evolved_name, pet, Vector2(screen_rect.size), 12.0)
+	bubble.say(text, pet, Vector2(screen_rect.size), 12.0)
 	_sm.save_game()
 
 

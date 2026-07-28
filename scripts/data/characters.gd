@@ -4,17 +4,31 @@ extends RefCounted
 
 const RARITY_WEIGHT := {"common": 15.0, "uncommon": 8.0, "rare": 4.0}
 
-# 진화형 이름 (Plan FR-15 v3, docs/02-design/characters-evolution.md)
+# 1차 진화형 이름
 const EVOLVED_NAMES := {
 	"mochi": "프로찌", "ppiyak": "꼬꼬", "haemjji": "함장님",
 	"kkubeok": "꿀잠도사", "nyang": "자유냥", "kong": "라떼님",
 	"mundeok": "문팀장", "geobujang": "거이사님",
 	"bulgeumjo": "불사조", "seureureuk": "스르신",
+	"tokki": "다이어토",
+}
+
+# 최종 진화형 이름 (Plan FR-15 v4)
+const EVOLVED_2_NAMES := {
+	"mochi": "회찌", "ppiyak": "꼬끼오", "haemjji": "햄왕",
+	"kkubeok": "꿈신", "nyang": "여행냥", "kong": "카페왕",
+	"mundeok": "문사장", "geobujang": "거회장",
+	"bulgeumjo": "영원조", "seureureuk": "자유혼",
+	"tokki": "헬토",
 }
 
 
 static func get_evolved_name(species: String) -> String:
 	return EVOLVED_NAMES.get(species, species)
+
+
+static func get_evolved_2_name(species: String) -> String:
+	return EVOLVED_2_NAMES.get(species, species)
 
 const CHARACTERS := {
 	"mochi": {
@@ -76,6 +90,12 @@ const CHARACTERS := {
 		"stat_modifiers": {"all_decay": 0.8},
 		"care_modifiers": {},
 		"special": ["after_work_boost"],
+	},
+	"tokki": {
+		"name_kr": "당근이", "rarity": "uncommon",
+		"stat_modifiers": {"happiness_decay": 0.85, "energy_decay": 0.85},
+		"care_modifiers": {},
+		"special": [],
 	},
 }
 
