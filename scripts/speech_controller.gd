@@ -82,6 +82,10 @@ func _pick_line() -> String:
 	var trigger := _match_trigger(dt)
 	if trigger != "":
 		_fired_today[trigger] = dt.day
+		# 캐릭터별 override 우선 (현재 stage → base 폴백)
+		var override_line: String = _char_trigger_override(_ps.species, trigger)
+		if override_line != "":
+			return override_line
 		var pool: Array = Dialog.COMMON[trigger]
 		return pool[randi() % pool.size()]
 	# 랜덤: 캐릭터 전용 60% / 공통 40% (진화 단계에 맞는 pool 선택)
@@ -94,26 +98,55 @@ func _pick_line() -> String:
 	return ""
 
 
-## 캐릭터의 현재 진화 단계에 맞는 대사 pool 반환 (evolved_2 > evolved > base)
+## 캐릭터의 현재 진화 단계에 맞는 랜덤 대사 pool 반환 (evolved_2 > evolved > base)
+## 구조: entry[stage]는 Array(구형) 또는 Dictionary{"random": [...], trigger overrides}
 func _lines_for_species(species: String) -> Array:
 	var entry = Dialog.BY_CHARACTER.get(species)
 	if entry == null:
 		return []
-	# 신형 구조: {"base": [], "e1": [], "e2": []}
-	if entry is Dictionary:
-		var key := "base"
-		if _ps.evolved_2:
-			key = "e2"
-		elif _ps.evolved:
-			key = "e1"
-		var lines: Array = entry.get(key, entry.get("base", []))
-		if lines.is_empty():
-			lines = entry.get("base", [])
-		return lines
-	# 구형(단순 리스트) 호환
 	if entry is Array:
-		return entry
+		return entry  # 구형(단순 리스트) 호환
+	if not (entry is Dictionary):
+		return []
+	var key: String = _current_stage_key()
+	# 현재 stage → base 폴백
+	for k in [key, "base"]:
+		var stage_data = entry.get(k)
+		if stage_data is Array and not (stage_data as Array).is_empty():
+			return stage_data
+		if stage_data is Dictionary:
+			var lines: Array = stage_data.get("random", [])
+			if not lines.is_empty():
+				return lines
 	return []
+
+
+## 현재 stage의 트리거 override 반환 ("" 이면 폴백 사용)
+func _char_trigger_override(species: String, trigger: String) -> String:
+	var entry = Dialog.BY_CHARACTER.get(species)
+	if not (entry is Dictionary):
+		return ""
+	# 현재 stage → base 폴백
+	for k in [_current_stage_key(), "base"]:
+		var stage_data = entry.get(k)
+		if not (stage_data is Dictionary):
+			continue
+		if not stage_data.has(trigger):
+			continue
+		var val = stage_data[trigger]
+		if val is String and val != "":
+			return val
+		if val is Array and not (val as Array).is_empty():
+			return val[randi() % val.size()]
+	return ""
+
+
+func _current_stage_key() -> String:
+	if _ps.evolved_2:
+		return "e2"
+	if _ps.evolved:
+		return "e1"
+	return "base"
 
 
 func _match_trigger(dt: Dictionary) -> String:

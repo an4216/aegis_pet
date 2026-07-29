@@ -197,21 +197,34 @@ func _test_consecutive_days() -> void:
 	check(pet.work_stats["consecutive_days"] == 1, "하루 공백 → 리셋")
 
 
-# 대사 pool: 11 종족 x 3 단계(base/e1/e2)가 모두 존재해야 함
+# 대사 pool: 11 종족 x 3 단계(base/e1/e2) random 3줄 이상 + 트리거 override 최소 3개
 func _test_dialog_evolution_pools() -> void:
 	var Dialog := preload("res://scripts/data/dialog.gd")
 	var Chars := preload("res://scripts/data/characters.gd")
 	var missing: Array = []
+	var missing_triggers: Array = []
 	for species in Chars.CHARACTERS.keys():
 		var entry = Dialog.BY_CHARACTER.get(species)
 		if not (entry is Dictionary):
 			missing.append(species + ":not-dict")
 			continue
 		for key in ["base", "e1", "e2"]:
-			var lines: Array = entry.get(key, [])
+			var stage_data = entry.get(key)
+			var lines: Array = []
+			var trigger_count: int = 0
+			if stage_data is Dictionary:
+				lines = stage_data.get("random", [])
+				for k in stage_data.keys():
+					if k != "random":
+						trigger_count += 1
+			elif stage_data is Array:
+				lines = stage_data
 			if lines.size() < 3:
-				missing.append("%s.%s(%d)" % [species, key, lines.size()])
-	check(missing.is_empty(), "모든 캐릭터에 base/e1/e2 대사 3줄 이상: %s" % str(missing))
+				missing.append("%s.%s.random(%d)" % [species, key, lines.size()])
+			if trigger_count < 3:
+				missing_triggers.append("%s.%s.triggers(%d)" % [species, key, trigger_count])
+	check(missing.is_empty(), "랜덤 대사 3줄 이상: %s" % str(missing))
+	check(missing_triggers.is_empty(), "각 캐릭터·단계별 트리거 override 3개 이상: %s" % str(missing_triggers))
 
 
 # 토끼: 3일 연속 → 다이어토, 14일 연속 → 헬토
