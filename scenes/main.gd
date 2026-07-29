@@ -400,14 +400,14 @@ func _on_files_dropped(files: PackedStringArray) -> void:
 
 
 ## Plan FR-16: HKCU Run 키 자동 시작 (opt-in, 관리자 권한 불필요)
+## Windows 표준 백슬래시 경로 + 큰따옴표 감싸기 (경로에 공백 있어도 안전)
 func _set_autostart(enabled: bool) -> void:
 	if enabled:
-		var reg_value := '"%s"' % OS.get_executable_path()
+		var exe: String = OS.get_executable_path().replace("/", "\\")
+		var reg_value := '\\"%s\\"' % exe
 		if OS.has_feature("editor"):
-			reg_value = '"%s" --path "%s"' % [
-				OS.get_executable_path(),
-				ProjectSettings.globalize_path("res://").trim_suffix("/"),
-			]
+			var proj: String = ProjectSettings.globalize_path("res://").trim_suffix("/").replace("/", "\\")
+			reg_value = '\\"%s\\" --path \\"%s\\"' % [exe, proj]
 		var code := OS.execute("reg", [
 			"add", AUTOSTART_REG_KEY, "/v", AUTOSTART_REG_NAME,
 			"/t", "REG_SZ", "/d", reg_value, "/f",
