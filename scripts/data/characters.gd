@@ -110,7 +110,7 @@ const CHARACTERS := {
 const HATCH_WEIGHTS := {
 	"night_hatch": {"seureureuk": 3.0},
 	"friday_hatch": {"bulgeumjo": 3.0},
-	"thursday_hatch": {"ddungsil": 3.0},
+	"wednesday_hatch": {"ddungsil": 3.0},
 	"lunch_hatch": {"haemjji": 2.0},
 	"morning_hatch": {"kong": 2.0},
 	"high_care": {"ppiyak": 2.0},

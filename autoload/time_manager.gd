@@ -50,8 +50,8 @@ static func hatch_context_flags(dt: Dictionary) -> Array:
 		flags.append("night_hatch")
 	if wd == 5:
 		flags.append("friday_hatch")
-	if wd == 4:
-		flags.append("thursday_hatch")   # 뚱실이 확률 up
+	if wd == 3:
+		flags.append("wednesday_hatch")   # 뚱실이 확률 up
 	if h == 12:
 		flags.append("lunch_hatch")
 	if h >= 7 and h < 9:
