@@ -126,6 +126,11 @@ func face_towards(target_x: float) -> void:
 	_sprite.flip_h = target_x < position.x
 
 
+func mirror_face() -> void:
+	if _sprite:
+		_sprite.flip_h = not _sprite.flip_h
+
+
 ## 포즈 시트(assets/sprites/chars/<종족>/)가 있으면 프레임 시스템, 없으면 단일 컨셉 이미지 폴백
 func has_poses() -> bool:
 	return not _frames.is_empty()

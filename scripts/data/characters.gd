@@ -103,6 +103,7 @@ const CHARACTERS := {
 		"care_modifiers": {"feed": 1.5, "snack": 1.5},
 		"special": [],
 		"walk_static": true,   # walk2가 walk1과 동일 → waddle 모션으로 보완
+		"walk_face_inverted": true,   # 걷기 시트가 뒤돌아본 상태 → 좌우 반전
 	},
 }
 
@@ -138,6 +139,10 @@ static func has_special(species: String, tag: String) -> bool:
 
 static func is_walk_static(species: String) -> bool:
 	return CHARACTERS.has(species) and bool(CHARACTERS[species].get("walk_static", false))
+
+
+static func is_walk_face_inverted(species: String) -> bool:
+	return CHARACTERS.has(species) and bool(CHARACTERS[species].get("walk_face_inverted", false))
 
 
 ## 부화 종족 결정: 기본 확률 × 컨텍스트 가중치 후 정규화 샘플링
