@@ -2,6 +2,7 @@
 extends "res://scripts/states/state.gd"
 
 const FRAME_SECONDS := 0.22
+const Characters := preload("res://scripts/data/characters.gd")
 
 var _target_x := 0.0
 var _anim_t := 0.0
@@ -13,7 +14,8 @@ func enter() -> void:
 	var margin := 80.0
 	_target_x = randf_range(margin, pet.screen_size.x - margin)
 	pet.face_towards(_target_x)
-	pet.walk_bob(true)
+	# 걷기 프레임이 하나뿐인 캐릭터는 waddle(좌우 흔들기) 모션으로 보완
+	pet.walk_bob(true, Characters.is_walk_static(pet.ps.species))
 	_anim_t = 0.0
 	_frame = 0
 	pet.set_pose("walk1")

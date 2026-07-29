@@ -102,6 +102,7 @@ const CHARACTERS := {
 		"stat_modifiers": {"hunger_decay": 0.7, "energy_decay": 1.3, "move_speed": 0.6},
 		"care_modifiers": {"feed": 1.5, "snack": 1.5},
 		"special": [],
+		"walk_static": true,   # walk2가 walk1과 동일 → waddle 모션으로 보완
 	},
 }
 
@@ -133,6 +134,10 @@ static func get_care_modifier(species: String, action: String) -> float:
 
 static func has_special(species: String, tag: String) -> bool:
 	return CHARACTERS.has(species) and tag in CHARACTERS[species]["special"]
+
+
+static func is_walk_static(species: String) -> bool:
+	return CHARACTERS.has(species) and bool(CHARACTERS[species].get("walk_static", false))
 
 
 ## 부화 종족 결정: 기본 확률 × 컨텍스트 가중치 후 정규화 샘플링

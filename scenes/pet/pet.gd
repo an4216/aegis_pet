@@ -33,6 +33,7 @@ var _pressed := false
 var _press_pos := Vector2.ZERO
 var _bob_tween: Tween
 var _wiggle_tween: Tween
+var _wobble_tween: Tween
 var _frames := {}          # pose -> Texture2D (포즈 시트 있는 캐릭터만)
 var _pose := "idle"
 
@@ -180,14 +181,20 @@ func idle_breathe() -> void:
 	t.tween_property(_sprite, "scale", _base_scale, 0.5)
 
 
-func walk_bob(on: bool) -> void:
+func walk_bob(on: bool, waddle: bool = false) -> void:
 	_kill_bob()
-	if on:
-		_bob_tween = create_tween().set_loops()
-		var up := -SPRITE_SIZE * _base_scale.y * 0.5 - 6.0
-		var down := -SPRITE_SIZE * _base_scale.y * 0.5
-		_bob_tween.tween_property(_sprite, "position:y", up, 0.18)
-		_bob_tween.tween_property(_sprite, "position:y", down, 0.18)
+	if not on:
+		return
+	_bob_tween = create_tween().set_loops()
+	var up := -SPRITE_SIZE * _base_scale.y * 0.5 - 6.0
+	var down := -SPRITE_SIZE * _base_scale.y * 0.5
+	_bob_tween.tween_property(_sprite, "position:y", up, 0.18)
+	_bob_tween.tween_property(_sprite, "position:y", down, 0.18)
+	# walk1/walk2가 동일한 캐릭터(뚱실이 등)는 몸을 좌우로 흔들어 걷는 느낌 부여
+	if waddle:
+		_wobble_tween = create_tween().set_loops()
+		_wobble_tween.tween_property(_sprite, "rotation", 0.08, 0.28)
+		_wobble_tween.tween_property(_sprite, "rotation", -0.08, 0.28)
 
 
 func shake() -> void:
@@ -362,6 +369,10 @@ func _kill_bob() -> void:
 		_bob_tween.kill()
 		_bob_tween = null
 		_sprite.position.y = -SPRITE_SIZE * _base_scale.y * 0.5
+	if _wobble_tween != null:
+		_wobble_tween.kill()
+		_wobble_tween = null
+		_sprite.rotation = 0.0
 
 
 func _quit_app() -> void:
