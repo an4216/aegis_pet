@@ -197,10 +197,11 @@ func _test_consecutive_days() -> void:
 	check(pet.work_stats["consecutive_days"] == 1, "하루 공백 → 리셋")
 
 
-# 대사 pool: 11 종족 x 3 단계(base/e1/e2) random 3줄 이상 + 트리거 override 최소 3개
+# 대사 pool: 캐릭터 진화 유무에 따라 base / (e1) / (e2) 각각 검증
 func _test_dialog_evolution_pools() -> void:
 	var Dialog := preload("res://scripts/data/dialog.gd")
 	var Chars := preload("res://scripts/data/characters.gd")
+	var Balance := preload("res://scripts/data/balance.gd")
 	var missing: Array = []
 	var missing_triggers: Array = []
 	for species in Chars.CHARACTERS.keys():
@@ -208,7 +209,12 @@ func _test_dialog_evolution_pools() -> void:
 		if not (entry is Dictionary):
 			missing.append(species + ":not-dict")
 			continue
-		for key in ["base", "e1", "e2"]:
+		var stages: Array = ["base"]
+		if Balance.EVOLUTION.has(species):
+			stages.append("e1")
+		if Balance.EVOLUTION_2.has(species):
+			stages.append("e2")
+		for key in stages:
 			var stage_data = entry.get(key)
 			var lines: Array = []
 			var trigger_count: int = 0

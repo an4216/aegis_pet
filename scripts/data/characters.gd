@@ -97,12 +97,19 @@ const CHARACTERS := {
 		"care_modifiers": {},
 		"special": [],
 	},
+	"ddungsil": {
+		"name_kr": "뚱실이", "rarity": "uncommon",
+		"stat_modifiers": {"hunger_decay": 0.7, "energy_decay": 1.3, "move_speed": 0.6},
+		"care_modifiers": {"feed": 1.5, "snack": 1.5},
+		"special": [],
+	},
 }
 
 # 부화 히든 가중치 (characters.md §2.2)
 const HATCH_WEIGHTS := {
 	"night_hatch": {"seureureuk": 3.0},
 	"friday_hatch": {"bulgeumjo": 3.0},
+	"thursday_hatch": {"ddungsil": 3.0},
 	"lunch_hatch": {"haemjji": 2.0},
 	"morning_hatch": {"kong": 2.0},
 	"high_care": {"ppiyak": 2.0},
