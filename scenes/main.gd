@@ -432,15 +432,17 @@ func _spawn_poop_at(pos: Vector2) -> void:
 	poop_container.add_child(poop)
 
 
-const REGION_GRID := 64.0
+const REGION_GRID := 32.0
 
 ## 클릭 가능한 영역(펫+응아+열린 UI)만 마우스를 받고, 나머지는 아래 창으로 통과.
 ## Windows에서 이 영역(SetWindowRgn)은 렌더링도 잘라내며, region을 자주 갱신하면
-## 경계에 흰 줄이 번쩍인다 → 모든 사각형을 64px 격자에 스냅해 갱신 빈도를 최소화한다.
+## 경계에 흰 줄이 번쩍인다 → 모든 사각형을 32px 격자에 스냅해 갱신 빈도를 완화한다.
 ## (Godot의 mouse_passthrough 전체 플래그는 이 환경에서 OS에 적용되지 않음 — 검증됨)
 func _update_passthrough() -> void:
+	# 진화 배지 제거 + 이펙트를 스프라이트 안으로 이동 → 상단 확장 최소화
+	# (celebrate/play_frolic 점프는 짧아서 15px면 충분)
 	var rects: Array = [
-		_quantize(pet.get_click_rect().grow_individual(12.0, 70.0, 12.0, 0.0)),
+		_quantize(pet.get_click_rect().grow_individual(4.0, 15.0, 4.0, 0.0)),
 	]
 	for poop in get_tree().get_nodes_in_group("poop"):
 		rects.append(_quantize(poop.get_click_rect()))

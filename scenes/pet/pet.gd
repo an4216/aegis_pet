@@ -27,7 +27,6 @@ var jump_cooldown := 0.0          # 창 위 놀이 사이 휴식 (업무 비방�
 var _sprite: Sprite2D
 var _zzz: Label
 var _sick_mark: Label
-var _evolved_badge: Label
 var _base_scale := Vector2.ONE
 var _pet_cooldown := 0.0
 var _pressed := false
@@ -45,7 +44,6 @@ func _ready() -> void:
 	add_child(_sprite)
 	_zzz = _make_mark("Zzz", Color(0.55, 0.62, 0.85))
 	_sick_mark = _make_mark("@_@", Color(0.45, 0.65, 0.45))
-	_evolved_badge = _make_mark("✨", Color(0.95, 0.75, 0.35))
 	refresh_appearance()
 
 	ps.species_assigned.connect(func(_s): refresh_appearance())
@@ -105,8 +103,11 @@ func start_jump(target_id: int, target_rect: Rect2) -> void:
 
 
 func get_click_rect() -> Rect2:
-	var size := SPRITE_SIZE * _base_scale.x
-	return Rect2(global_position + Vector2(-size * 0.5, -size), Vector2(size, size)).grow(8.0)
+	# 캐릭터가 실제로 그려지는 영역만 클릭 감지 (스프라이트 캔버스 대비 ~75%).
+	# 나머지 여백까지 클릭을 막으면 펫이 지나가는 궤적이 넓게 blocked 되어 뒤 창 조작이 불편함.
+	var w: float = SPRITE_SIZE * _base_scale.x * 0.75
+	var h: float = SPRITE_SIZE * _base_scale.y * 0.85
+	return Rect2(global_position + Vector2(-w * 0.5, -h - 4.0), Vector2(w, h))
 
 
 func move_speed() -> float:
@@ -162,33 +163,13 @@ func refresh_appearance() -> void:
 		if not ResourceLoader.exists(path):
 			path = "res://assets/sprites/concept/mochi.png"  # Design §6: 리소스 폴백
 		_sprite.texture = load(path)
-	_update_evolved_badge()
 	_base_scale = Vector2.ONE * STAGE_SCALE.get(ps.stage, 0.5)
 	_sprite.scale = _base_scale
 	_sprite.position = Vector2(0.0, -SPRITE_SIZE * _base_scale.y * 0.5)
-	var mark_y := -SPRITE_SIZE * _base_scale.y - 26.0
+	# Zzz·@_@ 라벨은 스프라이트 상단 근처에 (진화 배지는 제거됨 — 위쪽 클릭 영역 최소화)
+	var mark_y := -SPRITE_SIZE * _base_scale.y * 0.9
 	_zzz.position = Vector2(10.0, mark_y)
 	_sick_mark.position = Vector2(-16.0, mark_y)
-	# 진화 배지는 스프라이트 오른쪽 위 (약간 반짝)
-	var half_w := SPRITE_SIZE * _base_scale.x * 0.5
-	var half_h := SPRITE_SIZE * _base_scale.y
-	_evolved_badge.position = Vector2(half_w - 24.0, -half_h - 6.0)
-
-
-func _update_evolved_badge() -> void:
-	if _evolved_badge == null:
-		return
-	if ps == null or ps.stage == "egg":
-		_evolved_badge.visible = false
-		return
-	if ps.evolved_2:
-		_evolved_badge.text = "✨✨"
-		_evolved_badge.visible = true
-	elif ps.evolved:
-		_evolved_badge.text = "✨"
-		_evolved_badge.visible = true
-	else:
-		_evolved_badge.visible = false
 
 
 # --- 상태별 표현 (states/*.gd에서 호출) ---
@@ -351,14 +332,17 @@ func _on_pooped() -> void:
 
 
 func _float_text(text: String) -> void:
+	# 스프라이트 내부(캐릭터 머리 위 근처)에서 시작해서 살짝만 위로.
+	# 스프라이트 밖으로 크게 나가지 않도록 해서 위쪽 클릭 영역을 확장할 필요가 없게.
 	var label := Label.new()
 	label.text = text
 	label.add_theme_font_size_override("font_size", 20)
 	label.add_theme_color_override("font_color", Color(0.95, 0.4, 0.55))
-	label.position = Vector2(-10.0, -SPRITE_SIZE * _base_scale.y - 30.0)
+	var start_y := -SPRITE_SIZE * _base_scale.y * 0.85
+	label.position = Vector2(-10.0, start_y)
 	add_child(label)
 	var t := create_tween()
-	t.tween_property(label, "position:y", label.position.y - 30.0, 0.8)
+	t.tween_property(label, "position:y", start_y - 18.0, 0.8)
 	t.parallel().tween_property(label, "modulate:a", 0.0, 0.8)
 	t.tween_callback(label.queue_free)
 
