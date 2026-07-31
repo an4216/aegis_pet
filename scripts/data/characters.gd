@@ -10,7 +10,7 @@ const EVOLVED_NAMES := {
 	"kkubeok": "꿀잠도사", "nyang": "자유냥", "kong": "라떼님",
 	"mundeok": "문팀장", "geobujang": "거이사님",
 	"bulgeumjo": "불사조", "seureureuk": "스르신",
-	"tokki": "다이어토",
+	"tokki": "다이어토", "ddungsil": "뚱과장",
 }
 
 # 최종 진화형 이름 (Plan FR-15 v4)
@@ -19,7 +19,7 @@ const EVOLVED_2_NAMES := {
 	"kkubeok": "꿈신", "nyang": "여행냥", "kong": "카페왕",
 	"mundeok": "문사장", "geobujang": "거회장",
 	"bulgeumjo": "영원조", "seureureuk": "자유혼",
-	"tokki": "헬토",
+	"tokki": "헬토", "ddungsil": "뚱대박",
 }
 
 

@@ -8,6 +8,7 @@ var _target_x := 0.0
 var _anim_t := 0.0
 var _frame := 0
 var _face_mirrored := false
+var _walk_static := false
 
 
 func enter() -> void:
@@ -15,8 +16,9 @@ func enter() -> void:
 	var margin := 80.0
 	_target_x = randf_range(margin, pet.screen_size.x - margin)
 	pet.face_towards(_target_x)
+	_walk_static = Characters.is_walk_static(pet.ps.species)
 	# 걷기 프레임이 하나뿐인 캐릭터는 waddle(좌우 흔들기) 모션으로 보완
-	pet.walk_bob(true, Characters.is_walk_static(pet.ps.species))
+	pet.walk_bob(true, _walk_static)
 	# 걷기 시트가 뒤돌아본 상태인 캐릭터는 좌우 반전
 	if Characters.is_walk_face_inverted(pet.ps.species):
 		pet.mirror_face()
@@ -36,7 +38,7 @@ func exit() -> void:
 
 func update(delta: float) -> void:
 	_anim_t += delta
-	if _anim_t >= FRAME_SECONDS:
+	if _anim_t >= FRAME_SECONDS and not _walk_static:
 		_anim_t = 0.0
 		_frame = 1 - _frame
 		pet.set_pose("walk1" if _frame == 0 else "walk2")
