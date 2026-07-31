@@ -3,6 +3,10 @@
 extends PanelContainer
 
 const UITheme := preload("res://scripts/ui_theme.gd")
+const WEEKDAY_LABELS := ["일", "월", "화", "수", "목", "금", "토"]
+const WEEKDAY_PRESET_WEEKDAYS := [1, 2, 3, 4, 5]
+const WEEKDAY_PRESET_EVERYDAY := [0, 1, 2, 3, 4, 5, 6]
+const WEEKDAY_PRESET_WEEKEND := [0, 6]
 const REPEAT_KR := {"once": "한 번", "daily": "매일", "weekdays": "평일"}
 
 var assistant: Node
@@ -13,7 +17,7 @@ var _rem_box: VBoxContainer
 var _rem_input: LineEdit
 var _rem_hour: SpinBox
 var _rem_min: SpinBox
-var _rem_repeat: OptionButton
+var _rem_day_buttons: Array = []   # 7개 요일 토글 (0=일 ~ 6=토)
 var _pomo_button: Button
 var _pomo_label: Label
 
@@ -78,18 +82,31 @@ func _ready() -> void:
 	_rem_min = _spin(0, 59, 0)
 	rem_row.add_child(_rem_min)
 	root.add_child(rem_row)
-	var rem_row2 := HBoxContainer.new()
-	rem_row2.add_theme_constant_override("separation", 5)
-	_rem_repeat = OptionButton.new()
-	_rem_repeat.add_item("한 번", 0)
-	_rem_repeat.add_item("매일", 1)
-	_rem_repeat.add_item("평일", 2)
-	_rem_repeat.focus_mode = Control.FOCUS_NONE
-	_rem_repeat.add_theme_font_size_override("font_size", UITheme.FONT_BODY)
-	_rem_repeat.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	rem_row2.add_child(_rem_repeat)
-	rem_row2.add_child(_chip_button("추가", _on_add_reminder))
-	root.add_child(rem_row2)
+	# 요일 다중선택 (일~토 토글). 하나도 안 켜면 "한 번"으로 발동 후 삭제.
+	var day_row := HBoxContainer.new()
+	day_row.add_theme_constant_override("separation", 2)
+	_rem_day_buttons.clear()
+	for i in 7:
+		var btn := Button.new()
+		btn.text = WEEKDAY_LABELS[i]
+		btn.toggle_mode = true
+		btn.focus_mode = Control.FOCUS_NONE
+		btn.custom_minimum_size = Vector2(28.0, 24.0)
+		UITheme.style_button(btn)
+		btn.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
+		day_row.add_child(btn)
+		_rem_day_buttons.append(btn)
+	root.add_child(day_row)
+	var preset_row := HBoxContainer.new()
+	preset_row.add_theme_constant_override("separation", 4)
+	preset_row.add_child(_chip_button("주중", func(): _apply_weekday_preset(WEEKDAY_PRESET_WEEKDAYS)))
+	preset_row.add_child(_chip_button("매일", func(): _apply_weekday_preset(WEEKDAY_PRESET_EVERYDAY)))
+	preset_row.add_child(_chip_button("주말", func(): _apply_weekday_preset(WEEKDAY_PRESET_WEEKEND)))
+	preset_row.add_child(_chip_button("한 번", func(): _apply_weekday_preset([])))
+	var add_btn := _chip_button("추가", _on_add_reminder)
+	add_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL | Control.SIZE_SHRINK_END
+	preset_row.add_child(add_btn)
+	root.add_child(preset_row)
 
 	root.add_child(UITheme.hsep())
 
@@ -147,7 +164,7 @@ func refresh() -> void:
 		var time_label := UITheme.make_label("%02d:%02d" % [int(r["hour"]), int(r["minute"])], UITheme.FONT_BODY, UITheme.ACCENT)
 		time_label.custom_minimum_size = Vector2(42.0, 0.0)
 		row.add_child(time_label)
-		var text_label := UITheme.make_label("%s · %s" % [r["text"], REPEAT_KR.get(r["repeat"], "?")], UITheme.FONT_BODY, UITheme.INK)
+		var text_label := UITheme.make_label("%s · %s" % [r["text"], _describe_reminder_days(r)], UITheme.FONT_BODY, UITheme.INK)
 		text_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		text_label.clip_text = true
 		row.add_child(text_label)
@@ -212,10 +229,42 @@ func _on_add_reminder() -> void:
 	var text := _rem_input.text.strip_edges()
 	if text == "":
 		return
-	var repeat: String = ["once", "daily", "weekdays"][_rem_repeat.selected]
-	assistant.add_reminder(text, int(_rem_hour.value), int(_rem_min.value), repeat)
+	var weekdays: Array = []
+	for i in _rem_day_buttons.size():
+		if (_rem_day_buttons[i] as Button).button_pressed:
+			weekdays.append(i)
+	assistant.add_reminder(text, int(_rem_hour.value), int(_rem_min.value), weekdays)
 	_rem_input.text = ""
+	_apply_weekday_preset([])   # 요일 초기화
 	refresh()
+
+
+func _apply_weekday_preset(days: Array) -> void:
+	for i in _rem_day_buttons.size():
+		(_rem_day_buttons[i] as Button).button_pressed = (i in days)
+
+
+## 리마인더 요일을 한글로 표시. 빈 배열 = "한 번", 전체 = "매일", 월~금 = "주중", 토·일 = "주말".
+func _describe_reminder_days(r: Dictionary) -> String:
+	# 하위호환: 이전 저장의 repeat 필드
+	if not r.has("weekdays"):
+		return REPEAT_KR.get(String(r.get("repeat", "once")), "한 번")
+	var wds: Array = r["weekdays"]
+	if wds.is_empty():
+		return "한 번"
+	if wds.size() == 7:
+		return "매일"
+	var sorted: Array = wds.duplicate()
+	sorted.sort()
+	if sorted == [1, 2, 3, 4, 5]:
+		return "주중"
+	if sorted == [0, 6]:
+		return "주말"
+	var names: Array = []
+	for d in sorted:
+		if d >= 0 and d < 7:
+			names.append(WEEKDAY_LABELS[int(d)])
+	return ",".join(names)
 
 
 # --- UI 헬퍼 ---
