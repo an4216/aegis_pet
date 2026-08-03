@@ -62,7 +62,7 @@ const EVOLUTION := {
 	"bulgeumjo":  {"metric": "friday_active_sec", "amount": 28800.0,  "hint": "금요일에 총 8시간 함께"},
 	"seureureuk": {"metric": "late_shutdowns",    "amount": 3,        "hint": "정시퇴근(18~19시 종료) 3번"},
 	"tokki":      {"metric": "consecutive_days",  "amount": 3,        "hint": "연속 3일 출근"},
-	"ddungsil":   {"metric": "active_sec",        "amount": 360000.0, "hint": "함께한 시간 100시간 - 야근으로 승진"},
+	"ddungsil":   {"metric": "active_sec",        "amount": 3600.0,   "hint": "함께한 시간 1시간 - 승진 축포"},
 }
 
 # --- 최종 진화 조건 (Plan FR-15 v4) — 1차 조건 도달 이후 임계값 상향 ---
@@ -78,7 +78,7 @@ const EVOLUTION_2 := {
 	"bulgeumjo":  {"metric": "friday_active_sec", "amount": 108000.0,  "hint": "금요일 총 30시간 - 워라밸의 신"},
 	"seureureuk": {"metric": "late_shutdowns",    "amount": 10,        "hint": "정시퇴근 10번 - 완전 해방"},
 	"tokki":      {"metric": "consecutive_days",  "amount": 14,        "hint": "연속 14일 출근 - 자기관리 만렙"},
-	"ddungsil":   {"metric": "active_sec",        "amount": 1080000.0, "hint": "함께한 시간 300시간 - 그러다 로또 대박"},
+	"ddungsil":   {"metric": "active_sec",        "amount": 36000.0,   "hint": "함께한 시간 10시간 - 로또 대박"},
 }
 
 const LATE_SHUTDOWN_HOURS := [18, 19]
