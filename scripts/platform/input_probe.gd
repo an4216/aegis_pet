@@ -20,7 +20,7 @@ var idle_ms := 0   # 마지막 입력 이후 경과 시간 (자동 재시작 조
 var _helper_pid := -1
 var _timer := 0.0
 var _last := {"kb": 0, "mouse": 0, "active_sec": 0.0, "friday_active_sec": 0.0}
-const HELPER_VERSION := 2   # counter_helper.cs 변경 시 증가 → 낡은 exe 자동 재빌드
+const HELPER_VERSION := 3   # counter_helper.cs 변경 시 증가 → 낡은 exe 자동 재빌드
 
 
 func start() -> void:

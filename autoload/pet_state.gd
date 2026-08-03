@@ -315,6 +315,8 @@ func _metric_value(metric: String) -> float:
 		"feed_snack":
 			var cc: Dictionary = work_stats["care_counts"]
 			return float(int(cc.get("feed", 0)) + int(cc.get("snack", 0)))
+		"feed":
+			return float(int((work_stats["care_counts"] as Dictionary).get("feed", 0)))
 		"pet_care":
 			return float(int((work_stats["care_counts"] as Dictionary).get("pet", 0)))
 		"consecutive_days":
