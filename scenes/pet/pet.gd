@@ -245,7 +245,8 @@ func refresh_appearance() -> void:
 	_bichon_sprite_frame_sequence = []
 	_bichon_frame_foot_padding = []
 	_bichon_frame_horizontal_offsets = []
-	_frame_size = _sprite.texture.get_size()
+	# 임포트 캐시가 없거나 로드가 실패하면 texture가 null이므로 캔버스 기본값으로 폴백
+	_frame_size = _sprite.texture.get_size() if _sprite.texture != null else Vector2.ONE * SPRITE_SIZE
 	_base_scale = Vector2.ONE * STAGE_SCALE.get(ps.stage, 0.5)
 	_sprite.scale = _base_scale
 	_sprite.position = _sprite_anchor()
@@ -488,6 +489,11 @@ func land_squish() -> void:
 
 func celebrate() -> void:
 	# 신나는 세리머니: 폴짝폴짝 3연속 점프 + 음표 + 신남 표정
+	# 애니메이션 시트 펫은 좌표를 tween하면 프레임별 발 위치(foot_padding)가 무시된 곳에서 멈춘다.
+	if _is_animated_pet():
+		_play_care_reaction("Play", 0.8)
+		_float_text("♪")
+		return
 	var prev_pose := _pose
 	set_pose("happy")
 	var base_y := -SPRITE_SIZE * _base_scale.y * 0.5
@@ -505,6 +511,10 @@ func celebrate() -> void:
 
 func play_frolic() -> void:
 	# 좌우로 기울며 폴짝폴짝 4연속 (놀기 리액션)
+	if _is_animated_pet():
+		_play_care_reaction("Play", 0.8)
+		_float_text("신난다~♪")
+		return
 	var base_y := -SPRITE_SIZE * _base_scale.y * 0.5
 	var t := create_tween()
 	for i in 4:
@@ -520,6 +530,9 @@ func play_frolic() -> void:
 
 func reset_sprite_pose() -> void:
 	_sprite.rotation = 0.0
+	if _is_animated_pet():
+		_position_sprite_for_current_frame()
+		return
 	_sprite.position.y = -SPRITE_SIZE * _base_scale.y * 0.5
 
 

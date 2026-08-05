@@ -213,6 +213,18 @@ func _test_pink_cat_baby_care_reactions() -> void:
 		check(pet._bichon_override == care_reaction and pet._bichon_animation == care_reaction and pet._sprite.texture != null, "핑냥이 %s 케어 반응 경로와 에셋 로드" % care_reaction)
 		await create_timer(0.81).timeout
 		check(pet._bichon_override.is_empty() and pet._bichon_animation == "Idle", "핑냥이 %s 후 Idle 복귀" % care_reaction)
+	# 좌표 밀림 회귀: 리액션이 tween으로 스프라이트를 옮기면 프레임별 발 위치가 깨진다
+	var anchor_y: float = pet._sprite.position.y
+	pet.celebrate()
+	check(pet._bichon_override == "Play", "핑냥이 celebrate가 Play 시트 재생 경로 사용")
+	check(approx(pet._sprite.position.y, anchor_y), "핑냥이 celebrate 후 스프라이트 앵커 유지")
+	await create_timer(0.81).timeout
+	pet.play_frolic()
+	check(approx(pet._sprite.position.y, anchor_y), "핑냥이 play_frolic 후 스프라이트 앵커 유지")
+	await create_timer(0.81).timeout
+	pet._sprite.position.y = anchor_y - 40.0
+	pet.reset_sprite_pose()
+	check(approx(pet._sprite.position.y, anchor_y), "핑냥이 reset_sprite_pose가 프레임 앵커로 복귀")
 	pet.queue_free()
 	pet_state.free()
 	call_deferred("_finish")
