@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "kind": "sprite-gen-unpack-source",
+  "layout_source": "imported-pngs",
+  "cell": {
+    "width": 443,
+    "height": 443
+  },
+  "source_dir": "/mnt/c/aegis_dx/reference/aegis_pet/assets/generated/sprites/bichon-idle-blink-v1/frames/row-1",
+  "files": [
+    "frame-0.png",
+    "frame-1.png",
+    "frame-2.png",
+    "frame-3.png"
+  ],
+  "labels": [
+    "frame-0",
+    "frame-1",
+    "frame-2",
+    "frame-3"
+  ],
+  "groups": [
+    "idle"
+  ],
+  "base_source": null,
+  "imported_refs": {}
+}

@@ -7,15 +7,18 @@ var _corner_x := 0.0
 
 func enter() -> void:
 	_at_corner = false
-	var margin := 90.0
+	var margin: float = pet.horizontal_edge_margin()
 	_corner_x = margin if pet.position.x < pet.screen_size.x * 0.5 else pet.screen_size.x - margin
 	pet.face_towards(_corner_x)
 	pet.ps.activity = pet.ps.Activity.ACTIVE  # 이동 중
+	pet.play_state_animation("Walk")
 
 
 func exit() -> void:
 	pet.show_zzz(false)
 	pet.set_sprite_tint(Color.WHITE)
+	if pet.has_poses():
+		pet.set_pose("idle")
 	pet.set_pose("idle")
 
 
@@ -27,7 +30,11 @@ func update(delta: float) -> void:
 			pet.position.x = _corner_x
 			_at_corner = true
 			pet.ps.activity = pet.ps.Activity.SLEEPING
-			if pet.has_poses():
+			if pet._is_animated_pet():
+				pet.play_state_animation("Sleep")
+				pet.show_zzz(true)
+				pet.set_sprite_tint(Color(0.75, 0.75, 0.85))
+			elif pet.has_poses():
 				pet.set_pose("sleep")  # 아트에 Zzz 포함 — 라벨·틴트 생략
 			else:
 				pet.show_zzz(true)

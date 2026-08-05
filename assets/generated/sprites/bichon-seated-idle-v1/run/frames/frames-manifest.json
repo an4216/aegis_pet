@@ -1,0 +1,30 @@
+{
+  "ok": true,
+  "engine": "component-row",
+  "run_dir": "/mnt/c/aegis_dx/reference/aegis_pet/assets/generated/sprites/bichon-seated-idle-v1/.run.sg-staging",
+  "cell": {
+    "shape": "rect",
+    "width": 1774,
+    "height": 887,
+    "size": 1774,
+    "safe_margin": 0
+  },
+  "rows": [
+    {
+      "state": "idle",
+      "frames": 2,
+      "method": "imported-pngs",
+      "files": [
+        "frames/idle/frame-0.png",
+        "frames/idle/frame-1.png"
+      ],
+      "labels": [
+        "0-open",
+        "1-closed"
+      ],
+      "ok": true
+    }
+  ],
+  "errors": [],
+  "warnings": []
+}

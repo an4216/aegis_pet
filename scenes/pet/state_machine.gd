@@ -12,12 +12,13 @@ const STATE_SCRIPTS := {
 	"Sulk": "res://scripts/states/sulk_state.gd",
 	"Dragged": "res://scripts/states/dragged_state.gd",
 	"Fall": "res://scripts/states/fall_state.gd",
+	"Land": "res://scripts/states/land_state.gd",
 	"Jump": "res://scripts/states/jump_state.gd",
 	"Perch": "res://scripts/states/perch_state.gd",
 	"Play": "res://scripts/states/play_state.gd",
 }
-# Jump는 공중이라 중단 불가. Perch는 하강(Fall)을 통해서만 지상 상태로 복귀한다.
-const UNINTERRUPTIBLE := ["Egg", "Dragged", "Fall", "Jump", "Perch"]
+# Jump/Perch는 공중이라 중단 불가. Land는 착지 연출을 끝낸 뒤 지상 상태로 복귀한다.
+const UNINTERRUPTIBLE := ["Egg", "Dragged", "Fall", "Land", "Jump", "Perch"]
 
 var states := {}
 var current: Node = null
@@ -42,6 +43,7 @@ func transition_to(key: String) -> void:
 	if current != null:
 		current.exit()
 	current = states[key]
+	pet.play_state_animation(key)
 	current.enter()
 
 

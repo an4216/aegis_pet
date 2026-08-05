@@ -16,5 +16,4 @@ func update(delta: float) -> void:
 	pet.position.y += _vy * delta
 	if pet.position.y >= pet.ground_y:
 		pet.position.y = pet.ground_y
-		pet.land_squish()
-		machine.transition_to("Idle")
+		machine.transition_to("Land")

@@ -1,0 +1,121 @@
+{
+  "version": 1,
+  "kind": "sprite-gen-selected-cycle",
+  "run_dir": "/mnt/c/aegis_dx/reference/aegis_pet/assets/generated/sprites/bichon-idle-blink-v2",
+  "state": "idle",
+  "name": "idle-blink-cycle",
+  "selected_user_frames": [
+    2,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    3,
+    13
+  ],
+  "selected_zero_based_frames": [
+    1,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    2,
+    12
+  ],
+  "selection_source": "curation.json",
+  "transforms_applied": {
+    "2": {
+      "rotate": 0.0,
+      "scale": 1.0,
+      "dx": 39.0,
+      "dy": -3.0,
+      "shx": 0.0,
+      "shy": 0.0,
+      "flipX": 0
+    }
+  },
+  "duration_ms": 190,
+  "delay_ticks": 19,
+  "loop": true,
+  "note": "Static",
+  "outputs": {
+    "gif": "qa/idle-blink-cycle.gif",
+    "contact": "qa/idle-blink-cycle-contact.png"
+  },
+  "source_frames": [
+    {
+      "user_frame": 2,
+      "zero_based_frame": 1,
+      "path": "frames/idle/frame-1.png",
+      "sha256": "323e61a7d4f7e7874334b2835828bdcc8da513d6f4749bf049b95d19ef8ddb0d"
+    },
+    {
+      "user_frame": 5,
+      "zero_based_frame": 4,
+      "path": "frames/idle/frame-1.png",
+      "sha256": "323e61a7d4f7e7874334b2835828bdcc8da513d6f4749bf049b95d19ef8ddb0d"
+    },
+    {
+      "user_frame": 6,
+      "zero_based_frame": 5,
+      "path": "frames/idle/frame-1.png",
+      "sha256": "323e61a7d4f7e7874334b2835828bdcc8da513d6f4749bf049b95d19ef8ddb0d"
+    },
+    {
+      "user_frame": 7,
+      "zero_based_frame": 6,
+      "path": "frames/idle/frame-1.png",
+      "sha256": "323e61a7d4f7e7874334b2835828bdcc8da513d6f4749bf049b95d19ef8ddb0d"
+    },
+    {
+      "user_frame": 8,
+      "zero_based_frame": 7,
+      "path": "frames/idle/frame-1.png",
+      "sha256": "323e61a7d4f7e7874334b2835828bdcc8da513d6f4749bf049b95d19ef8ddb0d"
+    },
+    {
+      "user_frame": 9,
+      "zero_based_frame": 8,
+      "path": "frames/idle/frame-1.png",
+      "sha256": "323e61a7d4f7e7874334b2835828bdcc8da513d6f4749bf049b95d19ef8ddb0d"
+    },
+    {
+      "user_frame": 10,
+      "zero_based_frame": 9,
+      "path": "frames/idle/frame-1.png",
+      "sha256": "323e61a7d4f7e7874334b2835828bdcc8da513d6f4749bf049b95d19ef8ddb0d"
+    },
+    {
+      "user_frame": 11,
+      "zero_based_frame": 10,
+      "path": "frames/idle/frame-1.png",
+      "sha256": "323e61a7d4f7e7874334b2835828bdcc8da513d6f4749bf049b95d19ef8ddb0d"
+    },
+    {
+      "user_frame": 12,
+      "zero_based_frame": 11,
+      "path": "frames/idle/frame-1.png",
+      "sha256": "323e61a7d4f7e7874334b2835828bdcc8da513d6f4749bf049b95d19ef8ddb0d"
+    },
+    {
+      "user_frame": 3,
+      "zero_based_frame": 2,
+      "path": "frames/idle/frame-2.png",
+      "sha256": "9408b3ad00c58649c87ed28a6bb5e1510856cc3f04be0736da2a17eb28fb576b"
+    },
+    {
+      "user_frame": 13,
+      "zero_based_frame": 12,
+      "path": "frames/idle/frame-1.png",
+      "sha256": "323e61a7d4f7e7874334b2835828bdcc8da513d6f4749bf049b95d19ef8ddb0d"
+    }
+  ]
+}

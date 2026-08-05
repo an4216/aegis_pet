@@ -31,6 +31,18 @@ static func get_evolved_2_name(species: String) -> String:
 	return EVOLVED_2_NAMES.get(species, species)
 
 const CHARACTERS := {
+	"bichon": {
+		"name_kr": "비숑", "rarity": "uncommon",
+		"stat_modifiers": {},
+		"care_modifiers": {},
+		"special": [],
+	},
+	"pink_cat_baby": {
+		"name_kr": "핑냥이", "rarity": "uncommon",
+		"stat_modifiers": {},
+		"care_modifiers": {"pet": 1.2},
+		"special": [],
+	},
 	"mochi": {
 		"name_kr": "모찌", "rarity": "common",
 		"stat_modifiers": {},

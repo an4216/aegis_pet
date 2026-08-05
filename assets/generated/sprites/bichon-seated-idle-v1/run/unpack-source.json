@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "kind": "sprite-gen-unpack-source",
+  "layout_source": "imported-pngs",
+  "cell": {
+    "width": 1774,
+    "height": 887
+  },
+  "source_dir": "/mnt/c/aegis_dx/reference/aegis_pet/assets/generated/sprites/bichon-seated-idle-v1/import",
+  "files": [
+    "0-open.png",
+    "1-closed.png"
+  ],
+  "labels": [
+    "0-open",
+    "1-closed"
+  ],
+  "groups": [
+    "idle"
+  ],
+  "base_source": null,
+  "imported_refs": {}
+}

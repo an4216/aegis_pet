@@ -1,0 +1,130 @@
+{
+  "characterId": "bichon-seated-idle",
+  "engine": "component-row",
+  "game_input": "sprite-sheet-alpha.png",
+  "degraded_static_fallback": false,
+  "curation_applied": true,
+  "frame_variant": "pixel",
+  "sprite_sheet_alpha": "sprite-sheet-alpha.png",
+  "sprite_sheet_alpha_report": "sprite-sheet-alpha.report.json",
+  "base_image": null,
+  "cell": {
+    "shape": "rect",
+    "width": 1774,
+    "height": 887,
+    "size": 1774,
+    "safe_margin": 0
+  },
+  "chroma_key": {
+    "name": "magenta",
+    "hex": "#FF00FF",
+    "rgb": [
+      255,
+      0,
+      255
+    ]
+  },
+  "animation": {
+    "cellWidth": 1774,
+    "cellHeight": 887,
+    "columns": 2,
+    "rows": {
+      "idle": {
+        "row": 0,
+        "frames": 11,
+        "fps": 4,
+        "durations_ms": [
+          250,
+          250,
+          250,
+          250,
+          250,
+          250,
+          250,
+          250,
+          250,
+          250,
+          250
+        ],
+        "loop": true,
+        "frame_variant": "pixel"
+      }
+    }
+  },
+  "frame_layout": {
+    "sheetWidth": 3548,
+    "sheetHeight": 887,
+    "cellWidth": 1774,
+    "cellHeight": 887,
+    "rows": {
+      "idle": [
+        {
+          "x": 0,
+          "y": 0,
+          "w": 1774,
+          "h": 887
+        },
+        {
+          "x": 0,
+          "y": 0,
+          "w": 1774,
+          "h": 887
+        },
+        {
+          "x": 0,
+          "y": 0,
+          "w": 1774,
+          "h": 887
+        },
+        {
+          "x": 0,
+          "y": 0,
+          "w": 1774,
+          "h": 887
+        },
+        {
+          "x": 0,
+          "y": 0,
+          "w": 1774,
+          "h": 887
+        },
+        {
+          "x": 0,
+          "y": 0,
+          "w": 1774,
+          "h": 887
+        },
+        {
+          "x": 0,
+          "y": 0,
+          "w": 1774,
+          "h": 887
+        },
+        {
+          "x": 0,
+          "y": 0,
+          "w": 1774,
+          "h": 887
+        },
+        {
+          "x": 0,
+          "y": 0,
+          "w": 1774,
+          "h": 887
+        },
+        {
+          "x": 1774,
+          "y": 0,
+          "w": 1774,
+          "h": 887
+        },
+        {
+          "x": 0,
+          "y": 0,
+          "w": 1774,
+          "h": 887
+        }
+      ]
+    }
+  }
+}

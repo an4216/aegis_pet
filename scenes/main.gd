@@ -419,6 +419,8 @@ func _do_reset() -> void:
 
 ## 파일 먹이기: 펫 위에 파일을 드롭하면 휴지통으로 이동(복구 가능) + 먹이 효과.
 ## 안전 규칙: 폴더 제외, 한 번에 최대 5개, 영구 삭제 아닌 휴지통 이동만.
+# Godot reports external files only at drop time. A native drag target can call
+# pet.set_file_hover(true/false) before this handler for actual drag-over feedback.
 func _on_files_dropped(files: PackedStringArray) -> void:
 	var size_vec := Vector2(screen_rect.size)
 	if _ps.stage == "egg":
@@ -440,6 +442,8 @@ func _on_files_dropped(files: PackedStringArray) -> void:
 		if OS.move_to_trash(path) == OK:
 			eaten.append(path.get_file())
 			_ps.care("feed" if bytes >= 1_000_000 else "snack")
+			if eaten.size() == 1:
+				pet.play_file_drop_reaction()
 	if eaten.is_empty():
 		bubble.say("으음… 그건 못 먹겠어 (폴더나 잠긴 파일이야?)", pet, size_vec)
 	else:
