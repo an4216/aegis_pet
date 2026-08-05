@@ -20,7 +20,8 @@ def is_neutral_light(px):
 
 
 def remove_checkerboard(im):
-    """테두리에서 연결된 중립 밝은 픽셀만 배경으로 제거 (눈 하이라이트 등 내부 흰색 보존)."""
+    """체커보드(밝은 회색 격자)만 배경으로 제거 — 내부 흰색 보존.
+    투명을 흉내낸 체커보드가 그려진 이미지에 사용."""
     im = im.convert("RGB")
     w, h = im.size
     px = im.load()
@@ -44,11 +45,66 @@ def remove_checkerboard(im):
                 queue.append((nx, ny))
     alpha = Image.new("L", (w, h), 255)
     alpha.putdata([0 if v else 255 for v in bg])
-    # 경계 부드럽게 (체커보드 프린지 완화)
     alpha = alpha.filter(ImageFilter.MinFilter(3)).filter(ImageFilter.GaussianBlur(0.7))
     out = im.convert("RGBA")
     out.putalpha(alpha)
     return out
+
+
+def remove_bg_gradient(im, tolerance=12):
+    """테두리에서 연결된 배경 픽셀을 이웃 유사도(tolerance) 기반 flood fill로 제거.
+    단색·그라데이션 배경 모두 처리. 캐릭터 경계 색차가 급변하면 여기서 멈춤."""
+    im = im.convert("RGB")
+    w, h = im.size
+    px = im.load()
+    bg = bytearray(w * h)
+    queue = deque()
+    for x in range(w):
+        for y in (0, h - 1):
+            if not bg[y * w + x]:
+                bg[y * w + x] = 1
+                queue.append((x, y))
+    for y in range(h):
+        for x in (0, w - 1):
+            if not bg[y * w + x]:
+                bg[y * w + x] = 1
+                queue.append((x, y))
+    while queue:
+        x, y = queue.popleft()
+        cr, cg, cb = px[x, y]
+        for nx, ny in ((x+1, y), (x-1, y), (x, y+1), (x, y-1)):
+            if 0 <= nx < w and 0 <= ny < h and not bg[ny * w + nx]:
+                nr, ng, nb = px[nx, ny]
+                if max(abs(nr - cr), abs(ng - cg), abs(nb - cb)) <= tolerance:
+                    bg[ny * w + nx] = 1
+                    queue.append((nx, ny))
+    alpha = Image.new("L", (w, h), 255)
+    alpha.putdata([0 if v else 255 for v in bg])
+    alpha = alpha.filter(ImageFilter.MinFilter(3)).filter(ImageFilter.GaussianBlur(0.7))
+    out = im.convert("RGBA")
+    out.putalpha(alpha)
+    return out
+
+
+def _detect_checker(im):
+    """실제 체커 패턴은 인접 픽셀 색차가 크게 alternating함. 균일한 흰 배경은 색차가 작음.
+    상단 행에서 색차 30 이상인 픽셀이 5% 넘으면 체커 패턴으로 판정."""
+    rgb = im.convert("RGB")
+    w = rgb.size[0]
+    sample = [rgb.getpixel((x, 4)) for x in range(0, w, 2)]
+    high_diff = 0
+    for i in range(1, len(sample)):
+        a, b = sample[i-1], sample[i]
+        if max(abs(a[0]-b[0]), abs(a[1]-b[1]), abs(a[2]-b[2])) > 30:
+            high_diff += 1
+    return high_diff > len(sample) * 0.05
+
+
+def remove_bg(im):
+    """실제 체커 패턴 감지 시 remove_checkerboard, 그 외 (균일·그라데이션)는 remove_bg_gradient."""
+    if _detect_checker(im):
+        return remove_checkerboard(im)
+    return remove_bg_gradient(im)
 
 
 def ensure_alpha(im):
@@ -57,7 +113,7 @@ def ensure_alpha(im):
         lo = sum(a.histogram()[:16])
         if lo > im.size[0] * im.size[1] * 0.05:
             return im  # 진짜 투명
-    return remove_checkerboard(im)
+    return remove_bg(im)
 
 
 def drop_stray_fragments(cell, near_ratio=0.18):

@@ -22,6 +22,11 @@ var updater: Node
 var tray_menu: PopupMenu
 var screen_rect: Rect2i
 var _last_quantized: Array = []
+var _night_check_timer := 0.0
+const NIGHT_CHECK_INTERVAL := 60.0
+const NIGHT_START_HOUR := 3
+const NIGHT_END_HOUR := 5
+const NIGHT_IDLE_THRESHOLD_MS := 30 * 60 * 1000  # 30분 이상 무입력
 
 @onready var _sm: Node = get_node("/root/SaveManager")
 @onready var _ps: Node = get_node("/root/PetState")
@@ -59,12 +64,41 @@ func _ready() -> void:
 		_spawn_poop_at(Vector2(randf_range(120.0, screen_rect.size.x - 120.0), pet.ground_y))
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	# 수첩이 열려 있을 때만 키보드 입력 허용 (텍스트 입력용, 닫히면 다시 비침습)
 	var need_focus: bool = notebook != null and notebook.visible
 	if get_window().unfocusable == need_focus:
 		get_window().unfocusable = not need_focus
 	_update_passthrough()
+	# 새벽 자동 업데이트 스케줄 (FR-30)
+	_night_check_timer += delta
+	if _night_check_timer >= NIGHT_CHECK_INTERVAL:
+		_night_check_timer = 0.0
+		_maybe_night_auto_update()
+
+
+## 새벽 3~5시 · 30분+ 무입력 · 새 버전 감지된 상태에서만 자동 다운로드·설치 (FR-30)
+func _maybe_night_auto_update() -> void:
+	if updater == null or updater.latest_version == "":
+		return  # 설치할 새 버전 없음
+	if not _sm.settings.get("night_auto_update", true):
+		return
+	if _sm.settings.get("focus_mode", false):
+		return
+	var dt := Time.get_datetime_dict_from_system()
+	if dt.hour < NIGHT_START_HOUR or dt.hour >= NIGHT_END_HOUR:
+		return
+	var today_str := "%04d-%02d-%02d" % [dt.year, dt.month, dt.day]
+	if _sm.settings.get("last_night_update", "") == today_str:
+		return  # 오늘 이미 시도함
+	var probe := get_node_or_null("/root/InputProbe")
+	if probe == null or probe.idle_ms < NIGHT_IDLE_THRESHOLD_MS:
+		return  # 사용자가 자리에 있음
+	# 조건 충족 — 조용히 설치 (Updater 내부에서 저장 후 exe 교체·재시작)
+	_sm.settings["last_night_update"] = today_str
+	_sm.save_game()
+	print("night_auto_update: 조건 충족, 업데이트 설치 시작")
+	updater.start_update()
 
 
 var ground_bottom := 0.0    # 로컬 좌표 기준 바닥 (가장 낮은 작업표시줄 위)
@@ -146,6 +180,7 @@ func _setup_tray() -> void:
 	tray_menu.add_check_item("시작 시 자동 실행", 3)
 	tray_menu.add_check_item("창 위 놀이 (점프)", 5)
 	tray_menu.add_item("📔 수첩 (할 일·리마인더·집중)", 6)
+	tray_menu.add_check_item("새벽 자동 업데이트", 9)
 	tray_menu.add_separator()
 	tray_menu.add_item("🥚 처음부터 다시 키우기", 7)
 	tray_menu.add_item("종료", 4)
@@ -153,6 +188,7 @@ func _setup_tray() -> void:
 	tray_menu.set_item_checked(2, _sm.settings.get("always_on_top", true))
 	tray_menu.set_item_checked(3, _sm.settings.get("autostart", false))
 	tray_menu.set_item_checked(4, _sm.settings.get("window_play", false))
+	tray_menu.set_item_checked(tray_menu.get_item_index(9), _sm.settings.get("night_auto_update", true))
 	tray_menu.id_pressed.connect(_on_tray_action)
 	add_child(tray_menu)
 
@@ -207,6 +243,10 @@ func _on_tray_action(id: int) -> void:
 		8:
 			bubble.say("업데이트 다운로드 중… 끝나면 자동으로 다시 켜질게!", pet, Vector2(screen_rect.size), 10.0)
 			updater.start_update()
+		9:
+			_sm.settings["night_auto_update"] = not _sm.settings.get("night_auto_update", true)
+			tray_menu.set_item_checked(tray_menu.get_item_index(9), _sm.settings["night_auto_update"])
+			_sm.save_game()
 
 
 func _open_care_menu(pos: Vector2) -> void:
@@ -244,12 +284,19 @@ func _maybe_note_late_shutdown() -> void:
 		_ps.note_late_shutdown()
 
 
-## 진화 조건 달성 (Plan FR-15 v3)
-func _on_evolution_ready(species: String) -> void:
-	var evolved_name: String = Characters.get_evolved_name(species)
-	pet.refresh_appearance()  # evolved 스프라이트 로드 (있으면)
+## 진화 조건 달성 (Plan FR-15 v4)
+func _on_evolution_ready(species: String, tier: int) -> void:
+	var evolved_name: String
+	var text: String
+	if tier == 2:
+		evolved_name = Characters.get_evolved_2_name(species)
+		text = "✨✨ 최종 진화! %s(으)로 성장했다!! ✨✨" % evolved_name
+	else:
+		evolved_name = Characters.get_evolved_name(species)
+		text = "✨ %s(으)로 진화했다!! ✨" % evolved_name
+	pet.refresh_appearance()
 	pet.celebrate()
-	bubble.say("✨ %s(으)로 진화했다!! ✨" % evolved_name, pet, Vector2(screen_rect.size), 12.0)
+	bubble.say(text, pet, Vector2(screen_rect.size), 12.0)
 	_sm.save_game()
 
 
@@ -357,14 +404,14 @@ func _on_files_dropped(files: PackedStringArray) -> void:
 
 
 ## Plan FR-16: HKCU Run 키 자동 시작 (opt-in, 관리자 권한 불필요)
+## Windows 표준 백슬래시 경로 + 큰따옴표 감싸기 (경로에 공백 있어도 안전)
 func _set_autostart(enabled: bool) -> void:
 	if enabled:
-		var reg_value := '"%s"' % OS.get_executable_path()
+		var exe: String = OS.get_executable_path().replace("/", "\\")
+		var reg_value := '\\"%s\\"' % exe
 		if OS.has_feature("editor"):
-			reg_value = '"%s" --path "%s"' % [
-				OS.get_executable_path(),
-				ProjectSettings.globalize_path("res://").trim_suffix("/"),
-			]
+			var proj: String = ProjectSettings.globalize_path("res://").trim_suffix("/").replace("/", "\\")
+			reg_value = '\\"%s\\" --path \\"%s\\"' % [exe, proj]
 		var code := OS.execute("reg", [
 			"add", AUTOSTART_REG_KEY, "/v", AUTOSTART_REG_NAME,
 			"/t", "REG_SZ", "/d", reg_value, "/f",
@@ -389,15 +436,17 @@ func _spawn_poop_at(pos: Vector2) -> void:
 	poop_container.add_child(poop)
 
 
-const REGION_GRID := 64.0
+const REGION_GRID := 32.0
 
 ## 클릭 가능한 영역(펫+응아+열린 UI)만 마우스를 받고, 나머지는 아래 창으로 통과.
 ## Windows에서 이 영역(SetWindowRgn)은 렌더링도 잘라내며, region을 자주 갱신하면
-## 경계에 흰 줄이 번쩍인다 → 모든 사각형을 64px 격자에 스냅해 갱신 빈도를 최소화한다.
+## 경계에 흰 줄이 번쩍인다 → 모든 사각형을 32px 격자에 스냅해 갱신 빈도를 완화한다.
 ## (Godot의 mouse_passthrough 전체 플래그는 이 환경에서 OS에 적용되지 않음 — 검증됨)
 func _update_passthrough() -> void:
+	# 진화 배지 제거 + 이펙트를 스프라이트 안으로 이동 → 상단 확장 최소화
+	# (celebrate/play_frolic 점프는 짧아서 15px면 충분)
 	var rects: Array = [
-		_quantize(pet.get_click_rect().grow_individual(12.0, 70.0, 12.0, 0.0)),
+		_quantize(pet.get_click_rect().grow_individual(4.0, 15.0, 4.0, 0.0)),
 	]
 	for poop in get_tree().get_nodes_in_group("poop"):
 		rects.append(_quantize(poop.get_click_rect()))

@@ -10,7 +10,7 @@ signal sickness_changed(is_sick: bool)
 signal condition_changed(condition: String)  # "normal" | "sulk"
 signal care_performed(action: String)
 signal pooped
-signal evolution_ready(species: String)     # Plan FR-15 v3: 진화 조건 달성 시
+signal evolution_ready(species: String, tier: int)   # tier: 1(1차) | 2(최종) — Plan FR-15 v4
 
 const Balance := preload("res://scripts/data/balance.gd")
 const Characters := preload("res://scripts/data/characters.gd")
@@ -36,14 +36,17 @@ var care_quality_samples: Array = []
 var activity: int = Activity.IDLE   # 씬(FSM)이 갱신
 var caffeine_until_min: float = -1.0  # 콩이 caffeine_rush 남은 분
 
-# --- Plan FR-15 v3: 업무 활동 카운터 (진화 조건 지표) ---
-var evolved: bool = false
+# --- Plan FR-15 v4: 업무 활동 카운터 (진화 조건 지표) ---
+var evolved: bool = false     # 1차 진화 완료
+var evolved_2: bool = false   # 최종 진화 완료
 var work_stats: Dictionary = {
 	"kb": 0, "mouse": 0,
 	"active_sec": 0.0, "friday_active_sec": 0.0,
 	"distinct_days": [],
 	"pomodoro_done": 0, "todos_done": 0,
 	"late_shutdowns": 0,
+	"consecutive_days": 0,   # 연속 출근일수 (당근이 진화 조건)
+	"last_active_day": "",   # 연속 출근 계산용
 	"care_counts": {},
 }
 
@@ -184,6 +187,7 @@ func serialize() -> Dictionary:
 		"poop_count": poop_count,
 		"care_quality_samples": care_quality_samples.duplicate(),
 		"evolved": evolved,
+		"evolved_2": evolved_2,
 		"work_stats": work_stats.duplicate(true),
 	}
 
@@ -202,6 +206,7 @@ func deserialize(data: Dictionary) -> void:
 	poop_count = int(data.get("poop_count", 0))
 	care_quality_samples = data.get("care_quality_samples", [])
 	evolved = bool(data.get("evolved", false))
+	evolved_2 = bool(data.get("evolved_2", false))
 	var loaded_work: Dictionary = data.get("work_stats", {})
 	for key in loaded_work:
 		if work_stats.has(key):
@@ -226,9 +231,35 @@ func note_activity_day(today_str: String) -> void:
 	if today_str == "":
 		return
 	var days: Array = work_stats["distinct_days"]
-	if not (today_str in days):
-		days.append(today_str)
-		_check_evolution()
+	if today_str in days:
+		return  # 오늘 이미 기록됨 — 중복 카운트 방지
+	days.append(today_str)
+	# 연속 출근일수 계산 (당근이 진화 조건)
+	var last: String = str(work_stats.get("last_active_day", ""))
+	if last == "" or _days_between(last, today_str) != 1:
+		work_stats["consecutive_days"] = 1
+	else:
+		work_stats["consecutive_days"] = int(work_stats.get("consecutive_days", 0)) + 1
+	work_stats["last_active_day"] = today_str
+	_check_evolution()
+
+
+static func _parse_ymd(s: String) -> int:
+	var parts := s.split("-")
+	if parts.size() != 3:
+		return 0
+	return int(Time.get_unix_time_from_datetime_dict({
+		"year": int(parts[0]), "month": int(parts[1]), "day": int(parts[2]),
+		"hour": 0, "minute": 0, "second": 0,
+	}))
+
+
+static func _days_between(from_str: String, to_str: String) -> int:
+	var f := _parse_ymd(from_str)
+	var t := _parse_ymd(to_str)
+	if f == 0 or t == 0:
+		return -1
+	return int((t - f) / 86400)
 
 
 func note_late_shutdown() -> void:
@@ -248,7 +279,16 @@ func note_todo_complete() -> void:
 
 ## 진화 진행률 (stats_popup 표시용)
 func evolution_progress() -> Dictionary:
-	var cond: Dictionary = Balance.EVOLUTION.get(species, {})
+	return _progress_for(Balance.EVOLUTION)
+
+
+## 최종 진화 진행률
+func evolution_2_progress() -> Dictionary:
+	return _progress_for(Balance.EVOLUTION_2)
+
+
+func _progress_for(table: Dictionary) -> Dictionary:
+	var cond: Dictionary = table.get(species, {})
 	if cond.is_empty():
 		return {"metric": "", "current": 0.0, "target": 0.0, "ratio": 0.0, "hint": ""}
 	var current := _metric_value(cond["metric"])
@@ -275,20 +315,29 @@ func _metric_value(metric: String) -> float:
 		"feed_snack":
 			var cc: Dictionary = work_stats["care_counts"]
 			return float(int(cc.get("feed", 0)) + int(cc.get("snack", 0)))
+		"feed":
+			return float(int((work_stats["care_counts"] as Dictionary).get("feed", 0)))
 		"pet_care":
 			return float(int((work_stats["care_counts"] as Dictionary).get("pet", 0)))
+		"consecutive_days":
+			return float(int(work_stats.get("consecutive_days", 0)))
 	return 0.0
 
 
 func _check_evolution() -> void:
-	if evolved or species == "" or stage == "egg":
+	if species == "" or stage == "egg":
 		return
-	if evolution_progress()["ratio"] >= 1.0:
+	# 1차 진화
+	if not evolved and evolution_progress()["ratio"] >= 1.0:
 		evolved = true
 		if stage != "adult":
 			stage = "adult"
 			stage_changed.emit(stage)
-		evolution_ready.emit(species)
+		evolution_ready.emit(species, 1)
+	# 최종 진화 (1차 완료 후에만)
+	if evolved and not evolved_2 and evolution_2_progress()["ratio"] >= 1.0:
+		evolved_2 = true
+		evolution_ready.emit(species, 2)
 
 
 ## 할 일 완료·뽀모도로 등 생산성 보상 (Plan FR-22, FR-23)
@@ -324,12 +373,15 @@ func reset_to_egg() -> void:
 	caffeine_until_min = -1.0
 	activity = Activity.IDLE
 	evolved = false
+	evolved_2 = false
 	work_stats = {
 		"kb": 0, "mouse": 0,
 		"active_sec": 0.0, "friday_active_sec": 0.0,
 		"distinct_days": [],
 		"pomodoro_done": 0, "todos_done": 0,
 		"late_shutdowns": 0,
+		"consecutive_days": 0,
+		"last_active_day": "",
 		"care_counts": {},
 	}
 	_reset_poop_timer()

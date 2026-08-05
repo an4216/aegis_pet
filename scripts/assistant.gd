@@ -38,11 +38,12 @@ func _process(delta: float) -> void:
 
 # --- 리마인더 (FR-21) ---
 
-func add_reminder(text: String, hour: int, minute: int, repeat: String) -> void:
+func add_reminder(text: String, hour: int, minute: int, weekdays: Array) -> void:
 	var reminders: Array = _sm.settings["reminders"]
 	reminders.append({
 		"text": text, "hour": hour, "minute": minute,
-		"repeat": repeat, "last_fired": "",
+		"weekdays": weekdays,   # 빈 배열 = 한 번만 (오늘 시각 매칭 시 발동 후 삭제)
+		"last_fired": "",
 	})
 	_sm.save_game()
 
@@ -58,22 +59,42 @@ func _check_reminders() -> void:
 	var dt := Time.get_datetime_dict_from_system()
 	var today := "%04d-%02d-%02d" % [dt.year, dt.month, dt.day]
 	var reminders: Array = _sm.settings["reminders"]
-	var fired_once: Array = []
+	var to_erase: Array = []
 	for r in reminders:
 		if int(r["hour"]) != dt.hour or int(r["minute"]) != dt.minute:
 			continue
 		if r.get("last_fired", "") == today:
 			continue
-		if r["repeat"] == "weekdays" and (dt.weekday == 0 or dt.weekday == 6):
+		if not _matches_weekday(r, int(dt.weekday)):
 			continue
 		r["last_fired"] = today
 		_fire_reminder(String(r["text"]))
-		if r["repeat"] == "once":
-			fired_once.append(r)
-	for r in fired_once:
+		if _is_once(r):
+			to_erase.append(r)
+	for r in to_erase:
 		reminders.erase(r)
-	if not fired_once.is_empty():
+	if not to_erase.is_empty():
 		_sm.save_game()
+
+
+## 요일 매칭 (weekdays 배열 우선, 없으면 구버전 repeat 필드 폴백).
+func _matches_weekday(r: Dictionary, weekday: int) -> bool:
+	if r.has("weekdays"):
+		var wds: Array = r["weekdays"]
+		if wds.is_empty():
+			return true  # 한 번 모드 — 요일 무관, 발동 후 삭제
+		return weekday in wds
+	# 하위호환: 이전 저장 파일의 repeat 필드
+	var rep: String = String(r.get("repeat", "once"))
+	if rep == "weekdays" and (weekday == 0 or weekday == 6):
+		return false
+	return true
+
+
+func _is_once(r: Dictionary) -> bool:
+	if r.has("weekdays"):
+		return (r["weekdays"] as Array).is_empty()
+	return String(r.get("repeat", "once")) == "once"
 
 
 func _fire_reminder(text: String) -> void:

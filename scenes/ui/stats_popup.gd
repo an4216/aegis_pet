@@ -30,8 +30,18 @@ func _ready() -> void:
 	vbox.add_theme_constant_override("separation", 6)
 	add_child(vbox)
 
+	var header_row := HBoxContainer.new()
 	_header = UITheme.make_label("", UITheme.FONT_TITLE, UITheme.INK)
-	vbox.add_child(_header)
+	_header.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	header_row.add_child(_header)
+	var close_x := Button.new()
+	close_x.text = "✕"
+	UITheme.style_button(close_x)
+	close_x.add_theme_font_size_override("font_size", UITheme.FONT_SMALL)
+	close_x.add_theme_color_override("font_color", UITheme.MUTED)
+	close_x.pressed.connect(func(): visible = false)
+	header_row.add_child(close_x)
+	vbox.add_child(header_row)
 
 	for entry in STAT_LABELS:
 		var row := HBoxContainer.new()
@@ -97,7 +107,9 @@ func toggle(screen_size: Vector2) -> void:
 
 func refresh() -> void:
 	var name_kr := "?"
-	if _ps.evolved and _ps.species != "":
+	if _ps.evolved_2 and _ps.species != "":
+		name_kr = "✨✨ %s" % Characters.get_evolved_2_name(_ps.species)
+	elif _ps.evolved and _ps.species != "":
 		name_kr = "✨ %s" % Characters.get_evolved_name(_ps.species)
 	elif _ps.species != "" and Characters.CHARACTERS.has(_ps.species):
 		name_kr = Characters.CHARACTERS[_ps.species]["name_kr"]
@@ -117,15 +129,22 @@ func _refresh_evolution() -> void:
 	if _ps.stage == "egg" or _ps.species == "":
 		_evo_section.visible = false
 		return
-	if _ps.evolved:
+	if _ps.evolved_2:
 		_evo_section.visible = true
-		_evo_hint.text = "✨ 진화 완료 — %s" % Characters.get_evolved_name(_ps.species)
+		_evo_hint.text = "✨✨ 최종 진화 완료 — %s" % Characters.get_evolved_2_name(_ps.species)
 		_evo_bar.value = 100.0
 		_evo_progress_label.text = ""
 		return
 	_evo_section.visible = true
-	var p: Dictionary = _ps.evolution_progress()
-	_evo_hint.text = "📈 진화까지: %s" % p["hint"]
+	var p: Dictionary
+	var label_prefix: String
+	if _ps.evolved:
+		p = _ps.evolution_2_progress()
+		label_prefix = "✨ 최종 진화까지"
+	else:
+		p = _ps.evolution_progress()
+		label_prefix = "📈 진화까지"
+	_evo_hint.text = "%s: %s" % [label_prefix, p["hint"]]
 	_evo_bar.value = p["ratio"] * 100.0
 	_evo_progress_label.text = "%s / %s (%d%%)" % [
 		_fmt_number(p["current"]), _fmt_number(p["target"]), int(p["ratio"] * 100.0)

@@ -18,7 +18,10 @@ class CounterHelper
 
     const int VK_LBUTTON = 0x01;
     const int VK_RBUTTON = 0x02;
+    const int VK_CANCEL  = 0x03;    // 스킵 (Ctrl+Break)
     const int VK_MBUTTON = 0x04;
+    const int VK_XBUTTON1 = 0x05;   // 마우스 옆 버튼
+    const int VK_XBUTTON2 = 0x06;
     const int POLL_MS = 30;
     const int WRITE_INTERVAL_MS = 3000;
     const int IDLE_THRESHOLD_MS = 60000;  // 1분 무입력이면 비활성
@@ -33,15 +36,19 @@ class CounterHelper
         double activeSec = 0.0, fridayActiveSec = 0.0;
         bool[] prev = new bool[256];
         int msSinceWrite = 0;
+        long lastIdleMs = 0;
 
         while (true)
         {
-            for (int vk = 0x08; vk <= 0xFE; vk++)
+            // 0x01부터 시작해야 마우스 VK(0x01~0x06)를 카운트. VK_CANCEL(0x03)은 스킵.
+            for (int vk = 0x01; vk <= 0xFE; vk++)
             {
+                if (vk == VK_CANCEL) continue;
                 bool isDown = (GetAsyncKeyState(vk) & 0x8000) != 0;
                 if (isDown && !prev[vk])
                 {
-                    if (vk == VK_LBUTTON || vk == VK_RBUTTON || vk == VK_MBUTTON) mouse++;
+                    if (vk == VK_LBUTTON || vk == VK_RBUTTON || vk == VK_MBUTTON
+                        || vk == VK_XBUTTON1 || vk == VK_XBUTTON2) mouse++;
                     else kb++;
                 }
                 prev[vk] = isDown;
@@ -50,8 +57,8 @@ class CounterHelper
             lii.cbSize = (uint)Marshal.SizeOf(lii);
             if (GetLastInputInfo(ref lii))
             {
-                uint idle = (uint)Environment.TickCount - lii.dwTime;
-                if (idle < IDLE_THRESHOLD_MS)
+                lastIdleMs = (uint)Environment.TickCount - lii.dwTime;
+                if (lastIdleMs < IDLE_THRESHOLD_MS)
                 {
                     double dt = POLL_MS / 1000.0;
                     activeSec += dt;
@@ -69,7 +76,8 @@ class CounterHelper
                 {
                     string json = "{\"kb\":" + kb + ",\"mouse\":" + mouse
                         + ",\"active_sec\":" + activeSec.ToString("F1")
-                        + ",\"friday_active_sec\":" + fridayActiveSec.ToString("F1") + "}";
+                        + ",\"friday_active_sec\":" + fridayActiveSec.ToString("F1")
+                        + ",\"idle_ms\":" + lastIdleMs + "}";
                     File.WriteAllText(outPath + ".tmp", json);
                     if (File.Exists(outPath)) File.Delete(outPath);
                     File.Move(outPath + ".tmp", outPath);

@@ -69,7 +69,6 @@ var jump_cooldown := 0.0          # 창 위 놀이 사이 휴식 (업무 비방�
 var _sprite: Sprite2D
 var _zzz: Label
 var _sick_mark: Label
-var _evolved_badge: Label
 var _base_scale := Vector2.ONE
 var _frame_size := Vector2.ONE * SPRITE_SIZE
 var _pet_cooldown := 0.0
@@ -77,6 +76,7 @@ var _pressed := false
 var _press_pos := Vector2.ZERO
 var _bob_tween: Tween
 var _wiggle_tween: Tween
+var _wobble_tween: Tween
 var _frames := {}          # pose -> Texture2D (포즈 시트 있는 캐릭터만)
 var _pose := "idle"
 var _bichon_animation := ""
@@ -97,7 +97,6 @@ func _ready() -> void:
 	add_child(_sprite)
 	_zzz = _make_mark("Zzz", Color(0.55, 0.62, 0.85))
 	_sick_mark = _make_mark("@_@", Color(0.45, 0.65, 0.45))
-	_evolved_badge = _make_mark("✨", Color(0.95, 0.75, 0.35))
 	refresh_appearance()
 
 	ps.species_assigned.connect(func(_s): refresh_appearance())
@@ -158,9 +157,15 @@ func start_jump(target_id: int, target_rect: Rect2) -> void:
 
 
 func get_click_rect() -> Rect2:
-	var animated_size_multiplier := _animated_visible_size_multiplier() if _is_animated_pet() else 1.0
-	var size := SPRITE_SIZE * float(STAGE_SCALE.get(ps.stage, 0.5)) * animated_size_multiplier
-	return Rect2(global_position + Vector2(-size * 0.5, -size), Vector2(size, size)).grow(8.0)
+	# 애니메이션 시트는 캔버스에 여백이 많아 실제 보이는 크기를 별도로 환산한다.
+	if _is_animated_pet():
+		var size := SPRITE_SIZE * float(STAGE_SCALE.get(ps.stage, 0.5)) * _animated_visible_size_multiplier()
+		return Rect2(global_position + Vector2(-size * 0.5, -size), Vector2(size, size)).grow(8.0)
+	# 캐릭터가 실제로 그려지는 영역만 클릭 감지 (스프라이트 캔버스 대비 ~75%).
+	# 나머지 여백까지 클릭을 막으면 펫이 지나가는 궤적이 넓게 blocked 되어 뒤 창 조작이 불편함.
+	var w: float = _frame_size.x * _base_scale.x * 0.75
+	var h: float = _frame_size.y * _base_scale.y * 0.85
+	return Rect2(global_position + Vector2(-w * 0.5, -h - 4.0), Vector2(w, h))
 
 
 func horizontal_edge_margin() -> float:
@@ -184,6 +189,11 @@ func face_towards(target_x: float) -> void:
 	_sprite.flip_h = target_x > position.x
 
 
+func mirror_face() -> void:
+	if _sprite:
+		_sprite.flip_h = not _sprite.flip_h
+
+
 ## 포즈 시트(assets/sprites/chars/<종족>/)가 있으면 프레임 시스템, 없으면 단일 컨셉 이미지 폴백
 func has_poses() -> bool:
 	return not _frames.is_empty()
@@ -199,7 +209,6 @@ func refresh_appearance() -> void:
 	_frames.clear()
 	_pose = "idle"
 	if _is_animated_pet():
-		_update_evolved_badge()
 		var state_name: String = machine.current_name() if machine != null else "Idle"
 		var animation_name := _bichon_override if not _bichon_override.is_empty() else _animation_for_state(state_name)
 		_set_bichon_animation(animation_name)
@@ -207,10 +216,12 @@ func refresh_appearance() -> void:
 
 	var char_key: String = "egg" if ps.stage == "egg" else ps.species
 	var pose_list: Array = EGG_POSES if ps.stage == "egg" else POSES
-	# 진화 완료 시 evolved 프레임 폴더를 우선 시도 (아트 없으면 기본 폴더로 폴백)
+	# 진화 완료 시 우선순위: evolved2 > evolved > 기본 (아트 없으면 순차 폴백)
 	var dirs: Array = ["res://assets/sprites/chars/%s/" % char_key]
 	if ps.evolved and ps.stage != "egg":
 		dirs.push_front("res://assets/sprites/chars/%s_evolved/" % char_key)
+	if ps.evolved_2 and ps.stage != "egg":
+		dirs.push_front("res://assets/sprites/chars/%s_evolved2/" % char_key)
 	for dir_path in dirs:
 		if not ResourceLoader.exists(dir_path + "idle.png"):
 			continue
@@ -235,21 +246,11 @@ func refresh_appearance() -> void:
 	_bichon_frame_foot_padding = []
 	_bichon_frame_horizontal_offsets = []
 	_frame_size = _sprite.texture.get_size()
-	_update_evolved_badge()
 	_base_scale = Vector2.ONE * STAGE_SCALE.get(ps.stage, 0.5)
 	_sprite.scale = _base_scale
 	_sprite.position = _sprite_anchor()
+	# Zzz·@_@ 라벨은 스프라이트 상단 근처에 (진화 배지는 제거됨 — 위쪽 클릭 영역 최소화)
 	_update_mark_positions()
-	# 진화 배지는 스프라이트 오른쪽 위 (약간 반짝)
-	var half_w := _frame_size.x * _base_scale.x * 0.5
-	var half_h := _frame_size.y * _base_scale.y
-	_evolved_badge.position = Vector2(half_w - 24.0, -half_h - 6.0)
-
-
-func _update_evolved_badge() -> void:
-	if _evolved_badge == null:
-		return
-	_evolved_badge.visible = ps != null and ps.evolved and ps.stage != "egg"
 
 
 # --- 상태별 표현 (states/*.gd에서 호출) ---
@@ -413,10 +414,23 @@ func idle_breathe() -> void:
 	_idle_tween.tween_property(_sprite, "scale", _base_scale, 0.5)
 
 
-func walk_bob(_on: bool) -> void:
-	_kill_idle_breathe()
+func walk_bob(on: bool, waddle: bool = false) -> void:
 	_kill_bob()
-	_position_sprite_for_current_frame()
+	# 애니메이션 시트 펫은 시트 자체에 보행 모션이 있어 tween bob을 쓰지 않는다.
+	if _keep_bichon_grounded():
+		return
+	if not on:
+		return
+	_bob_tween = create_tween().set_loops()
+	var down := _sprite_anchor().y
+	var up := down - 6.0
+	_bob_tween.tween_property(_sprite, "position:y", up, 0.18)
+	_bob_tween.tween_property(_sprite, "position:y", down, 0.18)
+	# walk1/walk2가 동일한 캐릭터(뚱실이 등)는 몸을 좌우로 흔들어 걷는 느낌 부여
+	if waddle:
+		_wobble_tween = create_tween().set_loops()
+		_wobble_tween.tween_property(_sprite, "rotation", 0.08, 0.28)
+		_wobble_tween.tween_property(_sprite, "rotation", -0.08, 0.28)
 
 
 func shake() -> void:
@@ -575,14 +589,17 @@ func _on_pooped() -> void:
 
 
 func _float_text(text: String) -> void:
+	# 스프라이트 내부(캐릭터 머리 위 근처)에서 시작해서 살짝만 위로.
+	# 스프라이트 밖으로 크게 나가지 않도록 해서 위쪽 클릭 영역을 확장할 필요가 없게.
 	var label := Label.new()
 	label.text = text
 	label.add_theme_font_size_override("font_size", 20)
 	label.add_theme_color_override("font_color", Color(0.95, 0.4, 0.55))
-	label.position = Vector2(-10.0, -_frame_size.y * _base_scale.y - 30.0)
+	var start_y := -_frame_size.y * _base_scale.y * 0.85
+	label.position = Vector2(-10.0, start_y)
 	add_child(label)
 	var t := create_tween()
-	t.tween_property(label, "position:y", label.position.y - 30.0, 0.8)
+	t.tween_property(label, "position:y", start_y - 18.0, 0.8)
 	t.parallel().tween_property(label, "modulate:a", 0.0, 0.8)
 	t.tween_callback(label.queue_free)
 
@@ -602,6 +619,10 @@ func _kill_bob() -> void:
 		_bob_tween.kill()
 		_bob_tween = null
 		_position_sprite_for_current_frame()
+	if _wobble_tween != null:
+		_wobble_tween.kill()
+		_wobble_tween = null
+		_sprite.rotation = 0.0
 
 
 func _kill_idle_breathe() -> void:

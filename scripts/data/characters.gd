@@ -4,17 +4,31 @@ extends RefCounted
 
 const RARITY_WEIGHT := {"common": 15.0, "uncommon": 8.0, "rare": 4.0}
 
-# 진화형 이름 (Plan FR-15 v3, docs/02-design/characters-evolution.md)
+# 1차 진화형 이름
 const EVOLVED_NAMES := {
 	"mochi": "프로찌", "ppiyak": "꼬꼬", "haemjji": "함장님",
 	"kkubeok": "꿀잠도사", "nyang": "자유냥", "kong": "라떼님",
 	"mundeok": "문팀장", "geobujang": "거이사님",
 	"bulgeumjo": "불사조", "seureureuk": "스르신",
+	"tokki": "다이어토", "ddungsil": "뚱과장",
+}
+
+# 최종 진화형 이름 (Plan FR-15 v4)
+const EVOLVED_2_NAMES := {
+	"mochi": "회찌", "ppiyak": "꼬끼오", "haemjji": "햄왕",
+	"kkubeok": "꿈신", "nyang": "여행냥", "kong": "카페왕",
+	"mundeok": "문사장", "geobujang": "거회장",
+	"bulgeumjo": "영원조", "seureureuk": "자유혼",
+	"tokki": "헬토", "ddungsil": "뚱대박",
 }
 
 
 static func get_evolved_name(species: String) -> String:
 	return EVOLVED_NAMES.get(species, species)
+
+
+static func get_evolved_2_name(species: String) -> String:
+	return EVOLVED_2_NAMES.get(species, species)
 
 const CHARACTERS := {
 	"bichon": {
@@ -89,12 +103,27 @@ const CHARACTERS := {
 		"care_modifiers": {},
 		"special": ["after_work_boost"],
 	},
+	"tokki": {
+		"name_kr": "당근이", "rarity": "uncommon",
+		"stat_modifiers": {"happiness_decay": 0.85, "energy_decay": 0.85},
+		"care_modifiers": {},
+		"special": [],
+	},
+	"ddungsil": {
+		"name_kr": "뚱실이", "rarity": "uncommon",
+		"stat_modifiers": {"hunger_decay": 0.7, "energy_decay": 1.3, "move_speed": 0.6},
+		"care_modifiers": {"feed": 1.5, "snack": 1.5},
+		"special": [],
+		"walk_static": true,   # walk2가 walk1과 동일 → waddle 모션으로 보완
+		"walk_face_inverted": true,   # 걷기 시트가 뒤돌아본 상태 → 좌우 반전
+	},
 }
 
 # 부화 히든 가중치 (characters.md §2.2)
 const HATCH_WEIGHTS := {
 	"night_hatch": {"seureureuk": 3.0},
 	"friday_hatch": {"bulgeumjo": 3.0},
+	"wednesday_hatch": {"ddungsil": 3.0},
 	"lunch_hatch": {"haemjji": 2.0},
 	"morning_hatch": {"kong": 2.0},
 	"high_care": {"ppiyak": 2.0},
@@ -118,6 +147,14 @@ static func get_care_modifier(species: String, action: String) -> float:
 
 static func has_special(species: String, tag: String) -> bool:
 	return CHARACTERS.has(species) and tag in CHARACTERS[species]["special"]
+
+
+static func is_walk_static(species: String) -> bool:
+	return CHARACTERS.has(species) and bool(CHARACTERS[species].get("walk_static", false))
+
+
+static func is_walk_face_inverted(species: String) -> bool:
+	return CHARACTERS.has(species) and bool(CHARACTERS[species].get("walk_face_inverted", false))
 
 
 ## 부화 종족 결정: 기본 확률 × 컨텍스트 가중치 후 정규화 샘플링

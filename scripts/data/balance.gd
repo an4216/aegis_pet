@@ -61,5 +61,24 @@ const EVOLUTION := {
 	"geobujang":  {"metric": "active_sec",        "amount": 360000.0, "hint": "함께한 시간 100시간"},
 	"bulgeumjo":  {"metric": "friday_active_sec", "amount": 28800.0,  "hint": "금요일에 총 8시간 함께"},
 	"seureureuk": {"metric": "late_shutdowns",    "amount": 3,        "hint": "정시퇴근(18~19시 종료) 3번"},
+	"tokki":      {"metric": "consecutive_days",  "amount": 3,        "hint": "연속 3일 출근"},
+	"ddungsil":   {"metric": "feed",              "amount": 10,       "hint": "밥 10번 먹이기 - 회식 야근 승진"},
 }
+
+# --- 최종 진화 조건 (Plan FR-15 v4) — 1차 조건 도달 이후 임계값 상향 ---
+const EVOLUTION_2 := {
+	"mochi":      {"metric": "kb",                "amount": 100000,    "hint": "키보드 100,000번 - 진짜 일잘러의 손"},
+	"ppiyak":     {"metric": "distinct_days",     "amount": 20,        "hint": "출근 20일 - 한 달의 성실"},
+	"haemjji":    {"metric": "feed_snack",        "amount": 150,       "hint": "먹이·간식 150번 - 프랜차이즈 오너"},
+	"kkubeok":    {"metric": "pomodoro_done",     "amount": 40,        "hint": "뽀모도로 40회 - 잠의 경지"},
+	"nyang":      {"metric": "pet_care",          "amount": 400,       "hint": "쓰다듬기 400번 - 완전히 열린 마음"},
+	"kong":       {"metric": "mouse",             "amount": 80000,     "hint": "마우스 80,000번 - 카페 사장의 손"},
+	"mundeok":    {"metric": "todos_done",        "amount": 100,       "hint": "할 일 100개 - 사장의 실적"},
+	"geobujang":  {"metric": "active_sec",        "amount": 1080000.0, "hint": "함께한 시간 300시간"},
+	"bulgeumjo":  {"metric": "friday_active_sec", "amount": 108000.0,  "hint": "금요일 총 30시간 - 워라밸의 신"},
+	"seureureuk": {"metric": "late_shutdowns",    "amount": 10,        "hint": "정시퇴근 10번 - 완전 해방"},
+	"tokki":      {"metric": "consecutive_days",  "amount": 14,        "hint": "연속 14일 출근 - 자기관리 만렙"},
+	"ddungsil":   {"metric": "feed",              "amount": 30,        "hint": "밥 30번 - 그러다 로또 대박"},
+}
+
 const LATE_SHUTDOWN_HOURS := [18, 19]
