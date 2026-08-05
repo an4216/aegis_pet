@@ -48,6 +48,7 @@ var work_stats: Dictionary = {
 	"consecutive_days": 0,   # 연속 출근일수 (당근이 진화 조건)
 	"last_active_day": "",   # 연속 출근 계산용
 	"care_counts": {},
+	"files_dropped": 0,      # 파일 드롭 처리 횟수 (비숑 진화 조건)
 }
 
 var _minutes_until_poop := 0.0
@@ -277,6 +278,11 @@ func note_todo_complete() -> void:
 	_check_evolution()
 
 
+func note_file_dropped() -> void:
+	work_stats["files_dropped"] = int(work_stats["files_dropped"]) + 1
+	_check_evolution()
+
+
 ## 진화 진행률 (stats_popup 표시용)
 func evolution_progress() -> Dictionary:
 	return _progress_for(Balance.EVOLUTION)
@@ -321,6 +327,8 @@ func _metric_value(metric: String) -> float:
 			return float(int((work_stats["care_counts"] as Dictionary).get("pet", 0)))
 		"consecutive_days":
 			return float(int(work_stats.get("consecutive_days", 0)))
+		"files_dropped":
+			return float(int(work_stats.get("files_dropped", 0)))
 	return 0.0
 
 

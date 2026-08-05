@@ -24,8 +24,6 @@ func _init() -> void:
 	_test_hatch_distribution()
 	_test_bichon_registration()
 	_test_bichon_animation_manifest()
-	_test_pink_cat_baby_registration()
-	_test_pink_cat_baby_animation_manifest()
 	_test_serialize_roundtrip()
 	_test_stage_progression()
 	_test_digest()
@@ -42,7 +40,8 @@ func _init() -> void:
 	_test_consecutive_days()
 	_test_rabbit_full_evolution()
 	_test_dialog_evolution_pools()
-	call_deferred("_test_pink_cat_baby_care_reactions")
+	_test_bichon_evolution()
+	call_deferred("_test_bichon_care_reactions")
 
 
 func _finish() -> void:
@@ -151,7 +150,7 @@ func _test_hatch_distribution() -> void:
 
 func _test_bichon_registration() -> void:
 	check(Characters.CHARACTERS.has("bichon"), "비숑이 부화 캐릭터로 등록됨")
-	check(Characters.CHARACTERS.get("bichon", {}).get("name_kr", "") == "비숑", "비숑 한글 이름 등록")
+	check(Characters.CHARACTERS.get("bichon", {}).get("name_kr", "") == "해솔", "비숑 한글 이름 등록")
 
 
 func _test_bichon_animation_manifest() -> void:
@@ -165,40 +164,20 @@ func _test_bichon_animation_manifest() -> void:
 		check(config.get("frames", 0) == expected[animation], "비숑 %s 프레임 수" % animation)
 
 
-func _test_pink_cat_baby_registration() -> void:
-	check(Characters.CHARACTERS.has("pink_cat_baby"), "핑냥이가 부화 캐릭터로 등록됨")
-	check(Characters.CHARACTERS.get("pink_cat_baby", {}).get("name_kr", "") == "핑냥이", "핑냥이 한글 이름 등록")
+func _test_bichon_evolution() -> void:
+	var pet := make_pet("bichon")
+	for i in 14:
+		pet.note_file_dropped()
+	check(not pet.evolved, "비숑 진화 미충족 (파일 14개)")
+	pet.note_file_dropped()
+	check(pet.evolved, "비숑 진화: 파일 15개 정리")
+	for i in 45:
+		pet.note_file_dropped()
+	check(pet.evolved_2, "비숑 최종 진화: 파일 60개 누적 - 별솔")
 
 
-func _test_pink_cat_baby_animation_manifest() -> void:
-	var expected := {
-		"Idle": 4, "Walk": 12, "Sleep": 8, "Eat": 12,
-		"FileHover": 4, "FileConsume": 8, "Poop": 6, "Sick": 8,
-		"Sulk": 8, "Dragged": 4, "Fall": 4, "Land": 4,
-		"Pet": 8, "Play": 8,
-	}
-	var atlas_path: String = PetScript.PINK_CAT_BABY_ANIMATIONS["Idle"]["path"]
-	var atlas_import_path := atlas_path + ".import"
-	check(FileAccess.file_exists(atlas_import_path) and FileAccess.get_file_as_string(atlas_import_path).contains("mipmaps/generate=true"), "핑냥이 아틀라스는 다운스케일 밉맵을 생성")
-	for animation in expected:
-		var config: Dictionary = PetScript.PINK_CAT_BABY_ANIMATIONS.get(animation, {})
-		var frame_count: int = expected[animation]
-		check(config.get("frames", 0) == frame_count, "핑냥이 %s 프레임 수" % animation)
-		check(config.get("sprite_frame_sequence", []).size() == frame_count, "핑냥이 %s 아틀라스 프레임 매핑" % animation)
-		check(config.get("foot_padding", []).size() == frame_count, "핑냥이 %s 작업표시줄 기준선 보정" % animation)
-		check(config.get("horizontal_offsets", []).size() == frame_count, "핑냥이 %s 몸통 중심 고정" % animation)
-		var animation_atlas_path: String = config.get("path", "")
-		check(ResourceLoader.exists(animation_atlas_path), "핑냥이 %s 아틀라스 리소스 존재" % animation)
-		var frames_in_atlas := int(config.get("columns", 0)) * int(config.get("rows", 0))
-		var sequence_is_in_bounds := true
-		for sprite_frame in config.get("sprite_frame_sequence", []):
-			sequence_is_in_bounds = sequence_is_in_bounds and int(sprite_frame) >= 0 and int(sprite_frame) < frames_in_atlas
-		check(sequence_is_in_bounds, "핑냥이 %s 아틀라스 프레임 범위" % animation)
-
-
-
-func _test_pink_cat_baby_care_reactions() -> void:
-	var pet_state := make_pet("pink_cat_baby")
+func _test_bichon_care_reactions() -> void:
+	var pet_state := make_pet("bichon")
 	var pet: Node2D = PetScene.instantiate()
 	pet.screen_size = Vector2(1280.0, 720.0)
 	pet.ground_y = 714.0
@@ -206,25 +185,28 @@ func _test_pink_cat_baby_care_reactions() -> void:
 	await process_frame
 	pet.ps = pet_state
 	pet.refresh_appearance()
-	check(pet._is_animated_pet(), "핑냥이가 애니메이션 펫 경로를 사용")
-	check(pet._animation_catalog() == PetScript.PINK_CAT_BABY_ANIMATIONS, "핑냥이 전용 애니메이션 카탈로그 선택")
+	check(pet._is_animated_pet(), "비숑이 애니메이션 펫 경로를 사용")
+	check(pet._animation_catalog() == PetScript.BICHON_ANIMATIONS, "비숑 전용 애니메이션 카탈로그 선택")
 	for care_reaction in ["Pet", "Play"]:
 		pet._on_care_performed(care_reaction.to_lower())
-		check(pet._bichon_override == care_reaction and pet._bichon_animation == care_reaction and pet._sprite.texture != null, "핑냥이 %s 케어 반응 경로와 에셋 로드" % care_reaction)
+		check(pet._bichon_override == care_reaction and pet._bichon_animation == care_reaction and pet._sprite.texture != null, "비숑 %s 케어 반응 경로와 에셋 로드" % care_reaction)
 		await create_timer(0.81).timeout
-		check(pet._bichon_override.is_empty() and pet._bichon_animation == "Idle", "핑냥이 %s 후 Idle 복귀" % care_reaction)
-	# 좌표 밀림 회귀: 리액션이 tween으로 스프라이트를 옮기면 프레임별 발 위치가 깨진다
-	var anchor_y: float = pet._sprite.position.y
+		check(pet._bichon_override.is_empty() and pet._bichon_animation == "Idle", "비숑 %s 후 Idle 복귀" % care_reaction)
+	# 좌표 밀림 회귀: celebrate/play_frolic이 tween으로 SPRITE_SIZE 기준 좌표를 직접 옮기면
+	# 애니메이션 상태 복귀 후에도 프레임별 발 위치(foot_padding)가 깨진 채 남는다.
+	# 비숑은 상태마다 별도 시트(크기 다름)를 쓰므로, Idle로 복귀했을 때의 앵커만 비교한다.
+	var idle_anchor_y: float = pet._sprite.position.y
 	pet.celebrate()
-	check(pet._bichon_override == "Play", "핑냥이 celebrate가 Play 시트 재생 경로 사용")
-	check(approx(pet._sprite.position.y, anchor_y), "핑냥이 celebrate 후 스프라이트 앵커 유지")
+	check(pet._bichon_override == "Play", "비숑 celebrate가 Play 시트 재생 경로 사용")
 	await create_timer(0.81).timeout
+	check(pet._bichon_override.is_empty() and approx(pet._sprite.position.y, idle_anchor_y), "비숑 celebrate 후 Idle 프레임 앵커로 복귀")
 	pet.play_frolic()
-	check(approx(pet._sprite.position.y, anchor_y), "핑냥이 play_frolic 후 스프라이트 앵커 유지")
+	check(pet._bichon_override == "Play", "비숑 play_frolic이 Play 시트 재생 경로 사용")
 	await create_timer(0.81).timeout
-	pet._sprite.position.y = anchor_y - 40.0
+	check(approx(pet._sprite.position.y, idle_anchor_y), "비숑 play_frolic 후 Idle 프레임 앵커로 복귀")
+	pet._sprite.position.y = idle_anchor_y - 40.0
 	pet.reset_sprite_pose()
-	check(approx(pet._sprite.position.y, anchor_y), "핑냥이 reset_sprite_pose가 프레임 앵커로 복귀")
+	check(approx(pet._sprite.position.y, idle_anchor_y), "비숑 reset_sprite_pose가 프레임 앵커로 복귀")
 	pet.queue_free()
 	pet_state.free()
 	call_deferred("_finish")

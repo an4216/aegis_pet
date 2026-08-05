@@ -8,10 +8,8 @@ const STAGE_SCALE := {"egg": 0.5, "baby": 0.35, "child": 0.42, "adult": 0.5}
 const POSES := ["idle", "walk1", "walk2", "sleep", "happy", "sulk", "sick", "eat"]
 const EGG_POSES := ["idle", "tilt1", "tilt2", "crack"]
 const SPRITE_SIZE := 256.0
-const BICHON_VISIBLE_SIZE_MULTIPLIER := 1.25
+const BICHON_VISIBLE_SIZE_MULTIPLIER := 0.871  # 포즈 시트 12종과 동일한 목표 몸통 높이로 정규화 (Characters.BODY_SCALE 참고)
 const BICHON_EDGE_BUFFER := 28.0
-const PINK_CAT_BABY_VISIBLE_SIZE_MULTIPLIER := 1.20
-const PINK_CAT_BABY_EDGE_BUFFER := 28.0
 const BASE_SPEED := 120.0
 const PET_COOLDOWN_SECONDS := 30.0
 const DRAG_THRESHOLD := 10.0
@@ -33,25 +31,6 @@ const BICHON_ANIMATIONS := {
 	"Land": {"path": "res://assets/sprites/bichon/land_4f_chromakey.png", "columns": 4, "rows": 1, "frames": 4, "fps": 10.0, "loop": false, "visible_extent": 431.0, "horizontal_offsets": [-25.5, 14.0, 2.0, 37.0], "foot_padding": [162.0, 112.0, 144.0, 138.0]},
 	"Pet": {"path": "res://assets/sprites/bichon/petted_8f_chromakey.png", "columns": 4, "rows": 2, "frames": 8, "fps": 10.0, "loop": false, "visible_extent": 382.0, "horizontal_offsets": [-2.5, 0.5, 2.0, 7.5, 0.5, 1.0, 2.0, 4.0], "foot_padding": [32.0, 32.0, 32.0, 32.0, 65.0, 65.0, 63.0, 63.0]},
 	"Play": {"path": "res://assets/sprites/bichon/play_8f_chromakey.png", "columns": 4, "rows": 2, "frames": 8, "fps": 10.0, "loop": false, "visible_extent": 344.0, "horizontal_offsets": [7.0, 8.5, 16.0, 23.5, 4.0, 10.5, 16.5, 10.5], "foot_padding": [89.0, 84.0, 96.0, 129.0, 104.0, 94.0, 67.0, 60.0]},
-}
-
-# One shared, transparent 12×14 atlas.  Each logical state receives an explicit
-# frame sequence so short rows never spill into the next state row.
-const PINK_CAT_BABY_ANIMATIONS := {
-	"Idle": {"path": "res://assets/sprites/pink_cat_baby/pink_cat_baby_12x14_alpha.png", "columns": 12, "rows": 14, "frames": 4, "fps": 4.0, "loop": true, "visible_extent": 208.0, "sprite_frame_sequence": [0, 1, 2, 3], "horizontal_offsets": [0.0, 0.0, 0.0, 0.0], "foot_padding": [24.0, 24.0, 24.0, 24.0]},
-	"Walk": {"path": "res://assets/sprites/pink_cat_baby/pink_cat_baby_12x14_alpha.png", "columns": 12, "rows": 14, "frames": 12, "fps": 12.0, "loop": true, "visible_extent": 208.0, "sprite_frame_sequence": [12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23], "horizontal_offsets": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "foot_padding": [24.0, 24.0, 24.0, 24.0, 24.0, 24.0, 24.0, 24.0, 24.0, 24.0, 24.0, 24.0]},
-	"Sleep": {"path": "res://assets/sprites/pink_cat_baby/pink_cat_baby_12x14_alpha.png", "columns": 12, "rows": 14, "frames": 8, "fps": 5.0, "loop": true, "visible_extent": 208.0, "sprite_frame_sequence": [24, 25, 26, 27, 28, 29, 30, 31], "horizontal_offsets": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "foot_padding": [24.0, 24.0, 24.0, 24.0, 24.0, 24.0, 24.0, 24.0]},
-	"Eat": {"path": "res://assets/sprites/pink_cat_baby/pink_cat_baby_12x14_alpha.png", "columns": 12, "rows": 14, "frames": 12, "fps": 9.0, "loop": true, "visible_extent": 208.0, "sprite_frame_sequence": [36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47], "horizontal_offsets": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "foot_padding": [24.0, 24.0, 24.0, 24.0, 24.0, 24.0, 24.0, 24.0, 24.0, 24.0, 24.0, 24.0]},
-	"FileHover": {"path": "res://assets/sprites/pink_cat_baby/pink_cat_baby_12x14_alpha.png", "columns": 12, "rows": 14, "frames": 4, "fps": 12.0, "loop": false, "visible_extent": 208.0, "sprite_frame_sequence": [48, 49, 50, 51], "horizontal_offsets": [0.0, 0.0, 0.0, 0.0], "foot_padding": [24.0, 24.0, 24.0, 24.0]},
-	"FileConsume": {"path": "res://assets/sprites/pink_cat_baby/pink_cat_baby_12x14_alpha.png", "columns": 12, "rows": 14, "frames": 8, "fps": 12.0, "loop": false, "visible_extent": 208.0, "sprite_frame_sequence": [60, 61, 62, 63, 64, 65, 66, 67], "horizontal_offsets": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "foot_padding": [24.0, 24.0, 24.0, 24.0, 24.0, 24.0, 24.0, 24.0]},
-	"Poop": {"path": "res://assets/sprites/pink_cat_baby/pink_cat_baby_12x14_alpha.png", "columns": 12, "rows": 14, "frames": 6, "fps": 8.0, "loop": true, "visible_extent": 208.0, "sprite_frame_sequence": [72, 73, 74, 75, 76, 77], "horizontal_offsets": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "foot_padding": [24.0, 24.0, 24.0, 24.0, 24.0, 24.0]},
-	"Sick": {"path": "res://assets/sprites/pink_cat_baby/pink_cat_baby_12x14_alpha.png", "columns": 12, "rows": 14, "frames": 8, "fps": 6.0, "loop": true, "visible_extent": 208.0, "sprite_frame_sequence": [84, 85, 86, 87, 88, 89, 90, 91], "horizontal_offsets": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "foot_padding": [24.0, 24.0, 24.0, 24.0, 24.0, 24.0, 24.0, 24.0]},
-	"Sulk": {"path": "res://assets/sprites/pink_cat_baby/pink_cat_baby_12x14_alpha.png", "columns": 12, "rows": 14, "frames": 8, "fps": 6.0, "loop": true, "visible_extent": 208.0, "sprite_frame_sequence": [96, 97, 98, 99, 100, 101, 102, 103], "horizontal_offsets": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "foot_padding": [24.0, 24.0, 24.0, 24.0, 24.0, 24.0, 24.0, 24.0]},
-	"Dragged": {"path": "res://assets/sprites/pink_cat_baby/pink_cat_baby_12x14_alpha.png", "columns": 12, "rows": 14, "frames": 4, "fps": 10.0, "loop": true, "visible_extent": 208.0, "sprite_frame_sequence": [108, 109, 110, 111], "horizontal_offsets": [0.0, 0.0, 0.0, 0.0], "foot_padding": [24.0, 24.0, 24.0, 24.0]},
-	"Fall": {"path": "res://assets/sprites/pink_cat_baby/pink_cat_baby_12x14_alpha.png", "columns": 12, "rows": 14, "frames": 4, "fps": 12.0, "loop": true, "visible_extent": 208.0, "sprite_frame_sequence": [120, 121, 122, 123], "horizontal_offsets": [0.0, 0.0, 0.0, 0.0], "foot_padding": [24.0, 24.0, 24.0, 24.0]},
-	"Land": {"path": "res://assets/sprites/pink_cat_baby/pink_cat_baby_12x14_alpha.png", "columns": 12, "rows": 14, "frames": 4, "fps": 10.0, "loop": false, "visible_extent": 208.0, "sprite_frame_sequence": [132, 133, 134, 135], "horizontal_offsets": [0.0, 0.0, 0.0, 0.0], "foot_padding": [24.0, 24.0, 24.0, 24.0]},
-	"Pet": {"path": "res://assets/sprites/pink_cat_baby/pink_cat_baby_12x14_alpha.png", "columns": 12, "rows": 14, "frames": 8, "fps": 10.0, "loop": false, "visible_extent": 208.0, "sprite_frame_sequence": [144, 145, 146, 147, 148, 149, 150, 151], "horizontal_offsets": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "foot_padding": [24.0, 24.0, 24.0, 24.0, 24.0, 24.0, 24.0, 24.0]},
-	"Play": {"path": "res://assets/sprites/pink_cat_baby/pink_cat_baby_12x14_alpha.png", "columns": 12, "rows": 14, "frames": 8, "fps": 10.0, "loop": false, "visible_extent": 208.0, "sprite_frame_sequence": [156, 157, 158, 159, 160, 161, 162, 163], "horizontal_offsets": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0], "foot_padding": [24.0, 24.0, 24.0, 24.0, 24.0, 24.0, 24.0, 24.0]},
 }
 
 var ps: Node
@@ -244,9 +223,14 @@ func refresh_appearance() -> void:
 		dirs.push_front("res://assets/sprites/chars/%s_evolved/" % char_key)
 	if ps.evolved_2 and ps.stage != "egg":
 		dirs.push_front("res://assets/sprites/chars/%s_evolved2/" % char_key)
+	var body_tier := "base"
 	for dir_path in dirs:
 		if not ResourceLoader.exists(dir_path + "idle.png"):
 			continue
+		if dir_path.ends_with("_evolved2/"):
+			body_tier = "evolved2"
+		elif dir_path.ends_with("_evolved/"):
+			body_tier = "evolved"
 		for pose in pose_list:
 			var frame_path: String = dir_path + pose + ".png"
 			if ResourceLoader.exists(frame_path):
@@ -269,7 +253,7 @@ func refresh_appearance() -> void:
 	_bichon_frame_horizontal_offsets = []
 	# 임포트 캐시가 없거나 로드가 실패하면 texture가 null이므로 캔버스 기본값으로 폴백
 	_frame_size = _sprite.texture.get_size() if _sprite.texture != null else Vector2.ONE * SPRITE_SIZE
-	_base_scale = Vector2.ONE * STAGE_SCALE.get(ps.stage, 0.5)
+	_base_scale = Vector2.ONE * STAGE_SCALE.get(ps.stage, 0.5) * Characters.get_body_scale(ps.species, body_tier)
 	_sprite.scale = _base_scale
 	_sprite.position = _sprite_anchor()
 	# Zzz·@_@ 라벨은 스프라이트 상단 근처에 (진화 배지는 제거됨 — 위쪽 클릭 영역 최소화)
@@ -312,24 +296,20 @@ func _is_bichon() -> bool:
 	return ps != null and ps.stage != "egg" and ps.species == "bichon"
 
 
-func _is_pink_cat_baby() -> bool:
-	return ps != null and ps.stage != "egg" and ps.species == "pink_cat_baby"
-
-
 func _is_animated_pet() -> bool:
-	return _is_bichon() or _is_pink_cat_baby()
+	return _is_bichon()
 
 
 func _animation_catalog() -> Dictionary:
-	return PINK_CAT_BABY_ANIMATIONS if _is_pink_cat_baby() else BICHON_ANIMATIONS
+	return BICHON_ANIMATIONS
 
 
 func _animated_visible_size_multiplier() -> float:
-	return PINK_CAT_BABY_VISIBLE_SIZE_MULTIPLIER if _is_pink_cat_baby() else BICHON_VISIBLE_SIZE_MULTIPLIER
+	return BICHON_VISIBLE_SIZE_MULTIPLIER
 
 
 func _animated_edge_buffer() -> float:
-	return PINK_CAT_BABY_EDGE_BUFFER if _is_pink_cat_baby() else BICHON_EDGE_BUFFER
+	return BICHON_EDGE_BUFFER
 
 
 func _animation_for_state(state_name: String) -> String:

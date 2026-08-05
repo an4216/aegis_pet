@@ -442,6 +442,7 @@ func _on_files_dropped(files: PackedStringArray) -> void:
 		if OS.move_to_trash(path) == OK:
 			eaten.append(path.get_file())
 			_ps.care("feed" if bytes >= 1_000_000 else "snack")
+			_ps.note_file_dropped()
 			if eaten.size() == 1:
 				pet.play_file_drop_reaction()
 	if eaten.is_empty():
