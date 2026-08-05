@@ -66,6 +66,12 @@ func must_sleep() -> bool:
 func _process(delta: float) -> void:
 	if current == null:
 		return
+	# 위장/숨김 중엔 자율 동작 정지. 단, 유저가 시작한 드래그·낙하만 계속 처리해
+	# 아이콘을 손으로 옮기는 상호작용은 유지됨.
+	if pet.hide_mode != "normal":
+		if current.name in ["Dragged", "Fall"]:
+			current.update(delta)
+		return
 	_check_global()
 	current.update(delta)
 

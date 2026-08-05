@@ -20,6 +20,7 @@ var speech: Node
 var assistant: Node
 var updater: Node
 var tray_menu: PopupMenu
+var _tray_indicator: Node
 var screen_rect: Rect2i
 var _last_quantized: Array = []
 var _night_check_timer := 0.0
@@ -169,7 +170,43 @@ func _setup_ui() -> void:
 	var probe := get_node_or_null("/root/InputProbe")
 	if probe != null:
 		probe.counter_delta.connect(func(delta): _ps.add_input_delta(delta))
+		probe.disguise_toggle_requested.connect(_on_disguise_toggle)
+		probe.hide_toggle_requested.connect(_on_hide_toggle)
 		probe.start()
+
+
+func _on_disguise_toggle() -> void:
+	pet.toggle_disguise()
+	_refresh_hide_indicator()
+
+
+func _on_hide_toggle() -> void:
+	pet.toggle_invisible()
+	_refresh_hide_indicator()
+
+
+const TRAY_RESTORE_ID := 12
+
+
+func _refresh_hide_indicator() -> void:
+	# 트레이 툴팁 + 최상단 "복원" 항목으로 숨김 상태 시각화 (안전장치)
+	if _tray_indicator == null:
+		return
+	# 기존 복원 항목이 있으면 먼저 제거
+	var idx := tray_menu.get_item_index(TRAY_RESTORE_ID)
+	if idx != -1:
+		tray_menu.remove_item(idx)
+	match pet.hide_mode:
+		"disguise":
+			_tray_indicator.tooltip = "🥷 위장 중 (Ctrl+Shift+H 로 복원)"
+			tray_menu.add_item("🥷 위장 풀기", TRAY_RESTORE_ID)
+			tray_menu.move_item(tray_menu.get_item_index(TRAY_RESTORE_ID), 0)
+		"invisible":
+			_tray_indicator.tooltip = "👻 숨김 중 (Ctrl+Alt+H 로 복원)"
+			tray_menu.add_item("👻 펫 다시 보이기", TRAY_RESTORE_ID)
+			tray_menu.move_item(tray_menu.get_item_index(TRAY_RESTORE_ID), 0)
+		_:
+			_tray_indicator.tooltip = "desktop-tamagotchi"
 
 
 func _setup_tray() -> void:
@@ -198,6 +235,7 @@ func _setup_tray() -> void:
 	add_child(indicator)
 	indicator.menu = indicator.get_path_to(tray_menu)
 	indicator.pressed.connect(_on_tray_pressed)
+	_tray_indicator = indicator
 
 
 func _on_tray_pressed(mouse_button: int, _pos: Vector2i) -> void:
@@ -247,6 +285,9 @@ func _on_tray_action(id: int) -> void:
 			_sm.settings["night_auto_update"] = not _sm.settings.get("night_auto_update", true)
 			tray_menu.set_item_checked(tray_menu.get_item_index(9), _sm.settings["night_auto_update"])
 			_sm.save_game()
+		TRAY_RESTORE_ID:
+			pet.set_hide_mode("normal")
+			_refresh_hide_indicator()
 
 
 func _open_care_menu(pos: Vector2) -> void:
@@ -258,6 +299,12 @@ func _open_care_menu(pos: Vector2) -> void:
 
 func _on_care_action(action: String) -> void:
 	match action:
+		"stats":
+			stats_popup.toggle(Vector2(screen_rect.size))
+		"disguise":
+			_on_disguise_toggle()
+		"invisible":
+			_on_hide_toggle()
 		"sleep":
 			pet.machine.transition_to("Sleep")
 		"clean":

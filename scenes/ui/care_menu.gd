@@ -11,6 +11,9 @@ const ACTIONS := [
 	["clean", "🧹", "청소"],
 	["medicine", "💊", "약"],
 	["sleep", "💤", "재우기"],
+	["stats", "📊", "상태보기"],
+	["disguise", "🥷", "위장하기"],
+	["invisible", "👻", "잠깐 숨기"],
 ]
 const AUTO_HIDE_SECONDS := 10.0
 

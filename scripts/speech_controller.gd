@@ -61,6 +61,9 @@ func _can_speak() -> bool:
 		return false
 	if _ps.activity == _ps.Activity.SLEEPING:
 		return false
+	# 완전 숨김 중엔 완전 침묵
+	if pet != null and pet.hide_mode == "invisible":
+		return false
 	return true
 
 
@@ -71,6 +74,16 @@ func _schedule() -> void:
 
 
 func _pick_line() -> String:
+	# 위장 중엔 전용 대사만, 20% 확률로만 발화 (조용해야 위장이 유지됨)
+	if pet != null and pet.hide_mode == "disguise":
+		if randf() > 0.2:
+			return ""
+		var dpool: Array = Dialog.DISGUISE
+		for i in 8:
+			var dline: String = dpool[randi() % dpool.size()]
+			if dline not in _recent:
+				return dline
+		return ""
 	if _ps.stage == "egg":
 		var egg_pool: Array = Dialog.COMMON["egg"]
 		for i in 8:

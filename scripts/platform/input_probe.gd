@@ -5,6 +5,8 @@
 extends Node
 
 signal counter_delta(delta: Dictionary)
+signal disguise_toggle_requested()   # Ctrl+Shift+H
+signal hide_toggle_requested()       # Shift+Esc
 
 const POLL_SECONDS := 2.0
 const JSON_PATH := "user://input_counts.json"
@@ -20,7 +22,9 @@ var idle_ms := 0   # 마지막 입력 이후 경과 시간 (자동 재시작 조
 var _helper_pid := -1
 var _timer := 0.0
 var _last := {"kb": 0, "mouse": 0, "active_sec": 0.0, "friday_active_sec": 0.0}
-const HELPER_VERSION := 3   # counter_helper.cs 변경 시 증가 → 낡은 exe 자동 재빌드
+var _last_disguise_toggle := 0
+var _last_hide_toggle := 0
+const HELPER_VERSION := 5   # counter_helper.cs 변경 시 증가 → 낡은 exe 자동 재빌드
 
 
 func start() -> void:
@@ -81,6 +85,15 @@ func _read_and_emit() -> void:
 	idle_ms = int(parsed.get("idle_ms", 0))
 	if delta["kb"] > 0 or delta["mouse"] > 0 or delta["active_sec"] > 0.0:
 		counter_delta.emit(delta)
+	# 위장/숨김 단축키 edge (헬퍼 재시작 시 counter 리셋 되므로 감소는 무시)
+	var dg := int(parsed.get("disguise_toggle", 0))
+	if dg > _last_disguise_toggle:
+		disguise_toggle_requested.emit()
+	_last_disguise_toggle = dg
+	var hd := int(parsed.get("hide_toggle", 0))
+	if hd > _last_hide_toggle:
+		hide_toggle_requested.emit()
+	_last_hide_toggle = hd
 
 
 func _ensure_helper() -> String:
