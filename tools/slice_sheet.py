@@ -116,10 +116,11 @@ def ensure_alpha(im):
     return remove_bg(im)
 
 
-def drop_stray_fragments(cell, near_ratio=0.18):
+def drop_stray_fragments(cell, near_ratio=0.18, strict=False):
     """칸 경계로 새어 들어온 이웃 캐릭터 조각 제거.
     가장 큰 덩어리 기준, bbox가 그 근처(near_ratio × 칸 크기)에 있는 덩어리만 유지
-    (Zzz·반짝이 같은 본체 주변 장식은 보존)."""
+    (Zzz·반짝이 같은 본체 주변 장식은 보존).
+    strict=True: 가장 큰 덩어리만 남기고 나머지 전부 제거 (아이콘 슬라이스용)."""
     w, h = cell.size
     alpha = cell.getchannel("A").load()
     visited = bytearray(w * h)
@@ -150,8 +151,8 @@ def drop_stray_fragments(cell, near_ratio=0.18):
     out = cell.copy()
     px = out.load()
     for count, (x0, y0, x1, y1) in comps[1:]:
-        if x1 >= keep_zone[0] and x0 <= keep_zone[2] and y1 >= keep_zone[1] and y0 <= keep_zone[3]:
-            continue  # 본체 근처 장식 유지
+        if not strict and x1 >= keep_zone[0] and x0 <= keep_zone[2] and y1 >= keep_zone[1] and y0 <= keep_zone[3]:
+            continue  # 본체 근처 장식 유지 (strict 모드는 무조건 제거)
         for y in range(y0, y1 + 1):
             for x in range(x0, x1 + 1):
                 p = px[x, y]
@@ -160,11 +161,16 @@ def drop_stray_fragments(cell, near_ratio=0.18):
 
 
 def main():
-    src = sys.argv[1]
-    outdir = sys.argv[2]
-    poses = (sys.argv[3] if len(sys.argv) > 3 else DEFAULT_POSES).split(",")
-    cols = int(sys.argv[4]) if len(sys.argv) > 4 else 4
-    rows = int(sys.argv[5]) if len(sys.argv) > 5 else 2
+    args = list(sys.argv[1:])
+    strict = False
+    if "--strict" in args:
+        strict = True
+        args.remove("--strict")
+    src = args[0]
+    outdir = args[1]
+    poses = (args[2] if len(args) > 2 else DEFAULT_POSES).split(",")
+    cols = int(args[3]) if len(args) > 3 else 4
+    rows = int(args[4]) if len(args) > 4 else 2
     os.makedirs(outdir, exist_ok=True)
 
     im = ensure_alpha(Image.open(src))
@@ -177,7 +183,7 @@ def main():
             continue  # 사용하지 않는 칸 건너뛰기
         cx, cy = i % cols, i // cols
         cell = im.crop((int(cx * cw), int(cy * ch), int((cx + 1) * cw), int((cy + 1) * ch)))
-        cell = drop_stray_fragments(cell)
+        cell = drop_stray_fragments(cell, strict=strict)
         bbox = cell.getbbox()
         if bbox is None:
             print("WARN: empty cell", pose)

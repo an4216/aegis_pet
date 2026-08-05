@@ -58,6 +58,18 @@ const COMMON := {
 	],
 }
 
+# 위장 모드 전용 대사 pool (Ctrl+Shift+H로 진입 시 5분마다 20% 확률 발화)
+const DISGUISE := [
+	"나 언제 풀어주는거야?",
+	"숨쉬기 힘들어…",
+	"안 걸렸지? 조용히 있을게",
+	"누구 지나갔어? 지금?",
+	"이러다 진짜 아이콘 되면 어떡해",
+	"쉿… 발소리 나면 알려줘",
+	"심심해… 근데 참을 수 있어",
+	"얼마나 더? ㅠㅠ",
+]
+
 # 캐릭터 전용 대사 (진화 단계별 + 트리거 override)
 # 구조: { species: { stage: { "random": [...], "monday_morning": "..." } } }
 # stage.<trigger>가 없으면 base.<trigger> → COMMON[trigger] 순으로 폴백

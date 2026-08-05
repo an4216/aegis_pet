@@ -37,6 +37,15 @@ var _wobble_tween: Tween
 var _frames := {}          # pose -> Texture2D (포즈 시트 있는 캐릭터만)
 var _pose := "idle"
 
+# 위장/숨김 모드 (재시작 시 항상 normal — save에 저장 안 함)
+var hide_mode: String = "normal"   # "normal" | "disguise" | "invisible"
+var _disguise_textures: Array = []
+# 익스포트 빌드에서 DirAccess 순회가 불안정하므로 파일명 하드코딩
+const DISGUISE_FILES := [
+	"calculator.png", "memo.png", "folder.png", "search.png",
+	"usb.png", "hoodie.png", "mail.png", "trash.png",
+]
+
 
 func _ready() -> void:
 	ps = get_node("/root/PetState")
@@ -45,6 +54,7 @@ func _ready() -> void:
 	add_child(_sprite)
 	_zzz = _make_mark("Zzz", Color(0.55, 0.62, 0.85))
 	_sick_mark = _make_mark("@_@", Color(0.45, 0.65, 0.45))
+	_load_disguise_textures()
 	refresh_appearance()
 
 	ps.species_assigned.connect(func(_s): refresh_appearance())
@@ -70,6 +80,11 @@ func _process(delta: float) -> void:
 
 
 func _input(event: InputEvent) -> void:
+	# 완전 숨김: 모든 입력 무시
+	if hide_mode == "invisible":
+		return
+	# 위장 중 & 일반 모드: 상호작용 동일 (드래그·우클릭·클릭 모두 허용).
+	# 자율 이동만 상태머신에서 별도로 정지시킴.
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT:
 		if event.pressed and get_click_rect().has_point(event.position):
 			care_menu_requested.emit(event.position)
@@ -104,6 +119,10 @@ func start_jump(target_id: int, target_rect: Rect2) -> void:
 
 
 func get_click_rect() -> Rect2:
+	# 완전 숨김 중에만 클릭 영역 비움 (Windows SetWindowRgn이 렌더링도 잘라내므로
+	# 위장 중에는 렌더 유지를 위해 영역을 그대로 반환. 클릭은 _input에서 차단.)
+	if hide_mode == "invisible":
+		return Rect2()
 	# 캐릭터가 실제로 그려지는 영역만 클릭 감지 (스프라이트 캔버스 대비 ~75%).
 	# 나머지 여백까지 클릭을 막으면 펫이 지나가는 궤적이 넓게 blocked 되어 뒤 창 조작이 불편함.
 	var w: float = SPRITE_SIZE * _base_scale.x * 0.75
@@ -138,6 +157,9 @@ func has_poses() -> bool:
 
 func set_pose(pose: String) -> void:
 	_pose = pose
+	# 위장 중에는 아이콘 텍스처를 유지 (드래그 종료 후 Idle.enter 등에서 pose 리셋해도 안 바뀜)
+	if hide_mode == "disguise":
+		return
 	if _frames.has(pose):
 		_sprite.texture = _frames[pose]
 
@@ -383,3 +405,55 @@ func _kill_bob() -> void:
 func _quit_app() -> void:
 	get_node("/root/SaveManager").save_game()
 	get_tree().quit()
+
+
+## 위장/숨김 모드 설정 — main.gd에서 단축키·케어메뉴로 호출.
+## mode: "normal" | "disguise" | "invisible"
+func set_hide_mode(mode: String) -> void:
+	if mode == hide_mode:
+		return
+	hide_mode = mode
+	# 액세서리(응아 마커·zzz·아픔 마커) 정리
+	_zzz.visible = false
+	_sick_mark.visible = false
+	match mode:
+		"invisible":
+			_sprite.visible = false
+			_kill_bob()
+		"disguise":
+			_sprite.visible = true
+			_kill_bob()
+			_sprite.rotation = 0.0
+			_sprite.scale = _base_scale
+			# 스프라이트 하단이 지면에 닿도록 정렬 (Vector2.ZERO는 지면 아래로 잘림)
+			_sprite.position = Vector2(0.0, -SPRITE_SIZE * _base_scale.y * 0.5)
+			# 왼쪽 하단(모니터 구석)으로 순간이동 — 실제 데스크톱 아이콘처럼 자리잡음
+			var left_min: float = primary_local.position.x + 40.0 if primary_local.size.x > 0.0 else 40.0
+			var left_max: float = left_min + 160.0
+			position = Vector2(randf_range(left_min, left_max), ground_y)
+			if not _disguise_textures.is_empty():
+				_sprite.texture = _disguise_textures[randi() % _disguise_textures.size()]
+			# 위장 텍스처 없으면 그냥 현재 스프라이트 유지 (그래도 상호작용은 차단됨)
+		"normal":
+			_sprite.visible = true
+			refresh_appearance()
+			set_pose(_pose)
+
+
+func toggle_disguise() -> void:
+	set_hide_mode("normal" if hide_mode == "disguise" else "disguise")
+
+
+func toggle_invisible() -> void:
+	set_hide_mode("normal" if hide_mode == "invisible" else "invisible")
+
+
+func _load_disguise_textures() -> void:
+	_disguise_textures.clear()
+	for fname in DISGUISE_FILES:
+		var res_path: String = "res://assets/sprites/disguise/" + str(fname)
+		if not ResourceLoader.exists(res_path):
+			continue
+		var tex = load(res_path)
+		if tex != null and tex is Texture2D:
+			_disguise_textures.append(tex)

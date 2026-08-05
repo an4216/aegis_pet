@@ -22,6 +22,10 @@ class CounterHelper
     const int VK_MBUTTON = 0x04;
     const int VK_XBUTTON1 = 0x05;   // 마우스 옆 버튼
     const int VK_XBUTTON2 = 0x06;
+    const int VK_SHIFT   = 0x10;
+    const int VK_CONTROL = 0x11;
+    const int VK_MENU    = 0x12;   // Alt
+    const int VK_H       = 0x48;
     const int POLL_MS = 30;
     const int WRITE_INTERVAL_MS = 3000;
     const int IDLE_THRESHOLD_MS = 60000;  // 1분 무입력이면 비활성
@@ -33,6 +37,7 @@ class CounterHelper
         uint parentPid = args.Length > 1 ? uint.Parse(args[1]) : 0;
 
         long kb = 0, mouse = 0;
+        long disguiseToggleCount = 0, hideToggleCount = 0;
         double activeSec = 0.0, fridayActiveSec = 0.0;
         bool[] prev = new bool[256];
         int msSinceWrite = 0;
@@ -40,6 +45,11 @@ class CounterHelper
 
         while (true)
         {
+            // 조합키 상태 스냅샷 (edge 검출에 사용)
+            bool ctrlHeld = (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0;
+            bool shiftHeld = (GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0;
+            bool altHeld = (GetAsyncKeyState(VK_MENU) & 0x8000) != 0;
+
             // 0x01부터 시작해야 마우스 VK(0x01~0x06)를 카운트. VK_CANCEL(0x03)은 스킵.
             for (int vk = 0x01; vk <= 0xFE; vk++)
             {
@@ -47,9 +57,17 @@ class CounterHelper
                 bool isDown = (GetAsyncKeyState(vk) & 0x8000) != 0;
                 if (isDown && !prev[vk])
                 {
-                    if (vk == VK_LBUTTON || vk == VK_RBUTTON || vk == VK_MBUTTON
-                        || vk == VK_XBUTTON1 || vk == VK_XBUTTON2) mouse++;
-                    else kb++;
+                    // 위장/숨김 단축키 edge — 진화 카운트에는 반영 안 함
+                    bool isChord = false;
+                    if (vk == VK_H && ctrlHeld && shiftHeld && !altHeld) { disguiseToggleCount++; isChord = true; }
+                    else if (vk == VK_H && ctrlHeld && altHeld && !shiftHeld) { hideToggleCount++; isChord = true; }
+
+                    if (!isChord)
+                    {
+                        if (vk == VK_LBUTTON || vk == VK_RBUTTON || vk == VK_MBUTTON
+                            || vk == VK_XBUTTON1 || vk == VK_XBUTTON2) mouse++;
+                        else kb++;
+                    }
                 }
                 prev[vk] = isDown;
             }
@@ -77,7 +95,9 @@ class CounterHelper
                     string json = "{\"kb\":" + kb + ",\"mouse\":" + mouse
                         + ",\"active_sec\":" + activeSec.ToString("F1")
                         + ",\"friday_active_sec\":" + fridayActiveSec.ToString("F1")
-                        + ",\"idle_ms\":" + lastIdleMs + "}";
+                        + ",\"idle_ms\":" + lastIdleMs
+                        + ",\"disguise_toggle\":" + disguiseToggleCount
+                        + ",\"hide_toggle\":" + hideToggleCount + "}";
                     File.WriteAllText(outPath + ".tmp", json);
                     if (File.Exists(outPath)) File.Delete(outPath);
                     File.Move(outPath + ".tmp", outPath);
