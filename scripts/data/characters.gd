@@ -11,6 +11,7 @@ const EVOLVED_NAMES := {
 	"mundeok": "문팀장", "geobujang": "거이사님",
 	"bulgeumjo": "불사조", "seureureuk": "스르신",
 	"tokki": "다이어토", "ddungsil": "뚱과장",
+	"bichon": "달솔",
 }
 
 # 최종 진화형 이름 (Plan FR-15 v4)
@@ -20,6 +21,7 @@ const EVOLVED_2_NAMES := {
 	"mundeok": "문사장", "geobujang": "거회장",
 	"bulgeumjo": "영원조", "seureureuk": "자유혼",
 	"tokki": "헬토", "ddungsil": "뚱대박",
+	"bichon": "별솔",
 }
 
 
@@ -30,17 +32,34 @@ static func get_evolved_name(species: String) -> String:
 static func get_evolved_2_name(species: String) -> String:
 	return EVOLVED_2_NAMES.get(species, species)
 
+
+# 몸통 시각 크기 보정 — 포즈 시트 원본 아트가 캔버스를 차지하는 비율이 캐릭터마다 달라
+# 생기는 편차를 상쇄한다. idle.png 알파 바운딩박스 실측(높이) 기준, 진화단계(base/evolved/
+# evolved2)별 전체 캐릭터 공통 목표 높이로 정규화한 보정값 — 값이 클수록 원본이 작게 그려진 것.
+const BODY_SCALE := {
+	"mochi": {"base": 1.538, "evolved": 0.978, "evolved2": 1.009},
+	"ppiyak": {"base": 0.978, "evolved": 1.014, "evolved2": 1.161},
+	"haemjji": {"base": 0.996, "evolved": 0.97, "evolved2": 0.982},
+	"kkubeok": {"base": 1.0, "evolved": 0.991, "evolved2": 1.023},
+	"nyang": {"base": 1.023, "evolved": 0.978, "evolved2": 1.0},
+	"kong": {"base": 0.991, "evolved": 1.282, "evolved2": 0.978},
+	"mundeok": {"base": 0.978, "evolved": 1.042, "evolved2": 1.023},
+	"geobujang": {"base": 0.978, "evolved": 1.0, "evolved2": 1.0},
+	"bulgeumjo": {"base": 0.987, "evolved": 0.978, "evolved2": 1.126},
+	"seureureuk": {"base": 0.991, "evolved": 0.987, "evolved2": 1.042},
+	"tokki": {"base": 1.289, "evolved": 1.289, "evolved2": 1.335},
+	"ddungsil": {"base": 1.072, "evolved": 1.109, "evolved2": 1.394},
+}
+
+
+static func get_body_scale(species: String, tier: String) -> float:
+	return BODY_SCALE.get(species, {}).get(tier, 1.0)
+
 const CHARACTERS := {
 	"bichon": {
-		"name_kr": "비숑", "rarity": "uncommon",
-		"stat_modifiers": {},
-		"care_modifiers": {},
-		"special": [],
-	},
-	"pink_cat_baby": {
-		"name_kr": "핑냥이", "rarity": "uncommon",
-		"stat_modifiers": {},
-		"care_modifiers": {"pet": 1.2},
+		"name_kr": "해솔", "rarity": "uncommon",
+		"stat_modifiers": {"happiness_decay": 0.8},
+		"care_modifiers": {"pet": 1.3},
 		"special": [],
 	},
 	"mochi": {
