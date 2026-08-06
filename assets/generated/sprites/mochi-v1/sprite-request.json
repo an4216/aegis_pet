@@ -1,0 +1,159 @@
+{
+  "version": 1,
+  "kind": "sprite-gen-request",
+  "engine": "component-row",
+  "character": {
+    "id": "mochi",
+    "description": "Mochi, a soft pastel-pink half-moon jelly slime blob mascot with no arms/legs",
+    "base_image": "base-source.png"
+  },
+  "cell": {
+    "shape": "rect",
+    "width": 192,
+    "height": 208,
+    "safe_margin_x": 18,
+    "safe_margin_y": 16
+  },
+  "chroma_key": {
+    "name": "cyan",
+    "hex": "#00FFFF",
+    "rgb": [
+      0,
+      255,
+      255
+    ],
+    "selection": "auto",
+    "score": 249.12,
+    "min_subject_distance": 219.39,
+    "background": {
+      "mode": "transparent",
+      "opaque_border_fraction": 0.0,
+      "subject_pixels": 18124
+    },
+    "candidates": [
+      {
+        "name": "magenta",
+        "hex": "#FF00FF",
+        "score": 168.75,
+        "min_subject_distance": 145.36,
+        "clears_erase_radius": true
+      },
+      {
+        "name": "green",
+        "hex": "#00FF00",
+        "score": 247.49,
+        "min_subject_distance": 226.15,
+        "clears_erase_radius": true
+      },
+      {
+        "name": "cyan",
+        "hex": "#00FFFF",
+        "score": 249.12,
+        "min_subject_distance": 219.39,
+        "clears_erase_radius": true
+      },
+      {
+        "name": "blue",
+        "hex": "#004DFF",
+        "score": 237.91,
+        "min_subject_distance": 201.69,
+        "clears_erase_radius": true
+      }
+    ],
+    "selection_reason": "highest 1st-percentile subject distance among the 4 candidate(s) clearing the 96 erase radius"
+  },
+  "states": {
+    "idle": {
+      "frames": 4,
+      "fps": 4,
+      "loop": true,
+      "action": "subtle breathing squash and stretch while sitting still, one blink"
+    },
+    "walk": {
+      "frames": 8,
+      "fps": 10,
+      "loop": true,
+      "action": "bouncing/wobbling locomotion cycle, the blob body squashes down and stretches up as it hops forward, no legs"
+    },
+    "sleep": {
+      "frames": 4,
+      "fps": 4,
+      "loop": true,
+      "action": "lying flattened on the ground, eyes closed, gentle breathing rise and fall"
+    },
+    "eat": {
+      "frames": 4,
+      "fps": 6,
+      "loop": true,
+      "action": "mouth opening and closing while eating, slight body jiggle"
+    },
+    "sick": {
+      "frames": 4,
+      "fps": 4,
+      "loop": true,
+      "action": "drooping and melting slightly, pained squinting expression, pale color"
+    },
+    "sulk": {
+      "frames": 4,
+      "fps": 4,
+      "loop": true,
+      "action": "slumped and deflated posture, pouting expression"
+    },
+    "dragged": {
+      "frames": 4,
+      "fps": 8,
+      "loop": true,
+      "action": "dangling and swaying while held up, surprised wide eyes"
+    },
+    "fall": {
+      "frames": 4,
+      "fps": 10,
+      "loop": true,
+      "action": "falling through the air, body stretched vertically, flailing"
+    },
+    "land": {
+      "frames": 4,
+      "fps": 10,
+      "loop": false,
+      "action": "impact squash on landing then recovering back to round shape"
+    },
+    "pet": {
+      "frames": 4,
+      "fps": 6,
+      "loop": false,
+      "action": "happy reaction to being petted, eyes closed content smile, gentle wobble"
+    },
+    "play": {
+      "frames": 4,
+      "fps": 8,
+      "loop": false,
+      "action": "excited bouncing up and down playfully, joyful expression"
+    },
+    "file_hover": {
+      "frames": 4,
+      "fps": 8,
+      "loop": false,
+      "action": "curious sniffing lean toward something nearby, mouth opening"
+    },
+    "file_consume": {
+      "frames": 4,
+      "fps": 8,
+      "loop": false,
+      "action": "chewing and swallowing motion, satisfied expression"
+    },
+    "poop": {
+      "frames": 4,
+      "fps": 6,
+      "loop": true,
+      "action": "straining pose then relief expression"
+    }
+  },
+  "style": "match the attached base/anchor reference image EXACTLY: same pixel density (logical pixel block size), same body proportions, same outline weight, same palette, same shading style, same level of detail. Do not restyle, do not change proportions, do not add or remove detail density. Avoid polished illustration, painterly rendering, anime key art, 3D render, vector app-icon polish, glossy lighting, soft gradients, and anti-aliased high-detail edges.",
+  "motion_phase_guides": false,
+  "layout": "taxonomy/v1",
+  "chroma": {
+    "mode": "rgb",
+    "unmix_reach": 4,
+    "spill_max_fraction": 0.005
+  }
+}

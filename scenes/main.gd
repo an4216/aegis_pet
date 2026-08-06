@@ -15,6 +15,7 @@ var care_menu: Control
 var stats_popup: Control
 var bubble: Control
 var notebook: Control
+var admin_console: Control
 var reset_confirm: Control
 var speech: Node
 var assistant: Node
@@ -42,7 +43,7 @@ func _ready() -> void:
 
 	pet = load("res://scenes/pet/pet.tscn").instantiate()
 	pet.screen_size = Vector2(screen_rect.size)
-	pet.ground_y = ground_bottom - 6.0
+	pet.ground_y = ground_bottom + 4.0
 	pet.primary_local = primary_local
 	add_child(pet)
 
@@ -67,7 +68,8 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	# 수첩이 열려 있을 때만 키보드 입력 허용 (텍스트 입력용, 닫히면 다시 비침습)
-	var need_focus: bool = notebook != null and notebook.visible
+	var need_focus: bool = (notebook != null and notebook.visible) \
+		or (admin_console != null and admin_console.visible)
 	if get_window().unfocusable == need_focus:
 		get_window().unfocusable = not need_focus
 	_update_passthrough()
@@ -150,6 +152,15 @@ func _setup_ui() -> void:
 	notebook = load("res://scenes/ui/notebook.tscn").instantiate()
 	notebook.z_index = 100
 	add_child(notebook)
+
+	# 관리자 콘솔(QA용 캐릭터 테스트 패널) — 릴리즈 빌드에는 노출되지 않아야 하므로
+	# 디버그 빌드(에디터 실행·debug export)에서만 생성한다.
+	if OS.is_debug_build():
+		admin_console = load("res://scenes/ui/admin_console.tscn").instantiate()
+		admin_console.z_index = 100
+		add_child(admin_console)
+		admin_console.setup(pet)
+
 	assistant = load("res://scripts/assistant.gd").new()
 	assistant.name = "Assistant"
 	add_child(assistant)
@@ -218,6 +229,8 @@ func _setup_tray() -> void:
 	tray_menu.add_check_item("창 위 놀이 (점프)", 5)
 	tray_menu.add_item("📔 수첩 (할 일·리마인더·집중)", 6)
 	tray_menu.add_check_item("새벽 자동 업데이트", 9)
+	if OS.is_debug_build():
+		tray_menu.add_item("🛠️ 관리자 콘솔 (캐릭터 테스트)", 10)
 	tray_menu.add_separator()
 	tray_menu.add_item("🥚 처음부터 다시 키우기", 7)
 	tray_menu.add_item("종료", 4)
@@ -278,6 +291,13 @@ func _on_tray_action(id: int) -> void:
 				notebook.open_at_corner(Vector2(screen_rect.size))
 		7:
 			_show_reset_confirm()
+		10:
+			if admin_console == null:
+				return
+			if admin_console.visible:
+				admin_console.visible = false
+			else:
+				admin_console.open_at_corner(Vector2(screen_rect.size))
 		8:
 			bubble.say("업데이트 다운로드 중… 끝나면 자동으로 다시 켜질게!", pet, Vector2(screen_rect.size), 10.0)
 			updater.start_update()
@@ -491,6 +511,30 @@ const REGION_GRID := 32.0
 ## 경계에 흰 줄이 번쩍인다 → 모든 사각형을 32px 격자에 스냅해 갱신 빈도를 완화한다.
 ## (Godot의 mouse_passthrough 전체 플래그는 이 환경에서 OS에 적용되지 않음 — 검증됨)
 func _update_passthrough() -> void:
+	# 드래그 중(Dragged/Fall)은 마우스를 그대로 따라가 프레임당 이동거리가 커서, 아무리
+	# 여백을 키워도 SetWindowRgn 적용 지연(다음 프레임에야 반영)을 계속 빠르게 움직이면
+	# 결국 따라잡힌다 — 여백을 키우는 접근 자체가 근본 해결이 아니다. 그래서 이 두
+	# 상태에서는 클립 영역을 창 전체로 넓혀 지연이 영향을 줄 수 없게 만든다. 마우스를
+	# 붙잡고 있는 동안 다른 창 클릭이 잠깐 막히지만, 드래그 중엔 애초에 다른 곳을
+	# 클릭할 수 없으니 체감상 손해가 없다.
+	# 관리자 콘솔은 펫과 화면 반대편에 따로 떠 있는 경우가 많다 — RegionBuilder.build()는
+	# 서로 떨어진(비인접) 사각형을 이을 방법이 없어(주석 참고) 정점을 그냥 이어붙이는데,
+	# 이러면 두 사각형 사이에 의도치 않은 변이 생겨 펫이 움직인 만큼 콘솔 쪽이 잘려 보인다.
+	# 관리자 콘솔이 열려 있는 동안은 펫 위치와 무관하게 창 전체를 클릭 가능하게 둬서
+	# 이 문제를 피하고, 패널을 자유롭게 드래그해서 옮길 수 있게 한다.
+	if pet.machine.current_name() in ["Dragged", "Fall"] \
+			or (admin_console != null and admin_console.visible):
+		var full_rect := Rect2(Vector2.ZERO, Vector2(screen_rect.size))
+		if [full_rect] == _last_quantized:
+			return
+		_last_quantized = [full_rect]
+		DisplayServer.window_set_mouse_passthrough(PackedVector2Array([
+			full_rect.position,
+			Vector2(full_rect.end.x, full_rect.position.y),
+			full_rect.end,
+			Vector2(full_rect.position.x, full_rect.end.y),
+		]))
+		return
 	# 진화 배지 제거 + 이펙트를 스프라이트 안으로 이동 → 상단 확장 최소화
 	# (celebrate/play_frolic 점프는 짧아서 15px면 충분)
 	var rects: Array = [
@@ -498,7 +542,7 @@ func _update_passthrough() -> void:
 	]
 	for poop in get_tree().get_nodes_in_group("poop"):
 		rects.append(_quantize(poop.get_click_rect()))
-	for control in [care_menu, stats_popup, bubble, notebook, reset_confirm]:
+	for control in [care_menu, stats_popup, bubble, notebook, admin_console, reset_confirm]:
 		if control != null and control.visible:
 			rects.append(_quantize(control.get_global_rect().grow(12.0)))
 	if rects == _last_quantized:

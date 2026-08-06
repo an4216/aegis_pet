@@ -36,6 +36,9 @@ static func get_evolved_2_name(species: String) -> String:
 # 몸통 시각 크기 보정 — 포즈 시트 원본 아트가 캔버스를 차지하는 비율이 캐릭터마다 달라
 # 생기는 편차를 상쇄한다. idle.png 알파 바운딩박스 실측(높이) 기준, 진화단계(base/evolved/
 # evolved2)별 전체 캐릭터 공통 목표 높이로 정규화한 보정값 — 값이 클수록 원본이 작게 그려진 것.
+# BODY_SCALE_TARGET_HEIGHT 는 그 정규화 목표(스케일 1.0 기준 픽셀 높이)의 SSoT다 — 애니메이션
+# 오버라이드 시트(예: sprite-gen 산출물)도 같은 값으로 fit_scale을 잡아야 몸통 크기가 맞는다.
+const BODY_SCALE_TARGET_HEIGHT := 223.0
 const BODY_SCALE := {
 	"mochi": {"base": 1.538, "evolved": 0.978, "evolved2": 1.009},
 	"ppiyak": {"base": 0.978, "evolved": 1.014, "evolved2": 1.161},
