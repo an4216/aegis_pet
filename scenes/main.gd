@@ -42,7 +42,7 @@ func _ready() -> void:
 
 	pet = load("res://scenes/pet/pet.tscn").instantiate()
 	pet.screen_size = Vector2(screen_rect.size)
-	pet.ground_y = ground_bottom - 6.0
+	pet.ground_y = ground_bottom + 4.0
 	pet.primary_local = primary_local
 	add_child(pet)
 
@@ -491,6 +491,24 @@ const REGION_GRID := 32.0
 ## 경계에 흰 줄이 번쩍인다 → 모든 사각형을 32px 격자에 스냅해 갱신 빈도를 완화한다.
 ## (Godot의 mouse_passthrough 전체 플래그는 이 환경에서 OS에 적용되지 않음 — 검증됨)
 func _update_passthrough() -> void:
+	# 드래그 중(Dragged/Fall)은 마우스를 그대로 따라가 프레임당 이동거리가 커서, 아무리
+	# 여백을 키워도 SetWindowRgn 적용 지연(다음 프레임에야 반영)을 계속 빠르게 움직이면
+	# 결국 따라잡힌다 — 여백을 키우는 접근 자체가 근본 해결이 아니다. 그래서 이 두
+	# 상태에서는 클립 영역을 창 전체로 넓혀 지연이 영향을 줄 수 없게 만든다. 마우스를
+	# 붙잡고 있는 동안 다른 창 클릭이 잠깐 막히지만, 드래그 중엔 애초에 다른 곳을
+	# 클릭할 수 없으니 체감상 손해가 없다.
+	if pet.machine.current_name() in ["Dragged", "Fall"]:
+		var full_rect := Rect2(Vector2.ZERO, Vector2(screen_rect.size))
+		if [full_rect] == _last_quantized:
+			return
+		_last_quantized = [full_rect]
+		DisplayServer.window_set_mouse_passthrough(PackedVector2Array([
+			full_rect.position,
+			Vector2(full_rect.end.x, full_rect.position.y),
+			full_rect.end,
+			Vector2(full_rect.position.x, full_rect.end.y),
+		]))
+		return
 	# 진화 배지 제거 + 이펙트를 스프라이트 안으로 이동 → 상단 확장 최소화
 	# (celebrate/play_frolic 점프는 짧아서 15px면 충분)
 	var rects: Array = [

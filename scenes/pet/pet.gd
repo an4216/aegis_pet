@@ -348,7 +348,12 @@ func _set_bichon_animation(animation_name: String) -> void:
 	if not ResourceLoader.exists(path):
 		push_error("Missing animated pet sprite sheet: %s" % path)
 		return
-	var texture: Texture2D = load(path)
+	# 캐시 무시 로드 — 해솔의 상태별 시트는 장당 6~12MB(비압축 RGBA)라, 기본 캐시(load())로
+	# 불러오면 한 세션에서 여러 상태를 거칠수록 전부 영구 누적된다(관찰된 상주 메모리 급증의
+	# 주원인). CACHE_MODE_IGNORE로 불러오면 _sprite.texture가 교체되는 순간 참조가 끊겨
+	# 즉시 해제되고, 현재 활성 상태 한 장만 메모리에 남는다. 같은 상태 재진입 시 디스크에서
+	# 다시 디코딩하지만 이 크기(<1MB PNG)는 수십 ms 내로 체감 지연이 없다.
+	var texture: Texture2D = ResourceLoader.load(path, "", ResourceLoader.CACHE_MODE_IGNORE)
 	_sprite.texture = texture
 	_sprite.hframes = int(config["columns"])
 	_sprite.vframes = int(config["rows"])
