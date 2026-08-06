@@ -9,6 +9,7 @@ var _anim_t := 0.0
 var _frame := 0
 var _face_mirrored := false
 var _walk_static := false
+var _use_animated_walk := false
 
 
 func enter() -> void:
@@ -16,6 +17,12 @@ func enter() -> void:
 	var margin: float = pet.horizontal_edge_margin()
 	_target_x = randf_range(margin, pet.screen_size.x - margin)
 	pet.face_towards(_target_x)
+	# 걷기 전용 다중 프레임 시트가 있는 종족은 그쪽을 쓰고, 없으면 기존 walk1/walk2 폴백.
+	_use_animated_walk = pet.start_animated_walk()
+	_anim_t = 0.0
+	_frame = 0
+	if _use_animated_walk:
+		return
 	_walk_static = Characters.is_walk_static(pet.ps.species)
 	# 걷기 프레임이 하나뿐인 캐릭터는 waddle(좌우 흔들기) 모션으로 보완
 	pet.walk_bob(true, _walk_static)
@@ -23,13 +30,15 @@ func enter() -> void:
 	if Characters.is_walk_face_inverted(pet.ps.species):
 		pet.mirror_face()
 		_face_mirrored = true
-	_anim_t = 0.0
-	_frame = 0
 	pet.set_pose("walk1")
 
 
 func exit() -> void:
-	pet.walk_bob(false)
+	if _use_animated_walk:
+		pet.stop_animated_walk()
+		_use_animated_walk = false
+	else:
+		pet.walk_bob(false)
 	if _face_mirrored:
 		pet.mirror_face()
 		_face_mirrored = false
@@ -37,11 +46,12 @@ func exit() -> void:
 
 
 func update(delta: float) -> void:
-	_anim_t += delta
-	if _anim_t >= FRAME_SECONDS and not _walk_static:
-		_anim_t = 0.0
-		_frame = 1 - _frame
-		pet.set_pose("walk1" if _frame == 0 else "walk2")
+	if not _use_animated_walk:
+		_anim_t += delta
+		if _anim_t >= FRAME_SECONDS and not _walk_static:
+			_anim_t = 0.0
+			_frame = 1 - _frame
+			pet.set_pose("walk1" if _frame == 0 else "walk2")
 	var speed: float = pet.move_speed()
 	var dx := _target_x - pet.position.x
 	if absf(dx) <= speed * delta:

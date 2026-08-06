@@ -4,7 +4,7 @@ extends Node2D
 signal care_menu_requested(pos: Vector2)
 
 const Characters := preload("res://scripts/data/characters.gd")
-const STAGE_SCALE := {"egg": 0.5, "baby": 0.35, "child": 0.42, "adult": 0.5}
+const STAGE_SCALE := {"egg": 0.3, "baby": 0.21, "child": 0.252, "adult": 0.3}  # 기존 대비 60% 크기
 const POSES := ["idle", "walk1", "walk2", "sleep", "happy", "sulk", "sick", "eat"]
 const EGG_POSES := ["idle", "tilt1", "tilt2", "crack"]
 const SPRITE_SIZE := 256.0
@@ -31,6 +31,17 @@ const BICHON_ANIMATIONS := {
 	"Land": {"path": "res://assets/sprites/bichon/land_4f_chromakey.png", "columns": 4, "rows": 1, "frames": 4, "fps": 10.0, "loop": false, "visible_extent": 431.0, "horizontal_offsets": [-25.5, 14.0, 2.0, 37.0], "foot_padding": [162.0, 112.0, 144.0, 138.0]},
 	"Pet": {"path": "res://assets/sprites/bichon/petted_8f_chromakey.png", "columns": 4, "rows": 2, "frames": 8, "fps": 10.0, "loop": false, "visible_extent": 382.0, "horizontal_offsets": [-2.5, 0.5, 2.0, 7.5, 0.5, 1.0, 2.0, 4.0], "foot_padding": [32.0, 32.0, 32.0, 32.0, 65.0, 65.0, 63.0, 63.0]},
 	"Play": {"path": "res://assets/sprites/bichon/play_8f_chromakey.png", "columns": 4, "rows": 2, "frames": 8, "fps": 10.0, "loop": false, "visible_extent": 344.0, "horizontal_offsets": [7.0, 8.5, 16.0, 23.5, 4.0, 10.5, 16.5, 10.5], "foot_padding": [89.0, 84.0, 96.0, 129.0, 104.0, 94.0, 67.0, 60.0]},
+}
+
+# 포즈 시트 캐릭터의 걷기만 다중 프레임 애니메이션으로 대체 (sprite-gen 파일럿).
+# 나머지 포즈(idle/sleep/eat 등)는 기존 단일 이미지 시스템을 그대로 쓴다.
+# 프레임별로 스케일을 다시 계산하는 방식(frame_heights)을 한 번 시도했으나, 모찌처럼
+# 세로 높이가 81~160px로 크게 요동치는 스쿼시-스트레치 시트에서는 폭까지 반대로 같이
+# 요동쳐(웅크릴 때 넓어지고 늘어날 때 좁아짐) "몸통이 늘어났다 줄었다"하는 것처럼 보였다.
+# idle과 똑같은 고정 배율(Characters.get_body_scale) 하나만 쓰면 원본 아트 자체의
+# 스쿼시-스트레치만 남고 배율은 흔들리지 않는다 — 다른 포즈/캐릭터가 이미 쓰는 방식과 동일.
+const ANIMATED_WALK_OVERRIDES := {
+	"mochi": {"path": "res://assets/sprites/mochi/walk_8f.png", "columns": 8, "rows": 1, "frames": 8, "fps": 10.0, "loop": true, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0, 16.0, 16.0]},
 }
 
 var ps: Node
@@ -66,6 +77,11 @@ var _bichon_frame_foot_padding := []
 var _bichon_frame_horizontal_offsets := []
 var _bichon_sprite_frame_sequence := []
 var _idle_tween: Tween
+var _body_tier := "base"          # refresh_appearance()가 채움: base|evolved|evolved2
+var _walk_override_active := false
+var _walk_override_fps := 0.0
+var _walk_override_frame_count := 0
+var _walk_override_loop := true
 
 # 위장/숨김 모드 (재시작 시 항상 normal — save에 저장 안 함)
 var hide_mode: String = "normal"   # "normal" | "disguise" | "invisible"
@@ -209,6 +225,7 @@ func set_pose(pose: String) -> void:
 func refresh_appearance() -> void:
 	_frames.clear()
 	_pose = "idle"
+	_walk_override_active = false
 	if _is_animated_pet():
 		var state_name: String = machine.current_name() if machine != null else "Idle"
 		var animation_name := _bichon_override if not _bichon_override.is_empty() else _animation_for_state(state_name)
@@ -223,14 +240,14 @@ func refresh_appearance() -> void:
 		dirs.push_front("res://assets/sprites/chars/%s_evolved/" % char_key)
 	if ps.evolved_2 and ps.stage != "egg":
 		dirs.push_front("res://assets/sprites/chars/%s_evolved2/" % char_key)
-	var body_tier := "base"
+	_body_tier = "base"
 	for dir_path in dirs:
 		if not ResourceLoader.exists(dir_path + "idle.png"):
 			continue
 		if dir_path.ends_with("_evolved2/"):
-			body_tier = "evolved2"
+			_body_tier = "evolved2"
 		elif dir_path.ends_with("_evolved/"):
-			body_tier = "evolved"
+			_body_tier = "evolved"
 		for pose in pose_list:
 			var frame_path: String = dir_path + pose + ".png"
 			if ResourceLoader.exists(frame_path):
@@ -253,7 +270,7 @@ func refresh_appearance() -> void:
 	_bichon_frame_horizontal_offsets = []
 	# 임포트 캐시가 없거나 로드가 실패하면 texture가 null이므로 캔버스 기본값으로 폴백
 	_frame_size = _sprite.texture.get_size() if _sprite.texture != null else Vector2.ONE * SPRITE_SIZE
-	_base_scale = Vector2.ONE * STAGE_SCALE.get(ps.stage, 0.5) * Characters.get_body_scale(ps.species, body_tier)
+	_base_scale = Vector2.ONE * STAGE_SCALE.get(ps.stage, 0.5) * Characters.get_body_scale(ps.species, _body_tier)
 	_sprite.scale = _base_scale
 	_sprite.position = _sprite_anchor()
 	# Zzz·@_@ 라벨은 스프라이트 상단 근처에 (진화 배지는 제거됨 — 위쪽 클릭 영역 최소화)
@@ -300,6 +317,13 @@ func _is_animated_pet() -> bool:
 	return _is_bichon()
 
 
+## bichon류(전신 애니메이션 펫)뿐 아니라 포즈 캐릭터의 걷기 오버라이드가 켜져 있을 때도 참.
+## get_click_rect()/horizontal_edge_margin() 등 몸통 크기 계산은 이 조건을 쓰지 않는다 —
+## 포즈 캐릭터는 걷는 동안에도 자기 몸통 크기(STAGE_SCALE*BODY_SCALE) 그대로 유지해야 한다.
+func _has_active_frame_animation() -> bool:
+	return _is_bichon() or _walk_override_active
+
+
 func _animation_catalog() -> Dictionary:
 	return BICHON_ANIMATIONS
 
@@ -344,6 +368,17 @@ func _set_bichon_animation(animation_name: String) -> void:
 
 
 func _advance_bichon_animation(delta: float) -> void:
+	if _walk_override_active:
+		if _walk_override_fps <= 0.0 or _walk_override_frame_count <= 0:
+			return
+		_bichon_elapsed += delta
+		var override_frame := int(_bichon_elapsed * _walk_override_fps)
+		if _walk_override_loop:
+			override_frame %= _walk_override_frame_count
+		else:
+			override_frame = mini(override_frame, _walk_override_frame_count - 1)
+		_set_bichon_frame(override_frame)
+		return
 	if not _is_animated_pet() or _bichon_animation.is_empty():
 		return
 	var config: Dictionary = _animation_catalog().get(_bichon_animation, {})
@@ -358,6 +393,47 @@ func _advance_bichon_animation(delta: float) -> void:
 	else:
 		next_frame = mini(next_frame, frames - 1)
 	_set_bichon_frame(next_frame)
+
+
+## 포즈 캐릭터의 걷기를 다중 프레임 시트로 재생. walk_state.gd가 걷기 진입 시 호출.
+## 종족에 오버라이드가 없으면 false를 반환해 호출부가 기존 walk1/walk2 토글로 폴백한다.
+func start_animated_walk() -> bool:
+	var config: Dictionary = ANIMATED_WALK_OVERRIDES.get(ps.species, {})
+	if config.is_empty():
+		return false
+	var texture: Texture2D = load(String(config["path"]))
+	if texture == null:
+		return false
+	_walk_override_active = true
+	_sprite.texture = texture
+	_sprite.hframes = int(config["columns"])
+	_sprite.vframes = int(config["rows"])
+	_frame_size = texture.get_size() / Vector2(_sprite.hframes, _sprite.vframes)
+	_bichon_frame_foot_padding = config.get("foot_padding", [])
+	_bichon_frame_horizontal_offsets = config.get("horizontal_offsets", [])
+	_bichon_sprite_frame_sequence = config.get("sprite_frame_sequence", [])
+	_walk_override_fps = float(config.get("fps", 10.0))
+	_walk_override_frame_count = int(config.get("frames", int(config["columns"]) * int(config["rows"])))
+	_walk_override_loop = bool(config.get("loop", true))
+	_bichon_elapsed = 0.0
+	# idle과 같은 고정 배율 — 원본 시트의 스쿼시-스트레치만 자연스럽게 보이고 배율 자체는 흔들리지 않는다.
+	_base_scale = Vector2.ONE * float(STAGE_SCALE.get(ps.stage, 0.5)) * Characters.get_body_scale(ps.species, _body_tier)
+	_sprite.scale = _base_scale
+	_set_bichon_frame(0)
+	return true
+
+
+## 걷기 오버라이드 종료. 호출 직후 walk_state.exit()의 set_pose("idle")가 텍스처를 되돌린다.
+func stop_animated_walk() -> void:
+	if not _walk_override_active:
+		return
+	_walk_override_active = false
+	_bichon_frame_foot_padding = []
+	_bichon_frame_horizontal_offsets = []
+	_bichon_sprite_frame_sequence = []
+	_frame_size = Vector2.ONE * SPRITE_SIZE
+	_base_scale = Vector2.ONE * float(STAGE_SCALE.get(ps.stage, 0.5)) * Characters.get_body_scale(ps.species, _body_tier)
+	_sprite.scale = _base_scale
 
 
 func _set_bichon_frame(frame_index: int) -> void:
@@ -394,10 +470,10 @@ func _sprite_anchor() -> Vector2:
 
 func _position_sprite_for_current_frame() -> void:
 	_sprite.position = _sprite_anchor()
-	if _is_animated_pet() and _bichon_frame < _bichon_frame_horizontal_offsets.size():
+	if _has_active_frame_animation() and _bichon_frame < _bichon_frame_horizontal_offsets.size():
 		var horizontal_direction: float = -1.0 if _sprite.flip_h else 1.0
 		_sprite.position.x += float(_bichon_frame_horizontal_offsets[_bichon_frame]) * _base_scale.x * horizontal_direction
-	if _is_animated_pet() and _bichon_frame < _bichon_frame_foot_padding.size():
+	if _has_active_frame_animation() and _bichon_frame < _bichon_frame_foot_padding.size():
 		_sprite.position.y += float(_bichon_frame_foot_padding[_bichon_frame]) * _base_scale.y
 
 
@@ -648,7 +724,7 @@ func _kill_idle_breathe() -> void:
 
 
 func _keep_bichon_grounded() -> bool:
-	if not _is_animated_pet():
+	if not _has_active_frame_animation():
 		return false
 	_kill_idle_breathe()
 	_position_sprite_for_current_frame()

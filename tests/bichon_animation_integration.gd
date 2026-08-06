@@ -94,7 +94,7 @@ func _init() -> void:
 			continue
 		pet.play_state_animation(animation)
 		if visible_extent > 0.0:
-			var expected_scale: float = 256.0 * 0.35 * pet.BICHON_VISIBLE_SIZE_MULTIPLIER / visible_extent
+			var expected_scale: float = 256.0 * float(pet.STAGE_SCALE["baby"]) * pet.BICHON_VISIBLE_SIZE_MULTIPLIER / visible_extent
 			check(is_equal_approx(pet._base_scale.x, expected_scale), "%s scales from visible content bounds" % animation)
 		var first_expected_y: float = pet._sprite_anchor().y + float(foot_padding[0]) * pet._base_scale.y
 		check(is_equal_approx(pet._sprite.position.y, first_expected_y), "%s first frame is aligned to the ground line" % animation)
