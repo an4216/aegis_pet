@@ -38,20 +38,22 @@ static func get_evolved_2_name(species: String) -> String:
 # evolved2)별 전체 캐릭터 공통 목표 높이로 정규화한 보정값 — 값이 클수록 원본이 작게 그려진 것.
 # BODY_SCALE_TARGET_HEIGHT 는 그 정규화 목표(스케일 1.0 기준 픽셀 높이)의 SSoT다 — 애니메이션
 # 오버라이드 시트(예: sprite-gen 산출물)도 같은 값으로 fit_scale을 잡아야 몸통 크기가 맞는다.
-const BODY_SCALE_TARGET_HEIGHT := 223.0
+# 2026-08-06: 정지 포즈 원본 캔버스를 256->128로 축소(파일 용량 절감)하면서, 화면 표시 크기를
+# 그대로 유지하려고 이 아래 모든 보정값을 2배로 올렸다 — 목표 높이도 같은 캔버스 기준이라 절반으로.
+const BODY_SCALE_TARGET_HEIGHT := 111.5
 const BODY_SCALE := {
-	"mochi": {"base": 1.538, "evolved": 0.978, "evolved2": 1.009},
-	"ppiyak": {"base": 0.978, "evolved": 1.014, "evolved2": 1.161},
-	"haemjji": {"base": 0.996, "evolved": 0.97, "evolved2": 0.982},
-	"kkubeok": {"base": 1.0, "evolved": 0.991, "evolved2": 1.023},
-	"nyang": {"base": 1.023, "evolved": 0.978, "evolved2": 1.0},
-	"kong": {"base": 0.991, "evolved": 1.282, "evolved2": 0.978},
-	"mundeok": {"base": 0.978, "evolved": 1.042, "evolved2": 1.023},
-	"geobujang": {"base": 0.978, "evolved": 1.0, "evolved2": 1.0},
-	"bulgeumjo": {"base": 0.987, "evolved": 0.978, "evolved2": 1.126},
-	"seureureuk": {"base": 0.991, "evolved": 0.987, "evolved2": 1.042},
-	"tokki": {"base": 1.289, "evolved": 1.289, "evolved2": 1.335},
-	"ddungsil": {"base": 1.072, "evolved": 1.109, "evolved2": 1.394},
+	"mochi": {"base": 3.076, "evolved": 1.956, "evolved2": 2.018},
+	"ppiyak": {"base": 1.956, "evolved": 2.028, "evolved2": 2.322},
+	"haemjji": {"base": 1.992, "evolved": 1.94, "evolved2": 1.964},
+	"kkubeok": {"base": 2.0, "evolved": 1.982, "evolved2": 2.046},
+	"nyang": {"base": 2.046, "evolved": 1.956, "evolved2": 2.0},
+	"kong": {"base": 1.982, "evolved": 2.564, "evolved2": 1.956},
+	"mundeok": {"base": 1.956, "evolved": 2.084, "evolved2": 2.046},
+	"geobujang": {"base": 1.956, "evolved": 2.0, "evolved2": 2.0},
+	"bulgeumjo": {"base": 1.974, "evolved": 1.956, "evolved2": 2.252},
+	"seureureuk": {"base": 1.982, "evolved": 1.974, "evolved2": 2.084},
+	"tokki": {"base": 2.578, "evolved": 2.578, "evolved2": 2.67},
+	"ddungsil": {"base": 2.144, "evolved": 2.218, "evolved2": 2.788},
 }
 
 

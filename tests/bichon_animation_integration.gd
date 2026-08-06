@@ -63,10 +63,10 @@ func _init() -> void:
 	pet.play_state_animation("Walk")
 	pet.walk_bob(true)
 	check(pet._sprite.scale.is_equal_approx(pet._base_scale), "Walking clears the prior idle scale tween")
-	var first_frame_feet_y: float = pet._sprite.position.y + (305.0 - pet._frame_size.y * 0.5) * pet._base_scale.y
+	var first_frame_feet_y: float = pet._sprite.position.y + (152.5 - pet._frame_size.y * 0.5) * pet._base_scale.y
 	check(absf(first_frame_feet_y) <= 1.0, "First walk frame paws stay on the taskbar ground line")
 	pet._advance_bichon_animation(0.5)
-	var later_frame_feet_y: float = pet._sprite.position.y + (283.0 - pet._frame_size.y * 0.5) * pet._base_scale.y
+	var later_frame_feet_y: float = pet._sprite.position.y + (141.5 - pet._frame_size.y * 0.5) * pet._base_scale.y
 	check(absf(later_frame_feet_y) <= 1.0, "Later walk frame paws stay on the taskbar ground line")
 	for animation in pet.BICHON_ANIMATIONS:
 		var config: Dictionary = pet.BICHON_ANIMATIONS[animation]
