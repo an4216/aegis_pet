@@ -24,6 +24,7 @@ func _init() -> void:
 	_test_hatch_distribution()
 	_test_bichon_registration()
 	_test_bichon_animation_manifest()
+	_test_ppiyak_animated_sleep_manifest()
 	_test_serialize_roundtrip()
 	_test_stage_progression()
 	_test_digest()
@@ -162,6 +163,46 @@ func _test_bichon_animation_manifest() -> void:
 	for animation in expected:
 		var config: Dictionary = PetScript.BICHON_ANIMATIONS.get(animation, {})
 		check(config.get("frames", 0) == expected[animation], "비숑 %s 프레임 수" % animation)
+
+
+# 삐약 계열 잠자기 오버라이드: 3티어 × 6프레임 시트의 매니페스트 정합성.
+# (이번 스코프는 Sleep 한 상태만이므로 10상태 커버리지는 검사하지 않는다 — 의도된 부분 업그레이드.)
+func _test_ppiyak_animated_sleep_manifest() -> void:
+	var by_tier: Dictionary = PetScript.ANIMATED_POSE_OVERRIDES.get("ppiyak", {}).get("states", {}).get("Sleep", {})
+	for tier in ["base", "evolved", "evolved2"]:
+		check(by_tier.has(tier), "삐약 %s 잠자기 오버라이드 등록" % tier)
+		var config: Dictionary = by_tier.get(tier, {})
+		if config.is_empty():
+			continue
+		var frames: int = int(config.get("frames", 0))
+		var cells: int = int(config.get("columns", 0)) * int(config.get("rows", 0))
+		check(frames == 6, "삐약 %s 잠자기 6프레임" % tier)
+		check(cells == frames, "삐약 %s 격자 칸 수(%d) == frames(%d)" % [tier, cells, frames])
+		check(bool(config.get("loop", false)), "삐약 %s 잠자기 루프" % tier)
+		check(float(config.get("fps", 0.0)) > 0.0, "삐약 %s 잠자기 fps > 0" % tier)
+		var path: String = String(config.get("path", ""))
+		check(ResourceLoader.exists(path), "삐약 %s 잠자기 시트 존재: %s" % [tier, path])
+		var texture: Texture2D = load(path) if ResourceLoader.exists(path) else null
+		check(texture != null, "삐약 %s 잠자기 시트 로드" % tier)
+		if texture != null:
+			var size: Vector2 = texture.get_size()
+			check(int(size.x) == 128 * int(config["columns"]) and int(size.y) == 128 * int(config["rows"]),
+				"삐약 %s 시트 크기 %dx%d == 격자×128" % [tier, int(size.x), int(size.y)])
+		for key in ["foot_padding", "horizontal_offsets"]:
+			var arr: Array = config.get(key, [])
+			check(arr.size() == frames, "삐약 %s %s 길이(%d) == frames(%d)" % [tier, key, arr.size(), frames])
+		var seq: Array = config.get("sprite_frame_sequence", [])
+		if not seq.is_empty():
+			check(seq.size() == frames, "삐약 %s sprite_frame_sequence 길이" % tier)
+			var in_range := true
+			for v in seq:
+				if int(v) < 0 or int(v) >= cells:
+					in_range = false
+			check(in_range, "삐약 %s sprite_frame_sequence 값이 격자 범위 내" % tier)
+	# 레거시 정지 sleep.png는 폴백용으로 남아 있어야 한다.
+	for dir_name in ["ppiyak", "ppiyak_evolved", "ppiyak_evolved2"]:
+		check(FileAccess.file_exists("res://assets/sprites/chars/%s/sleep.png" % dir_name),
+			"삐약 %s 레거시 정지 sleep.png 잔존(폴백)" % dir_name)
 
 
 func _test_bichon_evolution() -> void:
