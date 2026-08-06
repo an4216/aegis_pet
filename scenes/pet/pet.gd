@@ -309,6 +309,29 @@ func play_file_drop_reaction() -> void:
 		set_file_hover(false)
 
 
+## 관리자 콘솔(QA용) — 종족/성장단계/진화단계를 즉시 바꾸고 화면을 새로고침한다.
+## tier: "base" | "evolved" | "evolved2"
+func debug_set_appearance(species: String, stage: String, tier: String) -> void:
+	ps.species = species
+	ps.stage = stage
+	ps.evolved = tier != "base"
+	ps.evolved_2 = tier == "evolved2"
+	refresh_appearance()
+	if machine != null:
+		machine.transition_to("Egg" if stage == "egg" else "Idle")
+
+
+## 관리자 콘솔(QA용) — 상태머신을 강제 전환한다. Sick/Sulk는 조건 플래그도 맞춰서
+## _check_global()이 다음 프레임에 곧바로 되돌리지 않게 하고, 그 외 상태는 두 플래그를 꺼서
+## 이전 강제 상태가 남아있지 않게 한다.
+func debug_force_state(state_name: String) -> void:
+	if machine == null:
+		return
+	ps.is_sick = state_name == "Sick"
+	ps.is_sulking = state_name == "Sulk"
+	machine.transition_to(state_name)
+
+
 func _is_bichon() -> bool:
 	return ps != null and ps.stage != "egg" and ps.species == "bichon"
 
