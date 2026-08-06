@@ -4,7 +4,7 @@ extends Node2D
 signal care_menu_requested(pos: Vector2)
 
 const Characters := preload("res://scripts/data/characters.gd")
-const STAGE_SCALE := {"egg": 0.3, "baby": 0.21, "child": 0.252, "adult": 0.3}  # 기존 대비 60% 크기
+const STAGE_SCALE := {"egg": 0.45, "baby": 0.378, "child": 0.378, "adult": 0.45}  # 기존 대비 60% 크기(baby=child 상향) 후 전체 50% 확대
 const POSES := ["idle", "walk1", "walk2", "sleep", "happy", "sulk", "sick", "eat"]
 const EGG_POSES := ["idle", "tilt1", "tilt2", "crack"]
 const SPRITE_SIZE := 256.0
