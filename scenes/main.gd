@@ -24,6 +24,7 @@ var tray_menu: PopupMenu
 var _tray_indicator: Node
 var screen_rect: Rect2i
 var _last_quantized: Array = []
+var _pet_region_rect := Rect2()   # 펫 전용 클릭통과 영역 캐시 (히스테리시스, _update_passthrough 참고)
 var _night_check_timer := 0.0
 const NIGHT_CHECK_INTERVAL := 60.0
 const NIGHT_START_HOUR := 3
@@ -537,9 +538,14 @@ func _update_passthrough() -> void:
 		return
 	# 진화 배지 제거 + 이펙트를 스프라이트 안으로 이동 → 상단 확장 최소화
 	# (celebrate/play_frolic 점프는 짧아서 15px면 충분)
-	var rects: Array = [
-		_quantize(pet.get_click_rect().grow_individual(4.0, 15.0, 4.0, 0.0)),
-	]
+	var pet_rect: Rect2 = pet.get_click_rect().grow_individual(4.0, 15.0, 4.0, 0.0)
+	# 걷기 등으로 펫이 계속 조금씩 움직이면 32px 격자를 자주 넘나들어 SetWindowRgn이 초당
+	# 여러 번 갱신되고, 그때마다 렌더링이 같이 잘려서 경계가 깜박인다(위 주석 참고). 이전에
+	# 잡아둔 영역이 지금 펫 사각형을 여전히 포함하면 그대로 재사용하고, 정말 벗어날 때만
+	# 여유를 크게 두고 새로 잡아서 갱신 빈도를 낮춘다 — 클릭 영역이 조금 넉넉해질 뿐 손해는 작다.
+	if pet_rect.size == Vector2.ZERO or not _pet_region_rect.encloses(pet_rect):
+		_pet_region_rect = _quantize(pet_rect.grow(48.0))
+	var rects: Array = [_pet_region_rect]
 	for poop in get_tree().get_nodes_in_group("poop"):
 		rects.append(_quantize(poop.get_click_rect()))
 	for control in [care_menu, stats_popup, bubble, notebook, admin_console, reset_confirm]:
