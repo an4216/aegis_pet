@@ -2,14 +2,27 @@
 extends "res://scripts/states/state.gd"
 
 var _timer := 0.0
+var _use_animated_idle := false
 
 
 func enter() -> void:
 	pet.ps.activity = pet.ps.Activity.IDLE
 	pet.show_zzz(false)
-	pet.set_pose("idle")
+	# Idle 전용 다중 프레임 시트가 있는 종족은 그쪽을 쓰고, 없으면 기존 정지 포즈 폴백.
+	_use_animated_idle = pet.start_animated_pose("Idle")
 	_timer = randf_range(3.0, 8.0)
+	if _use_animated_idle:
+		return
+	pet.set_pose("idle")
+	# 호흡 트윈은 시트가 이미 호흡을 그리고 있으면 이중으로 겹친다 (pet.idle_breathe도 내부에서
+	# 막지만, 시트 재생 중임을 여기서 명시해 폴백 경로와 구분한다).
 	pet.idle_breathe()
+
+
+func exit() -> void:
+	if _use_animated_idle:
+		pet.stop_animated_pose()
+		_use_animated_idle = false
 
 
 func update(delta: float) -> void:

@@ -37,11 +37,21 @@ func setup(bubble_node: Node, pet_node: Node2D, size: Vector2) -> void:
 func _process(delta: float) -> void:
 	_next_in -= delta
 	if _next_in <= 0.0:
+		# 이동 중(걷기·드래그·낙하·점프·창 위)엔 말풍선을 띄우지 않는다 — 스케줄을 소비하지 않고
+		# 그냥 대기해서, 멈추는 순간 곧바로 말풍선이 뜨게 한다.
+		if _is_pet_moving():
+			return
 		_schedule()
 		if _can_speak():
 			var line := _pick_line()
 			if line != "":
 				_say(line)
+
+
+func _is_pet_moving() -> bool:
+	if pet == null or pet.machine == null:
+		return false
+	return pet.machine.current_name() in ["Walk", "Dragged", "Fall", "Jump", "Perch"]
 
 
 func _on_hatched(species: String) -> void:
