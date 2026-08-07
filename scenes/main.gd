@@ -67,6 +67,13 @@ func _ready() -> void:
 		_spawn_poop_at(Vector2(randf_range(120.0, screen_rect.size.x - 120.0), pet.ground_y))
 
 
+## X버튼·Alt+F4·작업관리자·시스템 종료 등 어떤 방식으로 닫든 정시퇴근 카운트 반영.
+## (트레이 "종료" 메뉴 경로에서도 같은 함수 호출)
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST:
+		_maybe_note_late_shutdown()
+
+
 func _process(delta: float) -> void:
 	# 수첩이 열려 있을 때만 키보드 입력 허용 (텍스트 입력용, 닫히면 다시 비침습)
 	var need_focus: bool = (notebook != null and notebook.visible) \
