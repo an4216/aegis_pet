@@ -32,6 +32,10 @@ func start() -> void:
 	if exe == "":
 		push_warning("input_probe: 헬퍼 빌드 실패 — 키보드/마우스 카운터 없이 동작")
 		return
+	# 이전 세션의 낡은 카운터가 새 세션에서 유령 hide/disguise 발동시키지 않도록
+	# helper 시작 전에 stale 파일을 삭제한다.
+	if FileAccess.file_exists(JSON_PATH):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(JSON_PATH))
 	_helper_pid = OS.create_process(exe, [
 		ProjectSettings.globalize_path(JSON_PATH),
 		str(OS.get_process_id()),
