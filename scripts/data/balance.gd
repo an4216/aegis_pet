@@ -63,6 +63,7 @@ const EVOLUTION := {
 	"seureureuk": {"metric": "late_shutdowns",    "amount": 3,        "hint": "정시퇴근(18~19시 종료) 3번"},
 	"tokki":      {"metric": "consecutive_days",  "amount": 3,        "hint": "연속 3일 출근"},
 	"ddungsil":   {"metric": "feed",              "amount": 10,       "hint": "밥 10번 먹이기 - 회식 야근 승진"},
+	"bichon":     {"metric": "files_dropped",     "amount": 15,       "hint": "파일 15개 정리해주기 - 든든한 달솔이 데뷔"},
 }
 
 # --- 최종 진화 조건 (Plan FR-15 v4) — 1차 조건 도달 이후 임계값 상향 ---
@@ -79,6 +80,7 @@ const EVOLUTION_2 := {
 	"seureureuk": {"metric": "late_shutdowns",    "amount": 10,        "hint": "정시퇴근 10번 - 완전 해방"},
 	"tokki":      {"metric": "consecutive_days",  "amount": 14,        "hint": "연속 14일 출근 - 자기관리 만렙"},
 	"ddungsil":   {"metric": "feed",              "amount": 30,        "hint": "밥 30번 - 그러다 로또 대박"},
+	"bichon":     {"metric": "files_dropped",     "amount": 60,        "hint": "파일 60개 정리 - 회사의 모든 서류를 아는 별솔"},
 }
 
 const LATE_SHUTDOWN_HOURS := [18, 19]

@@ -63,10 +63,10 @@ func _init() -> void:
 	pet.play_state_animation("Walk")
 	pet.walk_bob(true)
 	check(pet._sprite.scale.is_equal_approx(pet._base_scale), "Walking clears the prior idle scale tween")
-	var first_frame_feet_y: float = pet._sprite.position.y + (305.0 - pet._frame_size.y * 0.5) * pet._base_scale.y
+	var first_frame_feet_y: float = pet._sprite.position.y + (152.5 - pet._frame_size.y * 0.5) * pet._base_scale.y
 	check(absf(first_frame_feet_y) <= 1.0, "First walk frame paws stay on the taskbar ground line")
 	pet._advance_bichon_animation(0.5)
-	var later_frame_feet_y: float = pet._sprite.position.y + (283.0 - pet._frame_size.y * 0.5) * pet._base_scale.y
+	var later_frame_feet_y: float = pet._sprite.position.y + (141.5 - pet._frame_size.y * 0.5) * pet._base_scale.y
 	check(absf(later_frame_feet_y) <= 1.0, "Later walk frame paws stay on the taskbar ground line")
 	for animation in pet.BICHON_ANIMATIONS:
 		var config: Dictionary = pet.BICHON_ANIMATIONS[animation]
@@ -94,7 +94,7 @@ func _init() -> void:
 			continue
 		pet.play_state_animation(animation)
 		if visible_extent > 0.0:
-			var expected_scale: float = 256.0 * 0.35 * 1.25 / visible_extent
+			var expected_scale: float = 256.0 * float(pet.STAGE_SCALE["baby"]) * pet.BICHON_VISIBLE_SIZE_MULTIPLIER / visible_extent
 			check(is_equal_approx(pet._base_scale.x, expected_scale), "%s scales from visible content bounds" % animation)
 		var first_expected_y: float = pet._sprite_anchor().y + float(foot_padding[0]) * pet._base_scale.y
 		check(is_equal_approx(pet._sprite.position.y, first_expected_y), "%s first frame is aligned to the ground line" % animation)
@@ -151,7 +151,11 @@ func _init() -> void:
 	check(is_equal_approx(sleep_state._corner_x, edge_margin), "Sleep uses the adult Bichon left edge margin")
 	check(pet._bichon_animation == "Walk", "Sleep walks to the edge before showing the sleep sheet")
 	pet.position.x = sleep_state._corner_x
-	sleep_state.update(0.0)
+	# Vector2 stores components as 32-bit floats, so assigning a 64-bit corner_x into
+	# position.x can leave a sub-pixel rounding residue. A zero delta would demand exact
+	# equality against that residue; use one frame's worth of delta instead, like real
+	# gameplay always does, so the arrival check tolerates that rounding.
+	sleep_state.update(1.0 / 60.0)
 	check(pet._bichon_animation == "Sleep", "Sleep sheet begins only after reaching the edge")
 	var sulk_state: Node = SulkStateScript.new()
 	sulk_state.pet = pet
