@@ -91,12 +91,10 @@ const SPECIES_SHEET_CONTRACT := {
 const LOOP_SEAM_LIMIT := 12.0
 # 한도를 넘는 순환 상태. 전부 아트 이음새 문제이고 sprite-artist 담당이다.
 const LOOP_SEAM_KNOWN := [
-	# mochi/evolved/Sick(67.3% -> 1.3%)·mochi/evolved2/Sick(62.9% -> 0.0%)는 2026-08-11
-	# 재생성으로 해소되어 빠졌다 — 피크를 중간 프레임으로 옮기고 마지막 칸을 첫 칸 비율로
-	# 수렴시키는 처방이 60%대 이음새에도 통한다는 확인이다.
-	"haemjji/base/Sick", "haemjji/evolved2/Sick",
-	"mochi/base/Poop", "mochi/evolved/Poop",
-	"mochi/evolved/Play", "haemjji/evolved2/Play",
+	# 2026-08-11에 8건이 전부 해소되어 비었다. 최악이 67.3%(mochi/evolved/Sick)였고 지금은
+	# 전 순환 상태가 3% 이내다. 처방은 하나였다 — "마지막 칸 == 첫 칸, 극단은 중간에".
+	# 어긋난 방향은 두 갈래였는데(Sick·Play는 저점에서 끝나 위로 튀고, Poop은 웅크린 채
+	# 시작해 서서 끝나 아래로 튄다) 같은 처방이 양쪽에 통했다.
 ]
 # 애니메이션 Sick 시트에 아픔 표시를 그리지 않는 것이 관례다(현재 10장 전부). 그래서
 # sick_state.gd가 @_@ 라벨을 대신 띄우고, 그 스위치가 runtime_sick_mark다. 기본값이 false라
@@ -1886,6 +1884,52 @@ func _test_haemjji_pose_runtime() -> void:
 	root.remove_child(pet)
 	pet.free()
 	pet_state.free()
+	call_deferred("_test_food_prop_render_clip")
+
+
+# 2026-08-11 회귀: 먹기 소품(밥그릇/간식)이 펫 클릭 영역 밖에 옆으로 떠서, main.gd의
+# 클릭통과 영역(_update_passthrough)이 펫 사각형만 포함하면 소품이 코드상 visible=true여도
+# Windows가 렌더링 자체를 잘라내서 화면에 안 보였다. food_prop_rect()가 정확한 전역
+# 사각형을 돌려주는지, 그리고 그 사각형이 실제로 펫 클릭 영역 밖(합쳐줘야 하는 영역)에
+# 있는지 잠근다. main.gd 쪽 병합 로직 자체는 DisplayServer가 필요해 여기서 검사할 수 없다.
+func _test_food_prop_render_clip() -> void:
+	for species in ["mochi", "haemjji"]:
+		var pet_state: Node = PetStateScript.new()
+		pet_state.debug_set_species(species, "adult")
+		var pet: Node2D = PetScene.instantiate()
+		pet.screen_size = Vector2(1280.0, 720.0)
+		pet.ground_y = 714.0
+		root.add_child(pet)
+		await process_frame
+		pet.ps = pet_state
+		pet.refresh_appearance()
+		pet.machine.transition_to("Idle")
+		check(pet.food_prop_rect() == Rect2(), "%s 먹기 전엔 food_prop_rect가 빈 사각형" % species)
+		pet._on_care_performed("feed")
+		var rect: Rect2 = pet.food_prop_rect()
+		check(rect.size.x > 0.0 and rect.size.y > 0.0, "%s feed 중 food_prop_rect가 실제 크기를 가짐" % species)
+		check(not pet.get_click_rect().encloses(rect), "%s 먹기 소품은 펫 클릭 영역 밖에 있음(main.gd가 병합해야 함)" % species)
+		pet.hide_food_prop()
+		check(pet.food_prop_rect() == Rect2(), "%s hide_food_prop 후 food_prop_rect 다시 빈 사각형" % species)
+		root.remove_child(pet)
+		pet.free()
+		pet_state.free()
+	# 삐약은 food prop 자산이 아직 없다 — 미등록이어도 에러 없이 조용히 빈 사각형이어야 한다.
+	var ppiyak_state: Node = PetStateScript.new()
+	ppiyak_state.debug_set_species("ppiyak", "adult")
+	var ppiyak_pet: Node2D = PetScene.instantiate()
+	ppiyak_pet.screen_size = Vector2(1280.0, 720.0)
+	ppiyak_pet.ground_y = 714.0
+	root.add_child(ppiyak_pet)
+	await process_frame
+	ppiyak_pet.ps = ppiyak_state
+	ppiyak_pet.refresh_appearance()
+	ppiyak_pet.machine.transition_to("Idle")
+	ppiyak_pet._on_care_performed("feed")
+	check(ppiyak_pet.food_prop_rect() == Rect2(), "삐약은 food prop 미등록이라 조용히 빈 사각형(하위 호환)")
+	root.remove_child(ppiyak_pet)
+	ppiyak_pet.free()
+	ppiyak_state.free()
 	call_deferred("_finish")
 
 

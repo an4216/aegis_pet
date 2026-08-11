@@ -546,6 +546,11 @@ func _update_passthrough() -> void:
 	# 진화 배지 제거 + 이펙트를 스프라이트 안으로 이동 → 상단 확장 최소화
 	# (celebrate/play_frolic 점프는 짧아서 15px면 충분)
 	var pet_rect: Rect2 = pet.get_click_rect().grow_individual(4.0, 15.0, 4.0, 0.0)
+	# 먹기 소품(밥그릇/간식)은 펫 클릭 영역 밖으로 옆에 떠 있어서, 포함시키지 않으면
+	# visible=true여도 이 창의 클릭통과 영역 밖이라 렌더링에서 잘려 안 보인다.
+	var food_rect: Rect2 = pet.food_prop_rect()
+	if food_rect.size != Vector2.ZERO:
+		pet_rect = pet_rect.merge(food_rect.grow(4.0))
 	# 걷기 등으로 펫이 계속 조금씩 움직이면 32px 격자를 자주 넘나들어 SetWindowRgn이 초당
 	# 여러 번 갱신되고, 그때마다 렌더링이 같이 잘려서 경계가 깜박인다(위 주석 참고). 이전에
 	# 잡아둔 영역이 지금 펫 사각형을 여전히 포함하면 그대로 재사용하고, 정말 벗어날 때만

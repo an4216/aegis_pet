@@ -183,7 +183,7 @@ const ANIMATED_POSE_OVERRIDES := {
 			# 시트를 다시 뽑아 진폭을 살리는 날, 이 플래그가 이미 있어야 그 진폭이 화면에 나온다.
 			"Play": {
 				"base": {"path": "res://assets/sprites/mochi/happy_4f_alpha_smooth.png", "columns": 4, "rows": 1, "frames": 4, "fps": 8.0, "loop": true, "airborne": true, "foot_padding": [16.0, 56.0, 28.0, 16.0], "horizontal_offsets": [-1.0, -1.0, -1.0, -1.0]},
-				"evolved": {"path": "res://assets/sprites/mochi_evolved/play_4f_alpha_smooth.png", "columns": 4, "rows": 1, "frames": 4, "fps": 8.0, "loop": true, "airborne": true, "foot_padding": [16.0, 22.0, 16.0, 19.0], "horizontal_offsets": [0.0, 2.0, 0.0, -3.0]},
+				"evolved": {"path": "res://assets/sprites/mochi_evolved/play_4f_alpha_smooth.png", "columns": 4, "rows": 1, "frames": 4, "fps": 8.0, "loop": true, "airborne": true, "foot_padding": [16.0, 42.0, 43.0, 16.0], "horizontal_offsets": [0.5, 0.0, 0.5, 0.0]},
 				"evolved2": {"path": "res://assets/sprites/mochi_evolved2/play_4f_alpha_smooth.png", "columns": 4, "rows": 1, "frames": 4, "fps": 8.0, "loop": true, "airborne": true, "foot_padding": [16.0, 30.0, 16.0, 16.0], "horizontal_offsets": [0.0, 0.0, 0.0, 0.0]},
 			},
 			"Dragged": {
@@ -215,7 +215,7 @@ const ANIMATED_POSE_OVERRIDES := {
 				"evolved2": {"path": "res://assets/sprites/mochi_evolved2/file_consume_4f_alpha_smooth.png", "columns": 4, "rows": 1, "frames": 4, "fps": 12.0, "loop": false, "foot_padding": [16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.5, 0.0, -1.0, 0.5]},
 			},
 			"Poop": {
-				"base": {"path": "res://assets/sprites/mochi/poop_4f_alpha_smooth.png", "columns": 4, "rows": 1, "frames": 4, "fps": 6.0, "loop": true, "foot_padding": [16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [1.0, 0.0, -1.0, -1.0]},
+				"base": {"path": "res://assets/sprites/mochi/poop_4f_alpha_smooth.png", "columns": 4, "rows": 1, "frames": 4, "fps": 6.0, "loop": true, "foot_padding": [16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [-0.5, 0.5, -0.5, -0.5]},
 				"evolved": {"path": "res://assets/sprites/mochi_evolved/poop_4f_alpha_smooth.png", "columns": 4, "rows": 1, "frames": 4, "fps": 6.0, "loop": true, "foot_padding": [16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.0, 0.0, 0.0, 0.0]},
 				"evolved2": {"path": "res://assets/sprites/mochi_evolved2/poop_4f_alpha_smooth.png", "columns": 4, "rows": 1, "frames": 4, "fps": 6.0, "loop": true, "foot_padding": [16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.0, 0.0, 0.0, 0.0]},
 			},
@@ -395,9 +395,9 @@ const ANIMATED_POSE_OVERRIDES := {
 			# 재생성본에는 부유 기호(땀방울·콧물)가 없다 — 아픔이 자세·처진 귀·찡그린 눈으로만
 			# 표현되므로 어지럼 표시 역할은 런타임 @_@ 라벨이 해야 한다(핸드오프 §5, §7 반려 기록).
 			"Sick": {
-				"base": {"path": "res://assets/sprites/haemjji/sick_6f_alpha_smooth.png", "columns": 6, "rows": 1, "frames": 6, "fps": 6.0, "loop": true, "runtime_sick_mark": true, "foot_padding": [12.0, 12.0, 12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [-0.5, 0.0, 0.0, 1.5, -0.5, 1.0]},
+				"base": {"path": "res://assets/sprites/haemjji/sick_6f_alpha_smooth.png", "columns": 6, "rows": 1, "frames": 6, "fps": 6.0, "loop": true, "runtime_sick_mark": true, "foot_padding": [12.0, 12.0, 12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [0.0, -0.5, 0.0, 0.0, -0.5, 0.0]},
 				"evolved": {"path": "res://assets/sprites/haemjji_evolved/sick_6f_alpha_smooth.png", "columns": 6, "rows": 1, "frames": 6, "fps": 6.0, "loop": true, "runtime_sick_mark": true, "foot_padding": [12.0, 12.0, 12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [1.5, 0.5, -2.0, -1.5, -1.5, 1.0]},
-				"evolved2": {"path": "res://assets/sprites/haemjji_evolved2/sick_6f_alpha_smooth.png", "columns": 6, "rows": 1, "frames": 6, "fps": 6.0, "loop": true, "runtime_sick_mark": true, "foot_padding": [12.0, 12.0, 12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [1.5, 1.0, -1.0, -1.5, -1.5, 0.5]},
+				"evolved2": {"path": "res://assets/sprites/haemjji_evolved2/sick_6f_alpha_smooth.png", "columns": 6, "rows": 1, "frames": 6, "fps": 6.0, "loop": true, "runtime_sick_mark": true, "foot_padding": [12.0, 12.0, 12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [-0.5, 0.5, 0.0, 0.5, 0.0, -0.5]},
 			},
 			"Sulk": {
 				"base": {"path": "res://assets/sprites/haemjji/sulk_6f_alpha_smooth.png", "columns": 6, "rows": 1, "frames": 6, "fps": 6.0, "loop": true, "foot_padding": [12.0, 12.0, 12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [0.5, -0.5, -0.5, 0.5, 1.0, -1.5]},
@@ -407,7 +407,7 @@ const ANIMATED_POSE_OVERRIDES := {
 			"Play": {
 				"base": {"path": "res://assets/sprites/haemjji/play_6f_alpha_smooth.png", "columns": 6, "rows": 1, "frames": 6, "fps": 8.0, "loop": true, "airborne": true, "foot_padding": [13.0, 29.0, 14.0, 12.0, 22.0, 13.0], "horizontal_offsets": [0.0, -0.5, 0.0, 0.5, 0.0, 0.5]},
 				"evolved": {"path": "res://assets/sprites/haemjji_evolved/play_6f_alpha_smooth.png", "columns": 6, "rows": 1, "frames": 6, "fps": 8.0, "loop": true, "airborne": true, "foot_padding": [12.0, 21.0, 13.0, 12.0, 22.0, 12.0], "horizontal_offsets": [-1.0, -1.0, 1.0, 1.0, 1.0, 0.5]},
-				"evolved2": {"path": "res://assets/sprites/haemjji_evolved2/play_6f_alpha_smooth.png", "columns": 6, "rows": 1, "frames": 6, "fps": 8.0, "loop": true, "airborne": true, "foot_padding": [13.0, 22.0, 12.0, 13.0, 22.0, 12.0], "horizontal_offsets": [1.0, 1.5, 1.0, 1.0, 1.5, 0.5]},
+				"evolved2": {"path": "res://assets/sprites/haemjji_evolved2/play_6f_alpha_smooth.png", "columns": 6, "rows": 1, "frames": 6, "fps": 8.0, "loop": true, "airborne": true, "foot_padding": [12.0, 12.0, 18.0, 20.0, 12.0, 12.0], "horizontal_offsets": [0.0, 0.0, 0.0, 0.5, -0.5, 0.0]},
 			},
 			"Dragged": {
 				"base": {"path": "res://assets/sprites/haemjji/dragged_4f_alpha_smooth.png", "columns": 4, "rows": 1, "frames": 4, "fps": 10.0, "loop": true, "airborne": true, "foot_padding": [33.0, 36.0, 12.0, 27.0], "horizontal_offsets": [-2.0, 0.0, -2.0, 0.5]},
@@ -1462,6 +1462,18 @@ func show_food_prop(duration: float) -> void:
 func hide_food_prop() -> void:
 	_kill_food_prop_tween()
 	_food_prop.visible = false
+
+
+## 먹기 소품이 떠 있는 동안의 전역 사각형(소품이 안 보이면 빈 Rect2). main.gd의 클릭통과
+## 영역이 이 범위를 포함해야 한다 — 이 창은 그 영역 밖을 렌더링 자체에서 잘라내므로(Windows
+## SetWindowRgn), 펫 클릭 영역 바깥쪽에 옆으로 뜨는 이 소품은 포함시켜주지 않으면 코드상
+## visible=true여도 화면에는 안 보인다.
+func food_prop_rect() -> Rect2:
+	if not _food_prop.visible or _food_prop.texture == null:
+		return Rect2()
+	var size: Vector2 = _food_prop.texture.get_size() * _food_prop.scale
+	var center: Vector2 = global_position + _food_prop.position
+	return Rect2(center - size * 0.5, size)
 
 
 func _kill_food_prop_tween() -> void:
