@@ -67,7 +67,40 @@ const TRANSITION_POP_LIMIT := 15.0
 # ppiyak/base/Walk 1건). 참고: 임계값을 0.05/0.02/0.004로 낮추면 1~2px씩 밀리므로
 # 파이프라인이 다른 임계값으로 값을 만들면 여기서 실패한다 — 그때는 재측정이 정답이다.
 const REGISTRATION_PAD_TOLERANCE := 0.0
-const REGISTRATION_OFF_TOLERANCE := 0.5
+# 0.5는 "여유"가 아니라 오프셋의 스냅 단위 그 자체다. 허용차를 표현 단위와 같게 두면
+# 표현 가능한 최소 오차(= 한 칸 틀림)가 항상 통과한다 — 2026-08-11에 mochi_evolved/
+# file_consume이 등록 [0.0,...] vs 실측 [0.5,...]로 정확히 0.5 어긋났는데 내 검사도
+# gd-integrator의 감사도 잡지 못했다. 오프셋도 0.5 단위로 양자화돼 있어 완전 일치가
+# 가능하므로 padding과 같은 이유로 0.0이 맞다. 여유가 필요하면 스냅 단위보다 작은 값이어야 한다.
+# 오프셋이 정확히 한 스냅 단위(0.5) 어긋난 레거시 시트. 등록이 현행 규약(런타임과 같은
+# alpha>=0.125)이 아니라 스프라이트 파이프라인 기준(alpha>0)으로 이뤄져서 bbox가 한 픽셀
+# 넓게 잡히고 중심이 0.5 밀린 것이다. 화면 영향은 0.5px로 사실상 보이지 않지만, 런타임의
+# 측정 기준과는 어긋나 있다.
+# 뚱실이는 0건이다 — 규약 확정 후 등록된 종족이라 168개 시트 중 그쪽만 정확히 맞는다.
+# 이 목록은 gd-integrator가 자산 기준 일괄 재산출 1회로 통째로 비울 수 있다(복구 때
+# 44건을 그렇게 처리한 전례가 있다). 그때까지 신규 등록은 허용차 0.0으로 엄격히 잡힌다.
+const REGISTRATION_OFF_LEGACY := [
+	"mochi/evolved2/Idle", "mochi/evolved2/Walk", "mochi/base/Sleep",
+	"mochi/evolved/Sleep", "mochi/evolved/Eat", "mochi/base/Sick",
+	"mochi/base/Play", "mochi/base/Dragged", "mochi/base/Land",
+	"mochi/evolved/Land", "mochi/base/FileHover", "mochi/evolved2/FileHover",
+	"mochi/evolved2/Poop", "ppiyak/base/Walk", "ppiyak/evolved/Walk",
+	"ppiyak/evolved2/Walk", "ppiyak/base/Sleep", "ppiyak/evolved/Sleep",
+	"ppiyak/evolved2/Sleep", "ppiyak/base/Eat", "ppiyak/evolved/Eat",
+	"ppiyak/evolved2/Eat", "ppiyak/base/Sick", "ppiyak/evolved/Sick",
+	"ppiyak/evolved2/Sick", "ppiyak/base/Sulk", "ppiyak/evolved/Sulk",
+	"ppiyak/evolved2/Sulk", "ppiyak/base/Play", "ppiyak/evolved/Play",
+	"ppiyak/evolved2/Play", "ppiyak/base/Dragged", "ppiyak/evolved/Dragged",
+	"ppiyak/evolved2/Dragged", "ppiyak/base/Fall", "ppiyak/evolved/Fall",
+	"ppiyak/evolved2/Fall", "ppiyak/base/Land", "ppiyak/evolved/Land",
+	"ppiyak/evolved2/Land", "haemjji/base/Idle", "haemjji/evolved/Idle",
+	"haemjji/base/Eat", "haemjji/evolved2/Eat", "haemjji/evolved/Sick",
+	"haemjji/base/Play", "haemjji/evolved/Play", "haemjji/base/Fall",
+	"haemjji/base/FileHover", "haemjji/evolved2/FileHover", "haemjji/base/FileConsume",
+	"haemjji/evolved/FileConsume", "haemjji/evolved2/FileConsume", "haemjji/base/Poop",
+	"haemjji/evolved/Poop", "haemjji/base/Pet", "haemjji/evolved/Pet",
+]
+const REGISTRATION_OFF_TOLERANCE := 0.0
 # 허용차를 넘는 조합. ppiyak Idle 3줄은 오프셋이 전부 0.0으로 등록돼 있어 실측된 적이
 # 없어 보이고, evolved2가 3.0px까지 벌어진다(128px 셀에서 몸통 폭의 4%).
 # ppiyak Idle 3줄은 오프셋이 전부 0.0(플레이스홀더)이었다가 실측값으로 등록되어 빠졌다 —
@@ -1965,6 +1998,37 @@ func _test_food_prop_render_clip() -> void:
 	check(Characters.get_food_prop("snack") == "res://assets/sprites/food/food_snack.png", "공용 snack 소품 경로")
 	check(ResourceLoader.exists(Characters.get_food_prop("feed")), "공용 feed 소품 파일 존재")
 	check(ResourceLoader.exists(Characters.get_food_prop("snack")), "공용 snack 소품 파일 존재")
+
+	# 2026-08-11: 통째 스케일 축소 대신 다중 프레임을 duration에 맞춰 순서대로 넘긴다 — 밥은
+	# 숟갈째 줄어 빈 그릇만 남고, 간식은 한입씩 사라진다. 시트가 아직 1프레임이어도(자산 준비
+	# 전) 안전하게 통과하고, N프레임 시트로 교체되면 그대로 진행 검증까지 잠근다.
+	for action in ["feed", "snack"]:
+		var pet_state: Node = PetStateScript.new()
+		pet_state.debug_set_species("mochi", "adult")
+		var pet: Node2D = PetScene.instantiate()
+		pet.screen_size = Vector2(1280.0, 720.0)
+		pet.ground_y = 714.0
+		root.add_child(pet)
+		await process_frame
+		pet.ps = pet_state
+		pet.refresh_appearance()
+		pet.machine.transition_to("Idle")
+		pet._last_food_action = action
+		var duration := 2.0
+		pet.show_food_prop(duration)
+		var frame_count: int = pet._food_prop_frame_count
+		check(frame_count >= 1, "%s 소품 프레임 수 >= 1 (실측 %d)" % [action, frame_count])
+		check(pet._food_prop.frame == 0, "%s 소품 재생 시작 시 0번 프레임" % action)
+		pet._advance_food_prop(duration * 0.5)
+		var mid_frame: int = pet._food_prop.frame
+		check(mid_frame >= 0 and mid_frame < frame_count, "%s 소품 절반 지난 시점 프레임(%d)이 범위 내" % [action, mid_frame])
+		pet._advance_food_prop(duration * 0.6)  # 총 1.1배 경과 — duration을 넘어도 안전해야 함
+		check(pet._food_prop.frame == frame_count - 1, "%s 소품 재생 종료 시 마지막 프레임(%d)에 도달" % [action, frame_count - 1])
+		if frame_count > 1:
+			check(mid_frame > 0, "%s 소품 절반 지난 시점엔 첫 프레임을 벗어나 있음(다중 프레임일 때만 의미 있음)" % action)
+		root.remove_child(pet)
+		pet.free()
+		pet_state.free()
 	call_deferred("_finish")
 
 
@@ -2383,7 +2447,9 @@ func _test_registration_matches_assets() -> void:
 				var combo := "%s/%s/%s" % [species, tier, state]
 				var pad_gap := _anchor_gap(config.get("foot_padding", []), measured["pad"])
 				var off_gap := _anchor_gap(config.get("horizontal_offsets", []), measured["off"])
-				var within: bool = pad_gap <= REGISTRATION_PAD_TOLERANCE and off_gap <= REGISTRATION_OFF_TOLERANCE
+				# 레거시 시트는 한 스냅 단위(0.5)까지만 봐준다 — 그보다 큰 오차는 여전히 잡힌다.
+				var off_limit: float = 0.5 if combo in REGISTRATION_OFF_LEGACY else REGISTRATION_OFF_TOLERANCE
+				var within: bool = pad_gap <= REGISTRATION_PAD_TOLERANCE and off_gap <= off_limit
 				if combo in REGISTRATION_KNOWN:
 					check(not within,
 						"%s 등록값 편차 (알려진 미해결, pad %.1f / off %.1f) — 이 검사가 실패하면 해소된 것이니 REGISTRATION_KNOWN에서 제거하라"
@@ -2391,7 +2457,7 @@ func _test_registration_matches_assets() -> void:
 				else:
 					check(within,
 						"%s 등록값이 자산 실측과 일치 (pad 최대차 %.1f <= %.1f, off 최대차 %.1f <= %.1f)"
-						% [combo, pad_gap, REGISTRATION_PAD_TOLERANCE, off_gap, REGISTRATION_OFF_TOLERANCE])
+						% [combo, pad_gap, REGISTRATION_PAD_TOLERANCE, off_gap, off_limit])
 
 
 ## 두 배열의 최대 절대차. 길이가 다르면 계약 위반이라 허용차와 무관하게 크게 돌려준다.
