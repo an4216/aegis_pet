@@ -554,10 +554,18 @@ func get_click_rect() -> Rect2:
 	if _is_animated_pet():
 		var size := SPRITE_SIZE * float(STAGE_SCALE.get(ps.stage, 0.5)) * _animated_visible_size_multiplier()
 		return Rect2(global_position + Vector2(-size * 0.5, -size), Vector2(size, size)).grow(8.0)
-	# 캐릭터가 실제로 그려지는 영역만 클릭 감지 (스프라이트 캔버스 대비 ~75%).
-	# 나머지 여백까지 클릭을 막으면 펫이 지나가는 궤적이 넓게 blocked 되어 뒤 창 조작이 불편함.
-	var w: float = _frame_size.x * _base_scale.x * 0.75
-	var h: float = _frame_size.y * _base_scale.y * 0.85
+	# 시트 애니메이션 재생 중(포즈 오버라이드)은 프레임이 캔버스를 꽉 채워 그려지고
+	# horizontal_offsets·foot_padding로 위치가 흔들려서 0.75/0.85 여백을 두면 SetWindowRgn이
+	# 실제 스프라이트를 잘라낸다. 이때는 프레임 전체(1.0배)를 클릭 영역으로 잡는다.
+	# _frame_size가 아직 세팅 안 됐거나 0에 가까울 때(스타트업 첫 프레임)에도
+	# 최소 안전 크기를 보장해 SetWindowRgn이 창 전체를 잘라내지 않게 한다.
+	var frame_w: float = maxf(_frame_size.x * _base_scale.x, 96.0)
+	var frame_h: float = maxf(_frame_size.y * _base_scale.y, 96.0)
+	if _pose_override_active:
+		return Rect2(global_position + Vector2(-frame_w * 0.5, -frame_h - 4.0), Vector2(frame_w, frame_h))
+	# 정지 포즈는 캔버스 여백이 넓어 캐릭터가 실제 그려지는 영역만 감지한다(스프라이트 캔버스 대비 ~75%).
+	var w: float = frame_w * 0.75
+	var h: float = frame_h * 0.85
 	return Rect2(global_position + Vector2(-w * 0.5, -h - 4.0), Vector2(w, h))
 
 
