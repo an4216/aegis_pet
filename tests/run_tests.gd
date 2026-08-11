@@ -176,12 +176,11 @@ const TRANSITION_POP_KNOWN := []
 # 펫이 f0에 있을 이유가 없어서인데, mochi/evolved Idle은 자체 높이 변화가 29.9%나 돼
 # (f0 156x158 / f2 165x127) f0만 보면 2.6%, 실제 최악은 26.0%다. Idle f2에 걸린 동안
 # 파일이 올라오면 실제로 그만큼 튄다 — FileHover가 아니라 Idle f2가 원인이다.
-const REACTION_CHAIN_POP_KNOWN := [
-	"mochi/evolved/중간",
-	"ppiyak/base/중간",
-	# "mochi/evolved/진입"은 26.0%였다가 mochi_evolved/idle 재생성으로 3.2%가 되어 빠졌다.
-	# 원인이 FileHover가 아니라 Idle f2의 과도한 진폭이라는 진단이 맞았다는 확인이다.
-]
+# 2026-08-11에 비었다. 세 건 모두 원인이 FileHover가 아닌 다른 시트였다는 게 공통점이다 —
+# "mochi/evolved/진입" 26.0%는 Idle f2의 과도한 진폭이, 중간단 두 건(15.8% / 15.5%)은
+# FileConsume f0의 폭이 원인이었고, 그 시트들을 고치자 4.5% / 8.4%로 내려왔다.
+# 증상이 나타난 단계(FileHover 전이)와 원인이 있는 시트가 다를 수 있다는 사례다.
+const REACTION_CHAIN_POP_KNOWN := []
 # 케어 반응 테스트가 야간 판정을 끄고 빌려 쓴 원래 값 (_test_mochi_pose_runtime 끝에서 되돌린다).
 var _saved_night_window: Array = []
 

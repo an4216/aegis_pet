@@ -211,7 +211,7 @@ const ANIMATED_POSE_OVERRIDES := {
 			},
 			"FileConsume": {
 				"base": {"path": "res://assets/sprites/mochi/file_consume_4f_alpha_smooth.png", "columns": 4, "rows": 1, "frames": 4, "fps": 12.0, "loop": false, "foot_padding": [16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [-1.5, 0.0, -1.0, -1.0]},
-				"evolved": {"path": "res://assets/sprites/mochi_evolved/file_consume_4f_alpha_smooth.png", "columns": 4, "rows": 1, "frames": 4, "fps": 12.0, "loop": false, "foot_padding": [16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.0, 0.0, 0.0, 0.0]},
+				"evolved": {"path": "res://assets/sprites/mochi_evolved/file_consume_4f_alpha_smooth.png", "columns": 4, "rows": 1, "frames": 4, "fps": 12.0, "loop": false, "foot_padding": [16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.5, 0.0, 0.0, 0.0]},
 				"evolved2": {"path": "res://assets/sprites/mochi_evolved2/file_consume_4f_alpha_smooth.png", "columns": 4, "rows": 1, "frames": 4, "fps": 12.0, "loop": false, "foot_padding": [16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.5, 0.0, -1.0, 0.5]},
 			},
 			"Poop": {
@@ -321,7 +321,7 @@ const ANIMATED_POSE_OVERRIDES := {
 				"evolved2": {"path": "res://assets/sprites/ppiyak_evolved2/file_hover_4f.png", "columns": 4, "rows": 1, "frames": 4, "fps": 12.0, "loop": false, "foot_padding": [12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [-3.5, -2.0, -1.5, -0.5]},
 			},
 			"FileConsume": {
-				"base": {"path": "res://assets/sprites/ppiyak/file_consume_6f.png", "columns": 6, "rows": 1, "frames": 6, "fps": 12.0, "loop": false, "foot_padding": [12.0, 12.0, 12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [-0.5, -0.5, -0.5, 0.0, 0.0, -0.5]},
+				"base": {"path": "res://assets/sprites/ppiyak/file_consume_6f.png", "columns": 6, "rows": 1, "frames": 6, "fps": 12.0, "loop": false, "foot_padding": [12.0, 12.0, 12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [0.0, 0.5, 0.0, 0.5, 0.5, 0.5]},
 				"evolved": {"path": "res://assets/sprites/ppiyak_evolved/file_consume_6f.png", "columns": 6, "rows": 1, "frames": 6, "fps": 12.0, "loop": false, "foot_padding": [12.0, 12.0, 12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [-2.0, -2.0, -1.5, -1.0, -2.0, -1.5]},
 				"evolved2": {"path": "res://assets/sprites/ppiyak_evolved2/file_consume_6f.png", "columns": 6, "rows": 1, "frames": 6, "fps": 12.0, "loop": false, "foot_padding": [12.0, 12.0, 12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [-2.5, -3.0, -2.5, -2.5, -3.5, -3.0]},
 			},
