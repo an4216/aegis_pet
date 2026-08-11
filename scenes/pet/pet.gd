@@ -923,21 +923,29 @@ func stop_animated_pose() -> void:
 	_bichon_sprite_frame_sequence = []
 	_frame_airborne = false
 	_frame_ground_padding = 0.0
-	# 정적 폴백(idle.png 등)이 있는 캐릭터만 격자를 1x1로 되돌린다. 시트만 있는 종족(ppiyak처럼)에
-	# 격자를 그대로 되돌리면 6칸 시트 전체가 한 프레임으로 그려져 캐릭터가 6배 넓게 잘려 보인다.
-	# 이 경우 시트 격자를 유지하고 첫 프레임(0)만 보여 자연스러운 폴백이 되게 한다.
-	var has_static_fallback: bool = _frames.has(_pose)
-	if has_static_fallback:
-		_sprite.hframes = 1
-		_sprite.vframes = 1
+	# 정적 포즈는 단일 프레임 텍스처라 격자를 되돌린다.
+	_sprite.hframes = 1
+	_sprite.vframes = 1
 	_sprite.frame = 0
 	_bichon_frame = 0
-	if has_static_fallback:
-		set_pose(_pose)
-	if _sprite.texture != null:
-		_frame_size = _sprite.texture.get_size() / Vector2(_sprite.hframes, _sprite.vframes)
-	else:
-		_frame_size = Vector2.ONE * STATIC_POSE_FALLBACK_SIZE
+	# 시트 텍스처가 그대로 남으면 격자를 되돌린 순간 시트 전체가 한 칸으로 보인다.
+	# set_pose가 _frames[_pose]로 정적 텍스처를 로드해 이 문제를 해결한다.
+	set_pose(_pose)
+	# 안전망: _frames가 비어있어 set_pose가 텍스처를 못 바꿨으면 idle.png를 직접 로드.
+	# 그러지 않으면 시트가 한 프레임으로 그려져 캐릭터가 넓게 잘려 보인다.
+	if _sprite.texture != null and not _frames.has(_pose):
+		var char_key: String = "egg" if ps.stage == "egg" else ps.species
+		var candidates: Array = []
+		if ps.evolved_2 and ps.stage != "egg":
+			candidates.append("res://assets/sprites/chars/%s_evolved2/idle.png" % char_key)
+		if ps.evolved and ps.stage != "egg":
+			candidates.append("res://assets/sprites/chars/%s_evolved/idle.png" % char_key)
+		candidates.append("res://assets/sprites/chars/%s/idle.png" % char_key)
+		for p in candidates:
+			if ResourceLoader.exists(p):
+				_sprite.texture = load(p)
+				break
+	_frame_size = _sprite.texture.get_size() if _sprite.texture != null else Vector2.ONE * STATIC_POSE_FALLBACK_SIZE
 	_base_scale = Vector2.ONE * _stage_scale() * _static_body_scale()
 	_sprite.scale = _base_scale
 	# foot_padding/horizontal_offsets로 밀어놨던 위치를 정지 포즈 기준으로 복귀
