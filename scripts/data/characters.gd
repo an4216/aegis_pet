@@ -295,8 +295,9 @@ const CHARACTERS := {
 		"stat_modifiers": {"hunger_decay": 0.7, "energy_decay": 1.3, "move_speed": 0.6},
 		"care_modifiers": {"feed": 1.5, "snack": 1.5},
 		"special": [],
-		"walk_static": true,   # walk2가 walk1과 동일 → waddle 모션으로 보완
-		"walk_face_inverted": true,   # 걷기 시트가 뒤돌아본 상태 → 좌우 반전
+		# 2026-08-11: 3티어 전부 Walk 시트를 갖게 되어 walk_static·walk_face_inverted를 제거했다.
+		# 두 플래그는 walk_state.gd의 정지 폴백 경로에서만 읽히는데(시트가 있으면 조기 반환),
+		# 이제 어느 티어도 그 경로를 타지 않는다. 알 단계는 Egg 상태로 가 Walk에 진입하지 않는다.
 	},
 }
 

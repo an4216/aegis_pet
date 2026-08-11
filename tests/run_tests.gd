@@ -106,9 +106,10 @@ const SICK_MARK_DRAWN_IN_ART := []
 # 폴백 티어는 여전히 walk_static(waddle 보완)/walk_face_inverted(좌우 반전)를 읽는다.
 # 플래그는 종족 단위라 티어별 분리가 불가능해서, "레거시 플래그 정리"로 지우면 폴백 티어의
 # 걷기 연출이 조용히 사라진다. 시트가 3티어로 완성되면 이 검사가 "이제 지워도 된다"고 알려준다.
-const STATIC_FALLBACK_WALK_FLAGS := {
-	"ddungsil": {"walk_static": true, "walk_face_inverted": true},
-}
+# 2026-08-11에 뚱실이가 3티어를 갖추면서 비었다. 이 검사가 tiers 크기로 분기해
+# "이제 정리하라"를 스스로 알려줬고(설계대로), characters.gd의 walk_static·
+# walk_face_inverted 제거는 gd-integrator가 처리한다 — 등록 데이터 파일이기 때문이다.
+const STATIC_FALLBACK_WALK_FLAGS := {}
 # 상태별 loop 규약. 10개 종족-티어 config를 전수 측정한 결과 상태마다 완전히 균일했다(예외 0건)
 # 이라 종족별 테이블 대신 상태별 계약으로 잠근다 — 신규 종족이 자동으로 커버되고, 뚱실이·비숑에
 # loop 단정이 없어 Fall이 어느 쪽으로 바뀌어도 알려주지 않던 구멍이 닫힌다(gd-integrator 지적).
@@ -133,7 +134,8 @@ const BICHON_LOOP_OVERRIDE := {"Play": false}
 const OFFSET_CEILING := {
 	# 뚱실이 두 티어가 0.5로 같다 — bbox 중심 정렬로 제작하면 신규 티어에서도 그대로 나온다는
 	# 확인이다(레거시 3종의 2.0~7.0과 대비된다).
-	"ddungsil/base": 0.5, "ddungsil/evolved": 0.5,
+	# 세 티어 전부 0.5 — bbox 중심 정렬로 제작하면 신규 티어에서도 그대로 재현된다.
+	"ddungsil/base": 0.5, "ddungsil/evolved": 0.5, "ddungsil/evolved2": 0.5,
 	"haemjji/base": 2.0, "haemjji/evolved": 3.5, "haemjji/evolved2": 3.0,
 	"mochi/base": 5.0, "mochi/evolved": 6.0, "mochi/evolved2": 6.0,
 	"ppiyak/base": 3.25, "ppiyak/evolved": 5.0, "ppiyak/evolved2": 7.0,
@@ -285,6 +287,16 @@ func await_bichon_restored(pet: Node2D, limit := 3.0) -> bool:
 		await create_timer(0.02).timeout
 		waited += 0.02
 	return false
+
+
+## 앵커 복귀 실패 시 원인을 한 번의 재발로 가릴 수 있게 상태를 함께 찍는다. 2026-08-11 기준
+## 원인 미규명(약 15회 중 1회)이고, 가설 두 개가 반증된 상태라 다음 재발의 진단 정보가 필요하다.
+## 좌표 차이가 0이 아닌 채 정착했다면 복귀 대상 시트가 달랐다는 뜻이고(상태명·애니메이션이
+## 가른다), 차이가 0인데 실패했다면 폴링 상한 안에 복귀 자체가 안 끝난 것이다.
+func bichon_anchor_diag(pet: Node2D, target_y: float) -> String:
+	var state_name: String = pet.machine.current_name() if pet.machine != null else "(machine 없음)"
+	return "상태=%s 애니=%s override='%s' 좌표차=%.2f" % [
+		state_name, pet._bichon_animation, pet._bichon_override, pet._sprite.position.y - target_y]
 
 
 ## 반응이 끝나고 스프라이트가 Idle 프레임 앵커로 "수렴하는지" 본다. 오버라이드 해제와
@@ -909,15 +921,17 @@ func _test_bichon_care_reactions() -> void:
 	var idle_anchor_y: float = pet._sprite.position.y
 	pet.celebrate()
 	check(pet._bichon_override == "Play", "비숑 celebrate가 Play 시트 재생 경로 사용")
-	check(await await_bichon_anchor(pet, idle_anchor_y), "비숑 celebrate 후 Idle 프레임 앵커로 복귀")
+	var celebrate_ok: bool = await await_bichon_anchor(pet, idle_anchor_y)
+	check(celebrate_ok, "비숑 celebrate 후 Idle 프레임 앵커로 복귀 (%s)" % bichon_anchor_diag(pet, idle_anchor_y))
 	pet.play_frolic()
 	check(pet._bichon_override == "Play", "비숑 play_frolic이 Play 시트 재생 경로 사용")
 	# 복귀를 관측하지 않고 위치만 보면, 복귀가 늦었을 때 Play 시트 프레임 앵커를 재게 된다 —
 	# reset_sprite_pose 검사까지 연쇄로 무너뜨렸던 경로다.
-	check(await await_bichon_anchor(pet, idle_anchor_y), "비숑 play_frolic 후 Idle 프레임 앵커로 복귀")
+	var frolic_ok: bool = await await_bichon_anchor(pet, idle_anchor_y)
+	check(frolic_ok, "비숑 play_frolic 후 Idle 프레임 앵커로 복귀 (%s)" % bichon_anchor_diag(pet, idle_anchor_y))
 	pet._sprite.position.y = idle_anchor_y - 40.0
 	pet.reset_sprite_pose()
-	check(approx(pet._sprite.position.y, idle_anchor_y), "비숑 reset_sprite_pose가 프레임 앵커로 복귀")
+	check(approx(pet._sprite.position.y, idle_anchor_y), "비숑 reset_sprite_pose가 프레임 앵커로 복귀 (%s)" % bichon_anchor_diag(pet, idle_anchor_y))
 	pet.queue_free()
 	pet_state.free()
 	call_deferred("_test_mochi_pose_runtime")

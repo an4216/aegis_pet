@@ -641,6 +641,18 @@ f0을 고정하면 **다른 상태 등록값을 하나도 안 건드려도 된�
 제작 기록: `mochi-air-v2`, `mochi-evolved-air-v2`, `mochi-evolved2-air-v1`, `mochi-evolved-idle-v1`.
 반려된 1차본은 `mochi-air-v1`, `mochi-evolved-air-v1`로 보존.
 
+## 2026-08-11 후속 — `evolved2/Walk` 체형·진화 티어 선명도
+
+`evolved2` Walk의 보이는 폭이 125~136px로 Idle 157~159px의 **78.6~85.5%**뿐이라,
+걷기 시작 시 회찌가 홀쭉해졌다. 그림을 다시 생성하지 않고 192×208 각 셀에 동일한 가로 1.20배
+변환을 적용한 뒤 중앙 192px을 잘라 재합성했다. 세로 크기·바닥선·프레임 순서·상태 배율은 불변이며,
+결과 Walk 폭은 Idle의 약 **94~103%**다.
+
+또 evolved/evolved2는 약 100px로 표시할 때 애니메이션 몸통이 125~159 소스 픽셀뿐이라 mipmap LOD가
+안경·눈·넥타이·정장 선을 과도하게 무르게 했다. 동일 프레임 필터 토글 캡처에서 bilinear가 더 선명해,
+`pet.gd`가 이 두 티어에만 `TEXTURE_FILTER_LINEAR`를 사용한다. base 및 다른 종족은 기존 mipmap 정책을
+유지한다.
+
 ## 환경 블로커 (다음 작업자 필독)
 
 `sprite-gen`의 `extract_sprite_row_frames.py`는 **Windows에서 돌지 않는다.**

@@ -448,14 +448,14 @@ const ANIMATED_POSE_OVERRIDES := {
 			},
 		},
 	},
-	# 뚱실이: base만 시트가 있다. evolved(뚱과장)·evolved2(뚱대박)는 정지 포즈 8종으로 폴백하므로
-	# CHARACTERS의 walk_static/walk_face_inverted 플래그를 지우면 안 된다 — walk_state.gd는
-	# 애니메이션 시트가 있으면 두 플래그를 읽기 전에 조기 반환하고, 없으면 그대로 쓴다.
-	# 같은 이유로 sleep_art_lacks_zzz도 켜지 않는다: 시트 경로는 sleep_state.gd가 라벨을 무조건
-	# 붙이고, 정지 폴백 티어는 아트에 z가 그려져 있어 켜면 이중 표시가 된다.
+	# 뚱실이: 3티어 전부 시트가 있다(2026-08-11 완비). 정지 폴백 경로를 타는 티어가 없어져
+	# CHARACTERS의 walk_static/walk_face_inverted를 제거했다 — 두 플래그는 walk_state.gd가
+	# 시트 재생에 실패했을 때만 읽는데 이제 그 분기에 도달하지 않는다.
+	# sleep_art_lacks_zzz는 처음부터 넣지 않았다: 시트 경로는 sleep_state.gd가 라벨을 무조건
+	# 붙이므로 불필요하고, 정지 아트에는 z가 그려져 있어 켜면 이중 표시가 된다.
 	"ddungsil": {
-		# 정지 아트 몸통 108px ÷ 시트 Idle 중립 프레임 135px = 0.800 (α>0 기준. 위 sheet_scale
-		# 주석의 경고 참조 — 이 값은 런타임 스모크로 정지 경로와 화면 몸통이 같은지 확인했다).
+		# 확정 산식(VISIBLE_ALPHA). 시트 Idle f0은 3티어 공통 135px이고 정지 아트만 다르다:
+		#   base 104 / 135 = 0.7591   evolved 200 / 135 = 1.4815   evolved2 158 / 135 = 1.1704
 		"sheet_scale": {"base": 0.7591, "evolved": 1.4815, "evolved2": 1.1704},
 		"tiers": ["base", "evolved", "evolved2"],
 		"states": {
@@ -773,6 +773,11 @@ func refresh_appearance() -> void:
 			if ResourceLoader.exists(frame_path):
 				_frames[pose] = load(frame_path)
 		break
+	# 진화 모찌는 약 100px 표시 크기에 원본 선화가 1.5px/화면px 정도라 mipmap LOD가
+	# 안경·정장 윤곽을 과도하게 무르게 만든다. 이 두 티어만 bilinear로 원본 선화를 보존한다.
+	_sprite.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR \
+		if ps.species == "mochi" and _body_tier in ["evolved", "evolved2"] \
+		else CanvasItem.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS
 	if _frames.has("idle"):
 		_sprite.texture = _frames["idle"]
 	else:
