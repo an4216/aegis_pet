@@ -131,7 +131,9 @@ const BICHON_LOOP_OVERRIDE := {"Play": false}
 # 목표는 <=0.5이고 ddungsil(0.5, bbox 중심 정렬로 제작)이 달성 가능함을 증명한다.
 # 레거시 3종의 2.0~7.0은 정렬 재작업이 필요한 아트 백로그다.
 const OFFSET_CEILING := {
-	"ddungsil/base": 0.5,
+	# 뚱실이 두 티어가 0.5로 같다 — bbox 중심 정렬로 제작하면 신규 티어에서도 그대로 나온다는
+	# 확인이다(레거시 3종의 2.0~7.0과 대비된다).
+	"ddungsil/base": 0.5, "ddungsil/evolved": 0.5,
 	"haemjji/base": 2.0, "haemjji/evolved": 3.5, "haemjji/evolved2": 3.0,
 	"mochi/base": 5.0, "mochi/evolved": 6.0, "mochi/evolved2": 6.0,
 	"ppiyak/base": 3.25, "ppiyak/evolved": 5.0, "ppiyak/evolved2": 7.0,
@@ -199,6 +201,7 @@ func _init() -> void:
 	_test_ppiyak_animated_sleep_manifest()
 	_test_ppiyak_idle_blink_sheet()
 	_test_mochi_pose_manifest()
+	_test_mochi_evolved_walk_keeps_body_width()
 	_test_haemjji_pose_manifest()
 	_test_serialize_roundtrip()
 	_test_stage_progression()
@@ -883,6 +886,16 @@ func _test_bichon_care_reactions() -> void:
 	save_manager.settings["night_start"] = 0
 	save_manager.settings["night_end"] = 0
 	check(not pet.machine.must_sleep(), "케어 반응 테스트 전제: 강제 수면 조건 해제됨")
+	# 이 테스트의 대상은 반응→복귀 경로이지 자율 전환이 아니므로 상태머신을 멈춰 격리한다
+	# (_test_pose_reaction_triggers가 같은 이유로 이미 쓰는 방식이다).
+	# ⚠️ 이것이 아래 앵커 복귀 간헐 실패(약 15회 중 1회)의 원인이라는 근거는 아직 없다.
+	# 2026-08-11에 두 가설을 세우고 둘 다 실측으로 반증했다:
+	#   (1) 반응 시퀀스의 잔여 상태 — celebrate+play_frolic 쌍 12회, play_frolic 단독 12회
+	#       격리 실행에서 실패 0건이라 시퀀스 자체는 원인이 아니다.
+	#   (2) 반응 창(0.8초) 중 idle_state의 자율 Walk 전환으로 복귀 대상 시트가 바뀜 —
+	#       상태머신을 켠 채 20회 관측했으나 Idle 이탈 0건이라 반증됐다.
+	# 즉 원인 미규명 상태이고, 이 줄은 격리 목적일 뿐 수정으로 간주하면 안 된다.
+	pet.machine.set_process(false)
 	check(pet._is_animated_pet(), "비숑이 애니메이션 펫 경로를 사용")
 	check(pet._animation_catalog() == PetScript.BICHON_ANIMATIONS, "비숑 전용 애니메이션 카탈로그 선택")
 	for care_reaction in ["Pet", "Play"]:
@@ -1078,6 +1091,20 @@ func _test_mochi_pose_runtime() -> void:
 	call_deferred("_test_mochi_tier_runtime")
 
 
+# 진화 후 Walk 시트가 Idle보다 홀쭉해지면 이동을 시작하는 순간 캐릭터 체형이 바뀐다.
+# 한두 프레임만 보는 대신 전 프레임 최솟값을 검사해 보행 주기 중 반복되는 수축을 잡는다.
+func _test_mochi_evolved_walk_keeps_body_width() -> void:
+	for tier: String in ["evolved", "evolved2"]:
+		var idle := _pose_config("mochi", tier, "Idle")
+		var walk := _pose_config("mochi", tier, "Walk")
+		var idle_width := _frame_visible_size(idle, 0).x
+		var minimum_ratio := 9999.0
+		for frame: int in int(walk["frames"]):
+			minimum_ratio = minf(minimum_ratio, _frame_visible_size(walk, frame).x / idle_width)
+		check(minimum_ratio >= 0.9,
+			"모찌 %s Walk 전 프레임 폭이 Idle의 90%% 이상 (최솟값 %.1f%%)" % [tier, minimum_ratio * 100.0])
+
+
 # 모찌 10상태 x 티어(base/evolved/evolved2)를 실제 씬에서 재생.
 # 매니페스트 검사는 딕셔너리만 보므로 "진화 후 실제로 프로찌 시트가 걸리는가"를 잡지 못한다 —
 # 티어 전환(_body_tier)을 태워 base 시트로 새지 않는지, evolved2는 정지 포즈로 폴백하는지 확인한다.
@@ -1115,6 +1142,9 @@ func _test_mochi_tier_runtime() -> void:
 				"모찌[%s] %s 시트 경로가 %s/ (티어 누수 없음): %s" % [tier, state, expect["dir"], path.get_file()])
 			check(approx(pet._base_scale.y, stage_scale * effective_body_scale("mochi", tier), 0.01),
 				"모찌[%s] %s 실효 배율 %.4f == STAGE_SCALE x BODY_SCALE x sheet_scale" % [tier, state, pet._base_scale.y])
+			if state == "Walk" and tier in ["evolved", "evolved2"]:
+				check(pet._sprite.texture_filter == CanvasItem.TEXTURE_FILTER_LINEAR,
+					"모찌[%s] Walk는 작은 선화 보존용 linear 필터" % tier)
 			# 공중 3상태는 프레임마다 뜨는 것이 정상이라 앵커 고정·접지 검사에서 제외한다.
 			var airborne: bool = state in ["Play", "Dragged", "Fall"]
 			var anchor_y: float = pet._sprite.position.y
@@ -1892,8 +1922,12 @@ func _test_haemjji_pose_runtime() -> void:
 # Windows가 렌더링 자체를 잘라내서 화면에 안 보였다. food_prop_rect()가 정확한 전역
 # 사각형을 돌려주는지, 그리고 그 사각형이 실제로 펫 클릭 영역 밖(합쳐줘야 하는 영역)에
 # 있는지 잠근다. main.gd 쪽 병합 로직 자체는 DisplayServer가 필요해 여기서 검사할 수 없다.
+#
+# 2026-08-11: 소품이 종족별 전용에서 13종 공용(FOOD_PROPS가 action만 키)으로 바뀌었다 —
+# 그래서 ppiyak/bichon도 이제 다른 종족과 똑같이 소품이 보여야 한다(예전엔 미등록이라
+# 빈 사각형이 정상이었지만, 지금 빈 사각형이면 그게 회귀다).
 func _test_food_prop_render_clip() -> void:
-	for species in ["mochi", "haemjji"]:
+	for species in ["mochi", "haemjji", "ppiyak", "bichon"]:
 		var pet_state: Node = PetStateScript.new()
 		pet_state.debug_set_species(species, "adult")
 		var pet: Node2D = PetScene.instantiate()
@@ -1907,29 +1941,17 @@ func _test_food_prop_render_clip() -> void:
 		check(pet.food_prop_rect() == Rect2(), "%s 먹기 전엔 food_prop_rect가 빈 사각형" % species)
 		pet._on_care_performed("feed")
 		var rect: Rect2 = pet.food_prop_rect()
-		check(rect.size.x > 0.0 and rect.size.y > 0.0, "%s feed 중 food_prop_rect가 실제 크기를 가짐" % species)
+		check(rect.size.x > 0.0 and rect.size.y > 0.0, "%s feed 중 food_prop_rect가 실제 크기를 가짐(공용 소품)" % species)
 		check(not pet.get_click_rect().encloses(rect), "%s 먹기 소품은 펫 클릭 영역 밖에 있음(main.gd가 병합해야 함)" % species)
 		pet.hide_food_prop()
 		check(pet.food_prop_rect() == Rect2(), "%s hide_food_prop 후 food_prop_rect 다시 빈 사각형" % species)
 		root.remove_child(pet)
 		pet.free()
 		pet_state.free()
-	# 삐약은 food prop 자산이 아직 없다 — 미등록이어도 에러 없이 조용히 빈 사각형이어야 한다.
-	var ppiyak_state: Node = PetStateScript.new()
-	ppiyak_state.debug_set_species("ppiyak", "adult")
-	var ppiyak_pet: Node2D = PetScene.instantiate()
-	ppiyak_pet.screen_size = Vector2(1280.0, 720.0)
-	ppiyak_pet.ground_y = 714.0
-	root.add_child(ppiyak_pet)
-	await process_frame
-	ppiyak_pet.ps = ppiyak_state
-	ppiyak_pet.refresh_appearance()
-	ppiyak_pet.machine.transition_to("Idle")
-	ppiyak_pet._on_care_performed("feed")
-	check(ppiyak_pet.food_prop_rect() == Rect2(), "삐약은 food prop 미등록이라 조용히 빈 사각형(하위 호환)")
-	root.remove_child(ppiyak_pet)
-	ppiyak_pet.free()
-	ppiyak_state.free()
+	check(Characters.get_food_prop("feed") == "res://assets/sprites/food/food_feed.png", "공용 feed 소품 경로")
+	check(Characters.get_food_prop("snack") == "res://assets/sprites/food/food_snack.png", "공용 snack 소품 경로")
+	check(ResourceLoader.exists(Characters.get_food_prop("feed")), "공용 feed 소품 파일 존재")
+	check(ResourceLoader.exists(Characters.get_food_prop("snack")), "공용 snack 소품 파일 존재")
 	call_deferred("_finish")
 
 
