@@ -178,3 +178,295 @@ gd-integrator가 이미 등록을 마친 뒤(task #18) Eat을 재생성했으므
 **함정 기록**: PowerShell `Set-Content -Encoding utf8`은 **BOM을 붙인다.** 이걸로
 `sprite-request.json`을 고쳤더니 추출이 `JSONDecodeError: Unexpected UTF-8 BOM`으로 죽었다.
 JSON/프롬프트를 스크립트로 고칠 땐 `UTF8Encoding($false)`로 써야 한다.
+
+
+---
+
+# 햄찌 계열 — 프레임별 크기 정규화 해제 (recompose, 2026-08-10)
+
+> **재생성 0회.** 기존 raw 스트립을 재측정해 **재합성만** 했다. 그림 내용은 그대로이고
+> 프레임별 크기 비율만 원본으로 되돌렸다. 대상: 이 계열 15장 (전체 A분류 27장 중).
+
+## 무엇이 문제였나
+
+추출기가 프레임마다 셀 안전영역에 꽉 채우는 탓에 **한 축이 전 프레임 동일한 값으로 고정**돼
+있었다 (모찌 = 폭 156px = 셀 192 − 2×18, 햄찌 = 높이 104px = 셀 128 − 2×12).
+그래서 스쿼시-스트레치가 사라졌다. 가장 뚜렷한 예가 모찌 Land로, 높이가 58→139px로 눌리는데
+폭은 156px에서 1px도 변하지 않았다 — 납작해진 프레임과 서 있는 프레임의 폭이 같은,
+물리적으로 불가능한 그림이었다.
+
+## 어떻게 고쳤나
+
+원본 스트립에서 프레임별 실제 bbox를 다시 재고, **행 전체에 단일 배율**을 적용해 되돌렸다
+(배율 = 현재 행 중앙값 높이 / 원본 중앙값 높이). 프레임마다 다른 배율을 쓰던 것을
+한 배율로 바꾼 것이 핵심이다.
+
+배치는 **각 프레임의 기존 bbox 바닥선과 가로 중심을 그대로 유지**하도록 잡았다. 덕분에:
+
+- **`foot_padding`은 15장 전부 불변** — 발 접지·공중 궤적이 바뀌지 않는다.
+- **`horizontal_offsets`는 최대 0.5px만 이동** — 아래 표대로 갱신하면 된다.
+
+## 등록 갱신값 (`horizontal_offsets`만)
+
+| 티어 | 시트 (경로) | 갱신값 |
+|---|---|---|
+| `base` | `res://assets/sprites/haemjji/fall_4f_alpha_smooth.png` | `[0.0, 0.5, 0.5, -0.5]` |
+| `base` | `res://assets/sprites/haemjji/idle_6f_alpha_smooth.png` | `[1.0, 0.5, -1.0, 0.5, -0.5, 0.5]` |
+| `base` | `res://assets/sprites/haemjji/pet_6f_alpha_smooth.png` | `[0.0, 0.5, 0.5, -0.5, -0.5, -0.5]` |
+| `base` | `res://assets/sprites/haemjji/play_6f_alpha_smooth.png` | `[0.0, 0.0, 0.0, 0.5, 0.0, 0.5]` |
+| `base` | `res://assets/sprites/haemjji/poop_6f_alpha_smooth.png` | `[-0.5, 0.0, 0.0, -0.5, -0.5, -0.5]` |
+| `evolved` | `res://assets/sprites/haemjji_evolved/fall_4f_alpha_smooth.png` | `[0.5, 1.0, -3.5, 1.5]` |
+| `evolved` | `res://assets/sprites/haemjji_evolved/idle_6f_alpha_smooth.png` | `[1.5, 1.5, 2.0, 1.5, 1.5, 1.5]` |
+| `evolved` | `res://assets/sprites/haemjji_evolved/pet_6f_alpha_smooth.png` | `[2.0, 0.0, 2.0, -1.0, 1.0, 1.5]` |
+| `evolved` | `res://assets/sprites/haemjji_evolved/play_6f_alpha_smooth.png` | `[-0.5, -0.5, 1.0, 1.0, 1.0, 0.0]` |
+| `evolved` | `res://assets/sprites/haemjji_evolved/poop_6f_alpha_smooth.png` | `[1.5, 1.5, 0.0, 1.5, 1.5, 1.5]` |
+| `evolved` | `res://assets/sprites/haemjji_evolved/sick_6f_alpha_smooth.png` | `[1.0, 1.0, -1.5, -1.5, -1.5, 1.5]` |
+| `evolved2` | `res://assets/sprites/haemjji_evolved2/fall_4f_alpha_smooth.png` | `[1.5, 1.0, 1.5, -2.0]` |
+| `evolved2` | `res://assets/sprites/haemjji_evolved2/play_6f_alpha_smooth.png` | `[1.0, 1.5, 1.0, 1.0, 1.0, 0.0]` |
+| `evolved2` | `res://assets/sprites/haemjji_evolved2/sick_6f_alpha_smooth.png` | `[1.5, 1.5, -1.5, -1.5, -1.5, 1.0]` |
+
+변경 없음: `pet_6f_alpha_smooth.png`
+
+## 전체 크기가 줄어든 시트
+
+아래 시트는 **가장 극단적인 프레임이 셀에 안 들어가서** 행 전체를 조금 축소했다.
+비율을 지키려면 피할 수 없다 — 한 프레임만 따로 눌러 맞추면 지금 고치려는 왜곡을
+다시 넣는 셈이라 그렇게 하지 않았다.
+
+| 시트 | 이전 대비 크기 |
+|---|---:|
+| `fall_4f_alpha_smooth.png` | **95.2%** |
+| `sick_6f_alpha_smooth.png` | **98.1%** |
+| `fall_4f_alpha_smooth.png` | **97.1%** |
+
+**화면 QA에서 이 시트들만 크기 튐을 확인해야 한다.**
+
+## 자체 검수
+
+- [x] 셀 경계 접촉 0 (전 프레임)
+- [x] 부유 파편 0 (연결성분 스캔)
+- [x] `foot_padding` 불변
+- [x] Godot 재임포트 + 회귀 테스트 3595 passed / 0 failed
+- [ ] 실제 화면 QA — qa-verifier 담당
+
+제작 기록: 각 런 디렉토리의 `recomposed/` 하위에 동일 파일을 보존했다.
+원본은 git에 그대로 있으므로 해당 경로를 git checkout 하면 언제든 되돌릴 수 있다.
+
+
+### 전환 팝 재측정 (2026-08-10 추가) — 실제 전이 경로 기준
+
+크기가 줄어든 시트가 상태 전환에서 튀는지 다시 쟀다. 처음엔 "최종 프레임 대 Idle"로 봤는데,
+**Fall은 Idle로 가지 않는다 — Fall -> Land -> Idle 순서다.** Land의 첫 프레임은 착지 스쿼시라
+원래 크게 낮은 게 맞으므로, Fall을 Idle과 비교하면 정상 동작이 결함으로 보인다.
+
+등록된 전이 경로대로 다시 재면:
+
+| 전이 | 이전 프레임 -> 다음 프레임 | 변화 |
+|---|---|---:|
+| mochi Land -> Idle | 120 -> 129 | **+7%** |
+| haemjji_evolved Land -> Idle | 104 -> 105 | **+1%** |
+| haemjji_evolved2 Land -> Idle | 104 -> 104 | **0%** |
+| mochi Fall -> Land | 123 -> 70 | -43% (의도된 스쿼시) |
+| haemjji_evolved Fall -> Land | 85 -> 77 | -9% (의도된 스쿼시) |
+| haemjji_evolved2 Fall -> Land | 95 -> 61 | -36% (의도된 스쿼시) |
+
+**Land -> Idle 세 경우 모두 0~7%로, 전환 팝은 없다.** 축소된 5장 중 실제로 전환에서 문제를
+일으키는 것은 현재 없는 것으로 보인다. Fall -> Land의 큰 감소는 착지 스쿼시 그 자체다.
+
+남는 것은 전환 팝이 아니라 **연출 중 크기**다 — 예를 들어 mochi Land는 애니메이션 도중
+이전보다 8.7% 작게 보인다. 이건 원본 비율을 지킨 결과이고 튐이 아니라서, 화면에서
+"작아 보인다"는 인상이 있는지만 확인하면 된다.
+
+
+---
+
+# 햄찌 계열 — Eat / FileConsume 재생성 (2단계, Task #35, 2026-08-10)
+
+> 이 계열 **4장**. 1단계(재합성)와 달리 **이미지를 새로 생성**했다 —
+> 원본 그림 자체가 정지 상태여서 재합성으로는 복구가 불가능했기 때문이다.
+
+## 왜 재생성이 필요했나
+
+1단계에서 84장을 분류할 때, 이 시트들은 **원본 스트립부터 실루엣이 평평**했다
+(폭 변화 0.5~3.1%). 추출기가 죽인 게 아니라 애초에 같은 그림 4~6장이 그려져 있었다.
+`qa-verifier`가 삐약에서 4.2%를 "거의 정지"로 반려한 기준을 적용하면, 이 시트들은
+그보다 더 밋밋했다 — Eat과 FileConsume은 **실루엣 변화가 곧 내용**인 상태라 치명적이다.
+
+## 어떻게 고쳤나 — 프롬프트에 프레임 번호와 비율을 못박았다
+
+삐약에서 얻은 교훈을 그대로 적용했다. "부풀려라" 같은 정성적 지시는 두 번 실패했고,
+**몇 번 프레임이 가장 넓어야 하는지와 최소 몇 배인지**를 숫자로 지정하니 한 번에 됐다.
+
+- **FileConsume**: "프레임 2가 프레임 1보다 최소 1/5 넓고, 넷 중 단독 최대여야 한다"
+- **Eat (모찌)**: "프레임 2가 가장 넓고 낮은 스쿼시, 프레임 4가 가장 높고 좁은 스트레치"
+- **Eat (햄찌 evolved)**: "볼주머니가 프레임마다 넓어져 5·6번이 1번보다 최소 1/5 넓다"
+
+생성 후 **재합성 보정을 한 번 더 걸었다** — 추출기가 프레임을 다시 셀에 꽉 채워
+모처럼 만든 실루엣 변화를 그대로 없애버리기 때문이다. 이 두 단계는 세트로 가야 한다.
+
+## 결과
+
+| 티어 | 상태 | 원본 폭 변화 (이전 → 이후) | 최종 시트 폭 변화 |
+|---|---|---|---:|
+| `base` | FileConsume | 0.8% → **15.9%** | **15.4%** |
+| `evolved` | FileConsume | 0.7% → **34.1%** | **34.2%** |
+| `evolved2` | FileConsume | 2.8% → **25.3%** | **25.3%** |
+| `evolved` | Eat | 2.1% → **31.7%** | **31.4%** |
+
+최대 폭 프레임도 전부 의도한 위치에 왔다 (FileConsume·모찌 Eat = f2, 햄찌 evolved Eat = f6).
+
+## 등록 갱신값
+
+`foot_padding`은 **4장 전부 불변**이다. `horizontal_offsets`만 갱신하면 된다.
+
+| 티어 | 시트 (경로) | `horizontal_offsets` |
+|---|---|---|
+| `base` | `res://assets/sprites/haemjji/file_consume_4f_alpha_smooth.png` | `[0.0, -1.0, 1.0, 1.0]` |
+| `evolved` | `res://assets/sprites/haemjji_evolved/file_consume_4f_alpha_smooth.png` | `[1.5, 2.0, 2.5, 1.5]` |
+| `evolved2` | `res://assets/sprites/haemjji_evolved2/file_consume_4f_alpha_smooth.png` | `[0.0, 1.0, 0.0, 0.5]` |
+| `evolved` | `res://assets/sprites/haemjji_evolved/eat_6f_alpha_smooth.png` | `[2.0, 2.5, 1.5, 2.5, 2.0, 2.0]` |
+
+## 전체 크기가 줄어든 시트
+
+없다 — 이 계열은 4장 전부 크기가 그대로다.
+
+## 자체 검수
+
+- [x] 추출 `ok: true`, errors 0
+- [x] 셀 경계 접촉 0, 부유 파편 0
+- [x] `foot_padding` 불변
+- [x] 아이덴티티 유지 (안경·넥타이·정장/요리사 모자·왕관 전 프레임)
+- [x] 회귀 테스트 3595 passed / 0 failed
+- [ ] 실제 화면 QA — qa-verifier
+
+반려본은 각 런의 `raw/rejected/<state>.flat-silhouette.png`로 보존했다.
+Before/After 대조표: `docs/02-design/characters/stage2-eat-fileconsume.png`
+
+
+## 2026-08-10 후속 — `haemjji/eat` base·evolved2 재생성 (Task #36)
+
+2단계(#35)에서 **내 범위 산정이 틀려서** 이 상태의 3티어가 벌어졌다. 그 불일치를 되돌린 작업이다.
+
+### 무엇을 잘못했나
+
+#35 대상을 고를 때 **폭 변화만 보고** 판단했다. `haemjji/eat`의 base·evolved2는 폭이 7~8%
+살아 있어 "정상"으로 분류해 제외했는데, **높이가 정확히 0.0%**였다 — 반쪽만 움직이는 시트였다.
+그 결과 evolved 한 장만 재생성되어 같은 상태의 3티어가 이렇게 벌어졌다:
+
+| 티어 | 면적 변화 (#35 직후) |
+|---|---:|
+| base | 7.9% |
+| evolved (재생성됨) | 37.9% |
+| evolved2 | 7.0% |
+
+**재생성이 오히려 티어 불일치를 만들었다.** `qa-verifier`가 찾아서 2장 추가를 제안했고 수용했다.
+
+### 지표를 면적으로 바꿨다
+
+캐릭터·상태마다 표현 축이 다르다 — 모찌 Eat은 세로 스쿼시, 모찌 FileConsume은 가로,
+햄찌는 가로다. **폭만 보면 멀쩡한 걸 재작업시키고 진짜 약한 걸 놓친다** (#35에서 실제로 둘 다
+일어났다: `mochi_evolved/eat`을 "가장 약하다"고 잘못 지목했고, 이 2장은 놓쳤다).
+앞으로 이 축의 판정은 **면적(폭×높이)** 으로 한다.
+
+### 결과
+
+| 티어 | 폭 | 높이 | **면적** |
+|---|---:|---:|---:|
+| base (이전) | 7.8% | **0.0%** | 7.9% |
+| **base (신규)** | **41.5%** | 15.6% | **22.4%** |
+| evolved (#35) | 31.4% | 4.9% | 37.9% |
+| evolved2 (이전) | 7.6% | **0.3%** | 7.0% |
+| **evolved2 (신규)** | **53.4%** | 9.5% | **40.1%** |
+
+최대 폭 프레임은 둘 다 **f6**(의도한 위치)이고, 볼주머니가 프레임마다 점진적으로 부푼다.
+
+### 면적 지표의 한계도 같이 확인됐다
+
+**base가 22.4%로 다른 둘(37.9 / 40.1%)보다 낮게 나오는데, 이건 base가 약해서가 아니다.**
+base는 폭이 41.5% 늘면서 **높이가 15.6% 줄어든다**(볼이 차면서 머리가 어깨 사이로 가라앉는
+연출을 프롬프트에 넣었다). 면적은 곱이라 **한 축이 늘고 다른 축이 줄면 서로 상쇄된다** —
+즉 스쿼시-스트레치가 강할수록 면적 지표가 과소평가한다.
+
+폭만 보면 base 41.5% / evolved 31.4% / evolved2 53.4%로 오히려 base가 evolved보다 크다.
+**면적은 "한 축이 죽었는지" 걸러내는 데는 정확하지만(0.0% 축을 놓치지 않는다),
+연출 강도의 절대 비교에는 폭·높이를 같이 봐야 한다.**
+
+### 등록 갱신값
+
+`foot_padding` 불변. `horizontal_offsets`만:
+
+| 티어 | 시트 (경로) | `horizontal_offsets` |
+|---|---|---|
+| `base` | `res://assets/sprites/haemjji/eat_6f_alpha_smooth.png` | `[1.0, -0.5, 0.5, 0.0, -0.5, 0.0]` |
+| `evolved2` | `res://assets/sprites/haemjji_evolved2/eat_6f_alpha_smooth.png` | `[-0.5, 0.5, 1.0, 0.5, 1.0, 1.0]` |
+
+### 검수
+
+- [x] 추출 `ok: true`, errors 0
+- [x] 셀 경계 접촉 0, `foot_padding` 불변, 크기 유지 100%
+- [x] 최대 폭 프레임 f6 (의도한 위치)
+- [x] 회귀 테스트 3597 passed / 0 failed
+- [ ] 화면 QA — qa-verifier
+
+반려본: 각 런의 `raw/rejected/eat.height-pinned.png`
+
+---
+
+# 햄찌 계열 — 공중 진폭 복원 (Task #37, 2026-08-10)
+
+> 이 계열 **3장**. 재합성 2장 / 재생성 1행.
+
+## 배경
+
+추출 `fit`의 `align_y: bottom`이 모든 프레임 밑면을 셀 바닥선에 재고정하므로, 공중 상태
+(Play/Dragged/Fall)의 "떠오른 높이"가 시트에서 지워진다. `pet.gd:107-112`의 `airborne` 계약은
+프레임 간 `foot_padding` 차이를 화면 상승분으로 읽으므로 차이가 0이면 매달림·낙하가 안 보인다.
+`raw` 스트립의 프레임별 상승분을 복원해 되살렸다. 자세한 원리와 우선순위 규칙은
+`mochi.handoff.md`의 "공중 진폭 복원" 절에 있다 (여기서 반복하지 않는다).
+
+## 등록 갱신값
+
+| 티어 | 상태 | 방식 | 진폭 | `foot_padding` | `horizontal_offsets` |
+|---|---|---|---:|---|---|
+| `base` | Dragged | **재생성** | 10px | `[21.0, 22.0, 12.0, 19.0]` | `[-2.5, 0.5, -2.0, 0.5]` |
+| `evolved` | Fall | 재합성 | 7.0px | `[9.0, 11.0, 7.0, 4.0]` | `[0.5, 1.0, -3.5, 1.5]` (불변) |
+| `evolved2` | Fall | 재합성 | 7.0px | `[14.0, 12.0, 13.0, 7.0]` | `[1.5, 1.0, 1.5, -2.0]` (불변) |
+
+`ground_padding`은 **명시하지 않는다** (생략 시 `foot_padding` 최솟값 = 위 값들의 계산 전제).
+
+## 셀 축소 없이 진폭 전량을 살린 방법 (Fall 2장)
+
+이 2장은 raw에 좋은 궤적이 있었는데도(상승분 raw 29~39px) 자동 보정이 진폭을 **0으로** 깎고
+있었다. 원인은 f1의 머리 위 여유가 2px뿐이라 상승분을 얹을 자리가 없었던 것이다.
+처음 계획은 스프라이트를 축소해 여유를 만드는 것(낙하 중 크기가 작아지는 트레이드오프)이었으나,
+**행 전체를 셀 안에서 아래로 내리는 것으로 축소 없이 해결했다.**
+
+근거는 `airborne` 계약 자체다 — `ground_padding` 하나로만 고정 보정하므로 **행 전체의 균일한
+수직 이동은 화면에서 완전히 상쇄되고 프레임 간 상대 차이만 보인다.** 접지 기준값을 12 → 4
+(`evolved`) / 12 → 7 (`evolved2`)로 낮춰 머리 위 여유를 벌었다. 결과 **진폭 감쇠 0 · 축소 0 ·
+이미지 재생성 0**으로 7.0px 확보. base(`haemjji/fall`)의 9px과 같은 급이다.
+
+## base Dragged는 재생성이 필요했다
+
+raw 자체에 궤적이 거의 없어(표시배율 적용 후 2.4px) 재합성으로 복원할 것이 없었다. 프롬프트에
+"목덜미를 잡혀 늘어져 매달림 / 두 발이 바닥에서 완전히 떨어져 아래로 늘어짐 / 앞발도 가슴에서
+떨어져 늘어짐 / 프레임마다 몸 아래 빈 여백 크기가 달라야 함"을 명시해 10px을 확보했다.
+
+> ⚠️ 다만 **매달린 느낌은 아직 약하다** — 그림이 "똑바로 선 채 떠 있는" 쪽으로 읽히는 면이 있다.
+> 화면 QA에서 부족하다고 나오면 이 행만 다시 뽑아야 한다. 진폭 자체는 기준을 넘겼다.
+
+## 남은 낮은 값 (후속 후보)
+
+같은 상태에서 이제 `evolved/Dragged` 5px, `evolved2/Dragged` 4px가 가장 약한 티어로 남았다.
+둘 다 raw가 약해서(편차 1~3%) 재합성으로는 못 올리고 재생성이 필요하다. 전수 재감사에서
+`haemjji/sleep`도 raw 정지(높이 변화 0.0%)로 잡혔는데, 수면 상태라 우선순위를 낮게 뒀다.
+
+## 검수
+
+- [x] 추출 `ok: true`, errors 0, warnings 0
+- [x] 셀 경계 접촉 0, 부유 파편 0, 크로마 잔여 0
+- [x] 표시 크기 유지 100%
+- [x] `mipmaps/generate=true`
+- [ ] 화면 QA — qa-verifier
+
+제작 기록: `haemjji-air-v1` (base Dragged). 재합성본은 각 런의 `recomposed/`.
