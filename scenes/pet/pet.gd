@@ -139,7 +139,9 @@ const ANIMATED_POSE_OVERRIDES := {
 		# 2026-08-07(§12) evolved/evolved2 정지 아트가 256px로 복원되면서 BODY_SCALE이 ~1/2로
 		# 내려갔다. 시트 자산은 그대로 128px이므로 sheet_scale에 art_ratio를 곱해 상쇄한다
 		# (실효 배율 = BODY_SCALE x sheet_scale 은 크기 사다리 배율만큼만 커진다).
-		"sheet_scale": {"base": 0.5581, "evolved": 1.4304, "evolved2": 1.2644},
+		# base 0.8450 = 정지 아트 코어 109 / 시트 Idle f0 129. 2026-08-12 Task #10에서 정지 아트만
+		# 1.497배로 재생성했고(192 캔버스) 시트는 그대로라, 분자만 커진 만큼 이 값이 올라갔다.
+		"sheet_scale": {"base": 0.8450, "evolved": 1.4304, "evolved2": 1.2644},
 		"tiers": ["base", "evolved", "evolved2"],
 		"states": {
 			"Idle": {
@@ -227,8 +229,9 @@ const ANIMATED_POSE_OVERRIDES := {
 			},
 		},
 	},
-	# 삐약 계열: 10상태 전부 애니메이션 시트, 3티어(base/evolved/evolved2) 각각 별도 시트.
-	# 셀이 128x128(당시 정지 포즈 캔버스와 동일)이라 sheet_scale이 필요 없다고 봤지만 틀렸다
+	# 삐약 계열: 14상태 전부 애니메이션 시트, 3티어(base/evolved/evolved2) 각각 별도 시트.
+	# 2026-08-11 리메이크는 192x208 셀로 올려 실제 표시 크기에서 원본을 확대하지 않고 축소 샘플링한다.
+	# 이전 128x128 시트는 정지 포즈 캔버스와 같아 sheet_scale이 필요 없다고 봤지만 틀렸다
 	# (2026-08-07 수정). 셀 크기가 같아도 그 안에 그려진 몸통 높이가 정지 포즈 아트와 다르면
 	# BODY_SCALE(정지 포즈 몸통 기준으로 정규화된 값)이 그대로 어긋난다. 실측 결과 애니메이션이
 	# 자기 정지 포즈보다 base -12.6%, evolved -13.0%로 작았고, evolved2만 우연히 맞아서
@@ -246,94 +249,93 @@ const ANIMATED_POSE_OVERRIDES := {
 	# 위 값은 세 상태(Idle/Walk/Eat)를 함께 맞춘 값이라 상태 단위 보정이 필요 없다 — 실측 편차는
 	# Idle -0.5% / Walk +0.5% / Eat -0.5% 수준이다. Land(착지 스쿼시)·Sleep(엎드림)처럼 셀 몸통이
 	# 원래 10~20% 낮은 상태는 그게 아트의 의도이므로 애초에 보정 대상이 아니다.
-	# 접지 상태의 foot_padding은 12.0 고정이고, Happy(=Play)/Dragged/Fall만 의도적으로 공중에
+	# 리메이크 접지 상태의 foot_padding은 16.0 고정이고, Happy(=Play)/Dragged/Fall만 의도적으로 공중에
 	# 뜨므로 프레임마다 값이 커진다 — 이 값이 점프/부유 높이를 만든다(핸드오프 v3 실측).
 	# 그 세 상태는 반드시 "airborne": true 를 달아야 한다. 없으면 매 프레임 발 재고정이
 	# 상승분을 그대로 상쇄해 화면에서 전혀 뜨지 않는다(2026-08-06 QA 블로커).
 	"ppiyak": {
-		# 2026-08-07(§12) evolved/evolved2 정지 아트가 256px로 복원되면서 BODY_SCALE이 ~1/2로
-		# 내려갔다. 시트 자산은 그대로 128px이므로 sheet_scale에 art_ratio를 곱해 상쇄한다
-		# (실효 배율 = BODY_SCALE x sheet_scale 은 크기 사다리 배율만큼만 커진다).
-		"sheet_scale": {"base": 1.1735, "evolved": 2.3298, "evolved2": 2.0213},
+		# 2026-08-11 리메이크 Idle 몸통 높이 152px을 각 티어 정지 아트 크기에 맞춘 값이다.
+		# 실효 배율은 이전 런타임 표시 크기를 유지하되 고해상도 시트를 축소해 선명도를 확보한다.
+		"sheet_scale": {"base": 0.7570, "evolved": 1.4416, "evolved2": 1.2505},
 		"states": {
 			"Idle": {
 				# 물리 6칸을 sprite_frame_sequence로 논리 16프레임에 매핑한다(bichon Idle과 같은 방식).
 				# frames=6으로 줄이면 눈 감는 셀 4·5에 도달하지 못해 깜박임이 조용히 사라진다.
-				"base": {"path": "res://assets/sprites/ppiyak/idle_blink_6f.png", "columns": 6, "rows": 1, "frames": 16, "fps": 8.0, "loop": true, "sprite_frame_sequence": [0, 0, 1, 1, 2, 2, 3, 3, 0, 4, 5, 4, 0, 0, 2, 2], "foot_padding": [12.0, 12.0, 12.0, 12.0, 12.0, 12.0, 12.0, 12.0, 12.0, 12.0, 12.0, 12.0, 12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [0.0, 0.0, -1.0, -1.0, 0.0, 0.0, -1.0, -1.0, 0.0, 0.0, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0]},
-				"evolved": {"path": "res://assets/sprites/ppiyak_evolved/idle_blink_6f.png", "columns": 6, "rows": 1, "frames": 16, "fps": 8.0, "loop": true, "sprite_frame_sequence": [0, 0, 1, 1, 2, 2, 3, 3, 0, 4, 5, 4, 0, 0, 2, 2], "foot_padding": [12.0, 12.0, 12.0, 12.0, 12.0, 12.0, 12.0, 12.0, 12.0, 12.0, 12.0, 12.0, 12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [-0.5, -0.5, -1.0, -1.0, 0.0, 0.0, 0.5, 0.5, -0.5, -1.0, -1.0, -1.0, -0.5, -0.5, 0.0, 0.0]},
-				"evolved2": {"path": "res://assets/sprites/ppiyak_evolved2/idle_blink_6f.png", "columns": 6, "rows": 1, "frames": 16, "fps": 8.0, "loop": true, "sprite_frame_sequence": [0, 0, 1, 1, 2, 2, 3, 3, 0, 4, 5, 4, 0, 0, 2, 2], "foot_padding": [12.0, 12.0, 12.0, 12.0, 12.0, 12.0, 12.0, 12.0, 12.0, 12.0, 12.0, 12.0, 12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [-3.0, -3.0, 0.0, 0.0, -2.5, -2.5, 0.5, 0.5, -3.0, -3.0, -3.0, -3.0, -3.0, -3.0, -2.5, -2.5]},
+				"base": {"path": "res://assets/sprites/ppiyak/idle_blink_6f_remake.png", "columns": 6, "rows": 1, "frames": 16, "fps": 8.0, "loop": true, "sprite_frame_sequence": [0, 0, 1, 1, 2, 2, 3, 3, 0, 4, 5, 4, 0, 0, 2, 2], "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0, 16.0, 16.0, 16.0, 16.0, 16.0, 16.0, 16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.5, 0.5, 0.5, 0.5, 0.0, 0.0, 0.0, 0.0, 0.5, 0.0, 0.0, 0.0, 0.5, 0.5, 0.0, 0.0]},
+				"evolved": {"path": "res://assets/sprites/ppiyak_evolved/idle_blink_6f_remake.png", "columns": 6, "rows": 1, "frames": 16, "fps": 8.0, "loop": true, "sprite_frame_sequence": [0, 0, 1, 1, 2, 2, 3, 3, 0, 4, 5, 4, 0, 0, 2, 2], "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0, 16.0, 16.0, 16.0, 16.0, 16.0, 16.0, 16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.5, 0.5, 0.0, 0.0, 0.5, 0.5, 0.0, 0.0, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]},
+				"evolved2": {"path": "res://assets/sprites/ppiyak_evolved2/idle_blink_6f_remake.png", "columns": 6, "rows": 1, "frames": 16, "fps": 8.0, "loop": true, "sprite_frame_sequence": [0, 0, 1, 1, 2, 2, 3, 3, 0, 4, 5, 4, 0, 0, 2, 2], "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0, 16.0, 16.0, 16.0, 16.0, 16.0, 16.0, 16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.5, 0.5, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.0, 0.0]},
 			},
 			# 기본 시트는 왼쪽을 향한다(bichon과 동일) — 오른쪽 이동은 flip_h.
 			"Walk": {
-				"base": {"path": "res://assets/sprites/ppiyak/walk_8f.png", "columns": 4, "rows": 2, "frames": 8, "fps": 10.0, "loop": true, "foot_padding": [12.0, 12.0, 12.0, 12.0, 12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [1.5, 1.5, 1.5, 2.0, 1.5, 1.0, 1.5, 1.5]},
-				"evolved": {"path": "res://assets/sprites/ppiyak_evolved/walk_8f.png", "columns": 4, "rows": 2, "frames": 8, "fps": 10.0, "loop": true, "foot_padding": [12.0, 12.0, 12.0, 12.0, 12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [-0.5, 0.0, 0.0, 0.0, 0.0, 0.5, -0.5, 0.0]},
-				"evolved2": {"path": "res://assets/sprites/ppiyak_evolved2/walk_8f.png", "columns": 4, "rows": 2, "frames": 8, "fps": 10.0, "loop": true, "foot_padding": [12.0, 12.0, 12.0, 12.0, 12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [-3.5, -3.5, -3.5, -3.0, -3.0, -3.5, -3.5, -3.5]},
+				"base": {"path": "res://assets/sprites/ppiyak/walk_8f_remake.png", "columns": 4, "rows": 2, "frames": 8, "fps": 10.0, "loop": true, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.0, 0.5, 0.5, 0.5, 0.0, 0.5, 0.0, 0.5]},
+				"evolved": {"path": "res://assets/sprites/ppiyak_evolved/walk_8f_remake.png", "columns": 4, "rows": 2, "frames": 8, "fps": 10.0, "loop": true, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.0, 0.5, 0.5, 0.5, 0.5, 0.5, 0.0, 0.5]},
+				"evolved2": {"path": "res://assets/sprites/ppiyak_evolved2/walk_8f_remake.png", "columns": 4, "rows": 2, "frames": 8, "fps": 10.0, "loop": true, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.5, 0.5, 0.5, 0.5, 0.0, 0.0, 0.5, 0.0]},
 			},
 			"Sleep": {
-				"base": {"path": "res://assets/sprites/ppiyak/sleep_6f.png", "columns": 6, "rows": 1, "frames": 6, "fps": 4.0, "loop": true, "foot_padding": [12.0, 12.0, 12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [-3.5, -3.0, -3.0, -3.0, -3.0, -3.5]},
-				"evolved": {"path": "res://assets/sprites/ppiyak_evolved/sleep_6f.png", "columns": 6, "rows": 1, "frames": 6, "fps": 4.0, "loop": true, "foot_padding": [12.0, 12.0, 12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [-5.0, -5.0, -5.0, -5.0, -4.5, -5.0]},
-				"evolved2": {"path": "res://assets/sprites/ppiyak_evolved2/sleep_6f.png", "columns": 6, "rows": 1, "frames": 6, "fps": 4.0, "loop": true, "foot_padding": [12.0, 12.0, 12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [-7.0, -7.0, -7.0, -7.0, -7.0, -6.5]},
+				"base": {"path": "res://assets/sprites/ppiyak/sleep_6f_remake.png", "columns": 6, "rows": 1, "frames": 6, "fps": 4.0, "loop": true, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.5, 0.0, 0.0, 0.5, 0.5, 0.0]},
+				"evolved": {"path": "res://assets/sprites/ppiyak_evolved/sleep_6f_remake.png", "columns": 6, "rows": 1, "frames": 6, "fps": 4.0, "loop": true, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.0, 0.5, 0.0, 0.5, 0.5, 0.5]},
+				"evolved2": {"path": "res://assets/sprites/ppiyak_evolved2/sleep_6f_remake.png", "columns": 6, "rows": 1, "frames": 6, "fps": 4.0, "loop": true, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.0, 0.0, 0.0, 0.5, 0.5, 0.5]},
 			},
 			"Eat": {
-				"base": {"path": "res://assets/sprites/ppiyak/eat_6f.png", "columns": 6, "rows": 1, "frames": 6, "fps": 8.0, "loop": true, "foot_padding": [12.0, 12.0, 12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [0.0, 0.5, 0.5, 0.0, 0.0, 0.0]},
-				"evolved": {"path": "res://assets/sprites/ppiyak_evolved/eat_6f.png", "columns": 6, "rows": 1, "frames": 6, "fps": 8.0, "loop": true, "foot_padding": [12.0, 12.0, 12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [-2.5, -2.0, -2.0, -2.0, -2.0, -2.0]},
-				"evolved2": {"path": "res://assets/sprites/ppiyak_evolved2/eat_6f.png", "columns": 6, "rows": 1, "frames": 6, "fps": 8.0, "loop": true, "foot_padding": [12.0, 12.0, 12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [-3.0, -3.0, -4.0, -2.5, -3.5, -3.5]},
+				"base": {"path": "res://assets/sprites/ppiyak/eat_6f_remake.png", "columns": 6, "rows": 1, "frames": 6, "fps": 8.0, "loop": true, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.0, 0.5, 0.5, 0.5, 0.0, 0.0]},
+				"evolved": {"path": "res://assets/sprites/ppiyak_evolved/eat_6f_remake.png", "columns": 6, "rows": 1, "frames": 6, "fps": 8.0, "loop": true, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.0, 0.5, 0.0, 0.0, 0.5, 0.0]},
+				"evolved2": {"path": "res://assets/sprites/ppiyak_evolved2/eat_6f_remake.png", "columns": 6, "rows": 1, "frames": 6, "fps": 8.0, "loop": true, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.0, 0.5, 0.5, 0.0, 0.0, 0.0]},
 			},
 			# 시트에 부유 기호가 없다 — @_@ 라벨은 런타임(sick_state.gd)이 따로 띄운다.
 			"Sick": {
-				"base": {"path": "res://assets/sprites/ppiyak/sick_6f.png", "columns": 6, "rows": 1, "frames": 6, "fps": 5.0, "loop": true, "runtime_sick_mark": true, "foot_padding": [12.0, 12.0, 12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [-0.5, 0.0, -0.5, -0.5, -0.5, -0.5]},
-				"evolved": {"path": "res://assets/sprites/ppiyak_evolved/sick_6f.png", "columns": 6, "rows": 1, "frames": 6, "fps": 5.0, "loop": true, "runtime_sick_mark": true, "foot_padding": [12.0, 12.0, 12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [-3.0, -3.0, -2.5, -3.5, -2.0, 0.0]},
-				"evolved2": {"path": "res://assets/sprites/ppiyak_evolved2/sick_6f.png", "columns": 6, "rows": 1, "frames": 6, "fps": 5.0, "loop": true, "runtime_sick_mark": true, "foot_padding": [12.0, 12.0, 12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [-5.5, -6.0, -5.0, -5.0, -5.0, -5.0]},
+				"base": {"path": "res://assets/sprites/ppiyak/sick_6f_remake.png", "columns": 6, "rows": 1, "frames": 6, "fps": 5.0, "loop": true, "runtime_sick_mark": true, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.5, 0.5, 0.5, 0.5, 0.5, 0.0]},
+				"evolved": {"path": "res://assets/sprites/ppiyak_evolved/sick_6f_remake.png", "columns": 6, "rows": 1, "frames": 6, "fps": 5.0, "loop": true, "runtime_sick_mark": true, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.0, 0.5, 0.5, 0.5, 0.0, 0.0]},
+				"evolved2": {"path": "res://assets/sprites/ppiyak_evolved2/sick_6f_remake.png", "columns": 6, "rows": 1, "frames": 6, "fps": 5.0, "loop": true, "runtime_sick_mark": true, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.5, 0.0, 0.0, 0.0, 0.5, 0.0]},
 			},
 			"Sulk": {
-				"base": {"path": "res://assets/sprites/ppiyak/sulk_6f.png", "columns": 6, "rows": 1, "frames": 6, "fps": 5.0, "loop": true, "foot_padding": [12.0, 12.0, 12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [0.5, 0.0, 0.0, 0.0, 0.0, 0.0]},
-				"evolved": {"path": "res://assets/sprites/ppiyak_evolved/sulk_6f.png", "columns": 6, "rows": 1, "frames": 6, "fps": 5.0, "loop": true, "foot_padding": [12.0, 12.0, 12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [-1.5, -0.5, -1.5, -0.5, -1.5, -1.5]},
-				"evolved2": {"path": "res://assets/sprites/ppiyak_evolved2/sulk_6f.png", "columns": 6, "rows": 1, "frames": 6, "fps": 5.0, "loop": true, "foot_padding": [12.0, 12.0, 12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [-5.0, -4.5, -4.0, -3.0, -5.0, -4.0]},
+				"base": {"path": "res://assets/sprites/ppiyak/sulk_6f_remake.png", "columns": 6, "rows": 1, "frames": 6, "fps": 5.0, "loop": true, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.5, 0.5, 0.0, 0.0, 0.5, 0.5]},
+				"evolved": {"path": "res://assets/sprites/ppiyak_evolved/sulk_6f_remake.png", "columns": 6, "rows": 1, "frames": 6, "fps": 5.0, "loop": true, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.5, 0.0, 0.0, 0.5, 0.0, 0.5]},
+				"evolved2": {"path": "res://assets/sprites/ppiyak_evolved2/sulk_6f_remake.png", "columns": 6, "rows": 1, "frames": 6, "fps": 5.0, "loop": true, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.0, 0.0, 0.5, 0.0, 0.0, 0.0]},
 			},
 			# happy 시트는 놀기 리액션(Play 상태)에서 재생된다 — state_machine에 "Happy" 상태는 없다.
 			"Play": {
-				"base": {"path": "res://assets/sprites/ppiyak/happy_6f.png", "columns": 6, "rows": 1, "frames": 6, "fps": 8.0, "loop": true, "airborne": true, "foot_padding": [12.0, 19.0, 23.0, 15.0, 21.0, 12.0], "horizontal_offsets": [-1.0, -1.0, 0.0, -0.5, 0.0, 0.5]},
-				"evolved": {"path": "res://assets/sprites/ppiyak_evolved/happy_6f.png", "columns": 6, "rows": 1, "frames": 6, "fps": 8.0, "loop": true, "airborne": true, "foot_padding": [12.0, 12.0, 21.0, 12.0, 21.0, 12.0], "horizontal_offsets": [-1.5, 0.5, 1.0, 0.5, 1.0, -1.5]},
-				"evolved2": {"path": "res://assets/sprites/ppiyak_evolved2/happy_6f.png", "columns": 6, "rows": 1, "frames": 6, "fps": 8.0, "loop": true, "airborne": true, "foot_padding": [12.0, 26.0, 17.0, 26.0, 27.0, 12.0], "horizontal_offsets": [-0.5, 0.0, 0.0, 1.0, 0.5, -1.0]},
+				"base": {"path": "res://assets/sprites/ppiyak/happy_6f_remake.png", "columns": 6, "rows": 1, "frames": 6, "fps": 8.0, "loop": true, "airborne": true, "foot_padding": [16.0, 27.0, 33.0, 21.0, 30.0, 16.0], "horizontal_offsets": [0.5, 0.5, 0.5, 0.5, 0.5, 0.5]},
+				"evolved": {"path": "res://assets/sprites/ppiyak_evolved/happy_6f_remake.png", "columns": 6, "rows": 1, "frames": 6, "fps": 8.0, "loop": true, "airborne": true, "foot_padding": [16.0, 16.0, 31.0, 16.0, 31.0, 16.0], "horizontal_offsets": [0.5, 0.0, 0.5, 0.0, 0.0, 0.5]},
+				"evolved2": {"path": "res://assets/sprites/ppiyak_evolved2/happy_6f_remake.png", "columns": 6, "rows": 1, "frames": 6, "fps": 8.0, "loop": true, "airborne": true, "foot_padding": [16.0, 39.0, 24.0, 39.0, 40.0, 16.0], "horizontal_offsets": [0.0, 0.5, 0.0, 0.0, 0.0, 0.0]},
 			},
 			"Dragged": {
-				"base": {"path": "res://assets/sprites/ppiyak/dragged_4f.png", "columns": 4, "rows": 1, "frames": 4, "fps": 10.0, "loop": true, "airborne": true, "foot_padding": [14.0, 17.0, 12.0, 15.0], "horizontal_offsets": [-1.5, 0.0, -2.0, 0.0]},
-				"evolved": {"path": "res://assets/sprites/ppiyak_evolved/dragged_4f.png", "columns": 4, "rows": 1, "frames": 4, "fps": 10.0, "loop": true, "airborne": true, "foot_padding": [14.0, 14.0, 12.0, 12.0], "horizontal_offsets": [-0.5, 0.0, 0.5, -0.5]},
-				"evolved2": {"path": "res://assets/sprites/ppiyak_evolved2/dragged_4f.png", "columns": 4, "rows": 1, "frames": 4, "fps": 10.0, "loop": true, "airborne": true, "foot_padding": [16.0, 15.0, 14.0, 12.0], "horizontal_offsets": [-2.5, 0.0, -4.0, -0.5]},
+				"base": {"path": "res://assets/sprites/ppiyak/dragged_4f_remake.png", "columns": 4, "rows": 1, "frames": 4, "fps": 10.0, "loop": true, "airborne": true, "foot_padding": [19.0, 24.0, 16.0, 21.0], "horizontal_offsets": [0.5, 0.0, 0.5, 0.0]},
+				"evolved": {"path": "res://assets/sprites/ppiyak_evolved/dragged_4f_remake.png", "columns": 4, "rows": 1, "frames": 4, "fps": 10.0, "loop": true, "airborne": true, "foot_padding": [19.0, 19.0, 16.0, 16.0], "horizontal_offsets": [0.5, 0.5, 0.0, 0.5]},
+				"evolved2": {"path": "res://assets/sprites/ppiyak_evolved2/dragged_4f_remake.png", "columns": 4, "rows": 1, "frames": 4, "fps": 10.0, "loop": true, "airborne": true, "foot_padding": [22.0, 21.0, 19.0, 16.0], "horizontal_offsets": [0.5, 0.0, 0.5, 0.5]},
 			},
 			"Fall": {
-				"base": {"path": "res://assets/sprites/ppiyak/fall_4f.png", "columns": 4, "rows": 1, "frames": 4, "fps": 12.0, "loop": false, "airborne": true, "foot_padding": [13.0, 21.0, 12.0, 12.0], "horizontal_offsets": [1.0, 0.5, 1.5, 2.0]},
-				"evolved": {"path": "res://assets/sprites/ppiyak_evolved/fall_4f.png", "columns": 4, "rows": 1, "frames": 4, "fps": 12.0, "loop": false, "airborne": true, "foot_padding": [23.0, 17.0, 12.0, 12.0], "horizontal_offsets": [1.5, 0.0, -2.0, -4.0]},
-				"evolved2": {"path": "res://assets/sprites/ppiyak_evolved2/fall_4f.png", "columns": 4, "rows": 1, "frames": 4, "fps": 12.0, "loop": false, "airborne": true, "foot_padding": [23.0, 17.0, 12.0, 12.0], "horizontal_offsets": [-1.0, 3.0, 3.0, 3.5]},
+				"base": {"path": "res://assets/sprites/ppiyak/fall_4f_remake.png", "columns": 4, "rows": 1, "frames": 4, "fps": 12.0, "loop": false, "airborne": true, "foot_padding": [18.0, 30.0, 16.0, 16.0], "horizontal_offsets": [0.0, 0.0, 0.0, 0.5]},
+				"evolved": {"path": "res://assets/sprites/ppiyak_evolved/fall_4f_remake.png", "columns": 4, "rows": 1, "frames": 4, "fps": 12.0, "loop": false, "airborne": true, "foot_padding": [34.0, 24.0, 16.0, 16.0], "horizontal_offsets": [0.5, 0.0, 0.5, 0.0]},
+				"evolved2": {"path": "res://assets/sprites/ppiyak_evolved2/fall_4f_remake.png", "columns": 4, "rows": 1, "frames": 4, "fps": 12.0, "loop": false, "airborne": true, "foot_padding": [34.0, 24.0, 16.0, 16.0], "horizontal_offsets": [0.5, 0.5, 0.5, 0.0]},
 			},
 			# 착지 스쿼시 -> 기립 복귀. 9상태 중 유일하게 loop=false (bichon Land와 동일).
 			"Land": {
-				"base": {"path": "res://assets/sprites/ppiyak/land_4f.png", "columns": 4, "rows": 1, "frames": 4, "fps": 10.0, "loop": false, "foot_padding": [12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [0.0, 0.0, 0.0, 0.0]},
-				"evolved": {"path": "res://assets/sprites/ppiyak_evolved/land_4f.png", "columns": 4, "rows": 1, "frames": 4, "fps": 10.0, "loop": false, "foot_padding": [12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [0.0, -2.0, -2.0, -1.5]},
-				"evolved2": {"path": "res://assets/sprites/ppiyak_evolved2/land_4f.png", "columns": 4, "rows": 1, "frames": 4, "fps": 10.0, "loop": false, "foot_padding": [12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [-0.5, -1.5, -2.5, -3.5]},
+				"base": {"path": "res://assets/sprites/ppiyak/land_4f_remake.png", "columns": 4, "rows": 1, "frames": 4, "fps": 10.0, "loop": false, "foot_padding": [16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.0, 0.0, 0.0, 0.5]},
+				"evolved": {"path": "res://assets/sprites/ppiyak_evolved/land_4f_remake.png", "columns": 4, "rows": 1, "frames": 4, "fps": 10.0, "loop": false, "foot_padding": [16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.0, 0.5, 0.5, 0.0]},
+				"evolved2": {"path": "res://assets/sprites/ppiyak_evolved2/land_4f_remake.png", "columns": 4, "rows": 1, "frames": 4, "fps": 10.0, "loop": false, "foot_padding": [16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.0, 0.0, 0.5, 0.0]},
 			},
 			# 아래 4상태는 시트에 소품을 그리지 않는다 — 응아는 별도 엔티티(poop.tscn), 파일은 OS
 			# 드래그 아이콘, 쓰다듬는 손 자리에는 마우스 커서가 있다. 그리면 이중으로 보인다.
-			# 4상태 전부 접지(발바닥 기준선 12 고정)이므로 airborne 선언이 없다.
+			# 4상태 전부 접지(발바닥 기준선 16 고정)이므로 airborne 선언이 없다.
 			"FileHover": {
-				"base": {"path": "res://assets/sprites/ppiyak/file_hover_4f.png", "columns": 4, "rows": 1, "frames": 4, "fps": 12.0, "loop": false, "foot_padding": [12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [0.0, -1.0, 0.0, 0.0]},
-				"evolved": {"path": "res://assets/sprites/ppiyak_evolved/file_hover_4f.png", "columns": 4, "rows": 1, "frames": 4, "fps": 12.0, "loop": false, "foot_padding": [12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [-1.5, -1.5, 0.5, 0.0]},
-				"evolved2": {"path": "res://assets/sprites/ppiyak_evolved2/file_hover_4f.png", "columns": 4, "rows": 1, "frames": 4, "fps": 12.0, "loop": false, "foot_padding": [12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [-3.5, -2.0, -1.5, -0.5]},
+				"base": {"path": "res://assets/sprites/ppiyak/file_hover_4f_remake.png", "columns": 4, "rows": 1, "frames": 4, "fps": 12.0, "loop": false, "foot_padding": [16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.5, 0.0, 0.0, 0.5]},
+				"evolved": {"path": "res://assets/sprites/ppiyak_evolved/file_hover_4f_remake.png", "columns": 4, "rows": 1, "frames": 4, "fps": 12.0, "loop": false, "foot_padding": [16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.5, 0.0, 0.0, 0.0]},
+				"evolved2": {"path": "res://assets/sprites/ppiyak_evolved2/file_hover_4f_remake.png", "columns": 4, "rows": 1, "frames": 4, "fps": 12.0, "loop": false, "foot_padding": [16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.0, 0.5, 0.5, 0.5]},
 			},
 			"FileConsume": {
-				"base": {"path": "res://assets/sprites/ppiyak/file_consume_6f.png", "columns": 6, "rows": 1, "frames": 6, "fps": 12.0, "loop": false, "foot_padding": [12.0, 12.0, 12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [0.0, 0.5, 0.0, 0.5, 0.5, 0.5]},
-				"evolved": {"path": "res://assets/sprites/ppiyak_evolved/file_consume_6f.png", "columns": 6, "rows": 1, "frames": 6, "fps": 12.0, "loop": false, "foot_padding": [12.0, 12.0, 12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [-2.0, -2.0, -1.5, -1.0, -2.0, -1.5]},
-				"evolved2": {"path": "res://assets/sprites/ppiyak_evolved2/file_consume_6f.png", "columns": 6, "rows": 1, "frames": 6, "fps": 12.0, "loop": false, "foot_padding": [12.0, 12.0, 12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [-2.5, -3.0, -2.5, -2.5, -3.5, -3.0]},
+				"base": {"path": "res://assets/sprites/ppiyak/file_consume_6f_remake.png", "columns": 6, "rows": 1, "frames": 6, "fps": 12.0, "loop": false, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.0, 0.0, 0.0, 0.5, 0.5, 0.5]},
+				"evolved": {"path": "res://assets/sprites/ppiyak_evolved/file_consume_6f_remake.png", "columns": 6, "rows": 1, "frames": 6, "fps": 12.0, "loop": false, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.5, 0.0, 0.0, 0.0, 0.0, 0.5]},
+				"evolved2": {"path": "res://assets/sprites/ppiyak_evolved2/file_consume_6f_remake.png", "columns": 6, "rows": 1, "frames": 6, "fps": 12.0, "loop": false, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.5, 0.0, 0.0, 0.0, 0.5, 0.0]},
 			},
 			"Poop": {
-				"base": {"path": "res://assets/sprites/ppiyak/poop_6f.png", "columns": 6, "rows": 1, "frames": 6, "fps": 6.0, "loop": true, "foot_padding": [12.0, 12.0, 12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [0.0, -0.5, 0.0, 0.0, 0.0, 0.0]},
-				"evolved": {"path": "res://assets/sprites/ppiyak_evolved/poop_6f.png", "columns": 6, "rows": 1, "frames": 6, "fps": 6.0, "loop": true, "foot_padding": [12.0, 12.0, 12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [-2.5, -2.0, -2.0, -2.0, -2.0, -2.5]},
-				"evolved2": {"path": "res://assets/sprites/ppiyak_evolved2/poop_6f.png", "columns": 6, "rows": 1, "frames": 6, "fps": 6.0, "loop": true, "foot_padding": [12.0, 12.0, 12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [-5.0, -4.0, -4.0, -4.0, -4.0, -5.0]},
+				"base": {"path": "res://assets/sprites/ppiyak/poop_6f_remake.png", "columns": 6, "rows": 1, "frames": 6, "fps": 6.0, "loop": true, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.5, 0.0, 0.5, 0.0, 0.5, 0.5]},
+				"evolved": {"path": "res://assets/sprites/ppiyak_evolved/poop_6f_remake.png", "columns": 6, "rows": 1, "frames": 6, "fps": 6.0, "loop": true, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.5, 0.0, 0.5, 0.5, 0.5, 0.5]},
+				"evolved2": {"path": "res://assets/sprites/ppiyak_evolved2/poop_6f_remake.png", "columns": 6, "rows": 1, "frames": 6, "fps": 6.0, "loop": true, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.5, 0.5, 0.5, 0.0, 0.5, 0.5]},
 			},
 			"Pet": {
-				"base": {"path": "res://assets/sprites/ppiyak/pet_6f.png", "columns": 6, "rows": 1, "frames": 6, "fps": 10.0, "loop": false, "foot_padding": [12.0, 12.0, 12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [-0.5, 0.0, -2.5, -0.5, 0.5, -0.5]},
-				"evolved": {"path": "res://assets/sprites/ppiyak_evolved/pet_6f.png", "columns": 6, "rows": 1, "frames": 6, "fps": 10.0, "loop": false, "foot_padding": [12.0, 12.0, 12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [-2.0, -1.0, -1.0, -1.5, -1.0, -1.5]},
-				"evolved2": {"path": "res://assets/sprites/ppiyak_evolved2/pet_6f.png", "columns": 6, "rows": 1, "frames": 6, "fps": 10.0, "loop": false, "foot_padding": [12.0, 12.0, 12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [-2.5, -1.5, -3.5, -4.0, 0.0, -2.5]},
+				"base": {"path": "res://assets/sprites/ppiyak/pet_6f_remake.png", "columns": 6, "rows": 1, "frames": 6, "fps": 10.0, "loop": false, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.5, 0.0, 0.0, 0.0, 0.5, 0.5]},
+				"evolved": {"path": "res://assets/sprites/ppiyak_evolved/pet_6f_remake.png", "columns": 6, "rows": 1, "frames": 6, "fps": 10.0, "loop": false, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.5, 0.0, 0.0, 0.5, 0.0, 0.5]},
+				"evolved2": {"path": "res://assets/sprites/ppiyak_evolved2/pet_6f_remake.png", "columns": 6, "rows": 1, "frames": 6, "fps": 10.0, "loop": false, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.5, 0.5, 0.5, 0.5, 0.0, 0.0]},
 			},
 		},
 	},
@@ -365,89 +367,6 @@ const ANIMATED_POSE_OVERRIDES := {
 	# 덩어리로 재라(위에서부터 최대폭 45% 미만인 구간을 장식으로 보면 세 티어 모두 재현된다).
 	# 감사 방식 재측정은 권하지 않는다 — 감사값은 자동 재현이 안 되고(구현마다 ±10px) 사람이
 	# 다시 재도 또 다른 값이 나온다. 감사값을 분자로 섞으면(93/89 = 1.045) 기준 혼용이 된다.
-	"haemjji": {
-		# 2026-08-07(§12) evolved/evolved2 정지 아트가 256px로 복원되면서 BODY_SCALE이 ~1/2로
-		# 내려갔다. 시트 자산은 그대로 128px이므로 sheet_scale에 art_ratio를 곱해 상쇄한다
-		# (실효 배율 = BODY_SCALE x sheet_scale 은 크기 사다리 배율만큼만 커진다).
-		"sheet_scale": {"base": 1.0660, "evolved": 2.1714, "evolved2": 2.1731},
-		"tiers": ["base", "evolved", "evolved2"],
-		"states": {
-			"Idle": {
-				"base": {"path": "res://assets/sprites/haemjji/idle_6f_alpha_smooth.png", "columns": 6, "rows": 1, "frames": 6, "fps": 4.0, "loop": true, "foot_padding": [12.0, 12.0, 12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [1.0, 0.5, -1.0, 0.5, -0.5, 0.5]},
-				"evolved": {"path": "res://assets/sprites/haemjji_evolved/idle_6f_alpha_smooth.png", "columns": 6, "rows": 1, "frames": 6, "fps": 4.0, "loop": true, "foot_padding": [12.0, 12.0, 12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [1.5, 1.5, 2.0, 1.5, 1.5, 1.5]},
-				"evolved2": {"path": "res://assets/sprites/haemjji_evolved2/idle_6f_alpha_smooth.png", "columns": 6, "rows": 1, "frames": 6, "fps": 4.0, "loop": true, "foot_padding": [12.0, 12.0, 12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [0.5, 1.0, 0.5, 1.5, 1.5, 1.5]},
-			},
-			"Walk": {
-				"base": {"path": "res://assets/sprites/haemjji/walk_8f_alpha_smooth.png", "columns": 4, "rows": 2, "frames": 8, "fps": 10.0, "loop": true, "foot_padding": [12.0, 12.0, 12.0, 12.0, 12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [-0.5, 0.0, 0.0, 0.0, -0.5, 0.0, 0.0, 0.0]},
-				"evolved": {"path": "res://assets/sprites/haemjji_evolved/walk_8f_alpha_smooth.png", "columns": 4, "rows": 2, "frames": 8, "fps": 10.0, "loop": true, "foot_padding": [12.0, 12.0, 12.0, 12.0, 12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [1.5, 1.5, 1.0, 1.0, 1.5, 1.5, 1.5, 1.5]},
-				"evolved2": {"path": "res://assets/sprites/haemjji_evolved2/walk_8f_alpha_smooth.png", "columns": 4, "rows": 2, "frames": 8, "fps": 10.0, "loop": true, "foot_padding": [12.0, 12.0, 12.0, 12.0, 12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [1.5, 1.5, 1.5, 1.5, 1.5, 1.5, 1.0, 1.0]},
-			},
-			"Sleep": {
-				"base": {"path": "res://assets/sprites/haemjji/sleep_6f_alpha_smooth.png", "columns": 6, "rows": 1, "frames": 6, "fps": 5.0, "loop": true, "foot_padding": [12.0, 12.0, 12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [-1.0, -1.0, -1.0, -1.0, -1.0, -1.0]},
-				"evolved": {"path": "res://assets/sprites/haemjji_evolved/sleep_6f_alpha_smooth.png", "columns": 6, "rows": 1, "frames": 6, "fps": 5.0, "loop": true, "foot_padding": [12.0, 12.0, 12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [-3.0, -2.0, -2.0, -2.0, -3.0, -3.0]},
-				"evolved2": {"path": "res://assets/sprites/haemjji_evolved2/sleep_6f_alpha_smooth.png", "columns": 6, "rows": 1, "frames": 6, "fps": 5.0, "loop": true, "foot_padding": [12.0, 12.0, 12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [-3.0, -3.0, -3.0, -3.0, -3.0, -3.0]},
-			},
-			"Eat": {
-				"base": {"path": "res://assets/sprites/haemjji/eat_6f_alpha_smooth.png", "columns": 6, "rows": 1, "frames": 6, "fps": 6.0, "loop": true, "foot_padding": [12.0, 12.0, 12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [0.5, 0.0, 0.5, -0.5, -1.0, 0.5]},
-				"evolved": {"path": "res://assets/sprites/haemjji_evolved/eat_6f_alpha_smooth.png", "columns": 6, "rows": 1, "frames": 6, "fps": 6.0, "loop": true, "foot_padding": [12.0, 12.0, 12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [2.0, 3.0, 2.0, 2.5, 1.5, 1.5]},
-				"evolved2": {"path": "res://assets/sprites/haemjji_evolved2/eat_6f_alpha_smooth.png", "columns": 6, "rows": 1, "frames": 6, "fps": 6.0, "loop": true, "foot_padding": [12.0, 12.0, 12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [0.0, 0.0, 0.5, 0.5, 1.5, 1.0]},
-			},
-			# 재생성본에는 부유 기호(땀방울·콧물)가 없다 — 아픔이 자세·처진 귀·찡그린 눈으로만
-			# 표현되므로 어지럼 표시 역할은 런타임 @_@ 라벨이 해야 한다(핸드오프 §5, §7 반려 기록).
-			"Sick": {
-				"base": {"path": "res://assets/sprites/haemjji/sick_6f_alpha_smooth.png", "columns": 6, "rows": 1, "frames": 6, "fps": 6.0, "loop": true, "runtime_sick_mark": true, "foot_padding": [12.0, 12.0, 12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [0.0, -0.5, 0.0, 0.0, -0.5, 0.0]},
-				"evolved": {"path": "res://assets/sprites/haemjji_evolved/sick_6f_alpha_smooth.png", "columns": 6, "rows": 1, "frames": 6, "fps": 6.0, "loop": true, "runtime_sick_mark": true, "foot_padding": [12.0, 12.0, 12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [1.0, 1.0, -1.5, -1.5, -1.5, 1.5]},
-				"evolved2": {"path": "res://assets/sprites/haemjji_evolved2/sick_6f_alpha_smooth.png", "columns": 6, "rows": 1, "frames": 6, "fps": 6.0, "loop": true, "runtime_sick_mark": true, "foot_padding": [12.0, 12.0, 12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [-0.5, 0.5, 0.0, 0.5, 0.0, -0.5]},
-			},
-			"Sulk": {
-				"base": {"path": "res://assets/sprites/haemjji/sulk_6f_alpha_smooth.png", "columns": 6, "rows": 1, "frames": 6, "fps": 6.0, "loop": true, "foot_padding": [12.0, 12.0, 12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [0.5, -0.5, -0.5, 0.5, 1.0, -1.5]},
-				"evolved": {"path": "res://assets/sprites/haemjji_evolved/sulk_6f_alpha_smooth.png", "columns": 6, "rows": 1, "frames": 6, "fps": 6.0, "loop": true, "foot_padding": [12.0, 12.0, 12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [-1.0, -2.0, -3.5, -1.5, -1.5, -1.0]},
-				"evolved2": {"path": "res://assets/sprites/haemjji_evolved2/sulk_6f_alpha_smooth.png", "columns": 6, "rows": 1, "frames": 6, "fps": 6.0, "loop": true, "foot_padding": [12.0, 12.0, 12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [2.0, 2.0, 2.0, 1.5, 0.5, 1.5]},
-			},
-			"Play": {
-				"base": {"path": "res://assets/sprites/haemjji/play_6f_alpha_smooth.png", "columns": 6, "rows": 1, "frames": 6, "fps": 8.0, "loop": true, "airborne": true, "foot_padding": [13.0, 29.0, 14.0, 12.0, 22.0, 13.0], "horizontal_offsets": [0.0, 0.0, 0.0, 0.5, 0.0, 0.5]},
-				"evolved": {"path": "res://assets/sprites/haemjji_evolved/play_6f_alpha_smooth.png", "columns": 6, "rows": 1, "frames": 6, "fps": 8.0, "loop": true, "airborne": true, "foot_padding": [12.0, 21.0, 13.0, 12.0, 22.0, 12.0], "horizontal_offsets": [-0.5, -0.5, 1.0, 1.0, 1.0, 0.0]},
-				"evolved2": {"path": "res://assets/sprites/haemjji_evolved2/play_6f_alpha_smooth.png", "columns": 6, "rows": 1, "frames": 6, "fps": 8.0, "loop": true, "airborne": true, "foot_padding": [12.0, 12.0, 18.0, 20.0, 12.0, 12.0], "horizontal_offsets": [0.0, 0.0, 0.0, 0.5, -0.5, 0.0]},
-			},
-			"Dragged": {
-				"base": {"path": "res://assets/sprites/haemjji/dragged_4f_alpha_smooth.png", "columns": 4, "rows": 1, "frames": 4, "fps": 10.0, "loop": true, "airborne": true, "foot_padding": [33.0, 36.0, 12.0, 27.0], "horizontal_offsets": [-2.0, 0.0, -2.0, 0.5]},
-				"evolved": {"path": "res://assets/sprites/haemjji_evolved/dragged_4f_alpha_smooth.png", "columns": 4, "rows": 1, "frames": 4, "fps": 10.0, "loop": true, "airborne": true, "foot_padding": [17.0, 16.0, 12.0, 15.0], "horizontal_offsets": [0.0, 0.5, -1.5, 0.5]},
-				"evolved2": {"path": "res://assets/sprites/haemjji_evolved2/dragged_4f_alpha_smooth.png", "columns": 4, "rows": 1, "frames": 4, "fps": 10.0, "loop": true, "airborne": true, "foot_padding": [16.0, 14.0, 12.0, 15.0], "horizontal_offsets": [0.5, -0.5, -1.0, 1.0]},
-			},
-			"Fall": {
-				"base": {"path": "res://assets/sprites/haemjji/fall_4f_alpha_smooth.png", "columns": 4, "rows": 1, "frames": 4, "fps": 12.0, "loop": false, "airborne": true, "foot_padding": [20.0, 21.0, 15.0, 12.0], "horizontal_offsets": [0.0, 0.5, 0.5, -0.5]},
-				"evolved": {"path": "res://assets/sprites/haemjji_evolved/fall_4f_alpha_smooth.png", "columns": 4, "rows": 1, "frames": 4, "fps": 12.0, "loop": false, "airborne": true, "foot_padding": [17.0, 19.0, 15.0, 12.0], "horizontal_offsets": [0.5, 0.0, -3.5, -0.5]},
-				"evolved2": {"path": "res://assets/sprites/haemjji_evolved2/fall_4f_alpha_smooth.png", "columns": 4, "rows": 1, "frames": 4, "fps": 12.0, "loop": false, "airborne": true, "foot_padding": [19.0, 17.0, 18.0, 12.0], "horizontal_offsets": [1.0, 0.5, 1.0, -3.0]},
-			},
-			"Land": {
-				"base": {"path": "res://assets/sprites/haemjji/land_4f_alpha_smooth.png", "columns": 4, "rows": 1, "frames": 4, "fps": 10.0, "loop": false, "foot_padding": [12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [0.0, 0.0, 0.0, 0.5]},
-				"evolved": {"path": "res://assets/sprites/haemjji_evolved/land_4f_alpha_smooth.png", "columns": 4, "rows": 1, "frames": 4, "fps": 10.0, "loop": false, "foot_padding": [12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [0.0, 0.0, 2.0, 2.0]},
-				"evolved2": {"path": "res://assets/sprites/haemjji_evolved2/land_4f_alpha_smooth.png", "columns": 4, "rows": 1, "frames": 4, "fps": 10.0, "loop": false, "foot_padding": [12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [2.0, 0.0, 1.0, 1.0]},
-			},
-			# 아래 4상태는 시트에 소품을 그리지 않는다 — 응아는 별도 엔티티(poop.tscn), 파일은 OS
-			# 드래그 아이콘, 쓰다듬는 손 자리에는 마우스 커서가 있다. 그리면 이중으로 보인다.
-			"FileHover": {
-				"base": {"path": "res://assets/sprites/haemjji/file_hover_4f_alpha_smooth.png", "columns": 4, "rows": 1, "frames": 4, "fps": 12.0, "loop": false, "foot_padding": [12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [-1.0, -0.5, 0.0, 0.0]},
-				"evolved": {"path": "res://assets/sprites/haemjji_evolved/file_hover_4f_alpha_smooth.png", "columns": 4, "rows": 1, "frames": 4, "fps": 12.0, "loop": false, "foot_padding": [12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [1.5, -1.5, -2.0, 1.5]},
-				"evolved2": {"path": "res://assets/sprites/haemjji_evolved2/file_hover_4f_alpha_smooth.png", "columns": 4, "rows": 1, "frames": 4, "fps": 12.0, "loop": false, "foot_padding": [12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [0.5, 1.0, 2.0, 1.0]},
-			},
-			"FileConsume": {
-				"base": {"path": "res://assets/sprites/haemjji/file_consume_4f_alpha_smooth.png", "columns": 4, "rows": 1, "frames": 4, "fps": 12.0, "loop": false, "foot_padding": [12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [0.0, -1.0, 1.0, 1.0]},
-				"evolved": {"path": "res://assets/sprites/haemjji_evolved/file_consume_4f_alpha_smooth.png", "columns": 4, "rows": 1, "frames": 4, "fps": 12.0, "loop": false, "foot_padding": [12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [1.5, 2.0, 2.5, 1.5]},
-				"evolved2": {"path": "res://assets/sprites/haemjji_evolved2/file_consume_4f_alpha_smooth.png", "columns": 4, "rows": 1, "frames": 4, "fps": 12.0, "loop": false, "foot_padding": [12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [0.0, 1.0, 0.0, 0.5]},
-			},
-			"Poop": {
-				"base": {"path": "res://assets/sprites/haemjji/poop_6f_alpha_smooth.png", "columns": 6, "rows": 1, "frames": 6, "fps": 6.0, "loop": true, "foot_padding": [12.0, 12.0, 12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [-0.5, 0.0, 0.0, -0.5, -0.5, -0.5]},
-				"evolved": {"path": "res://assets/sprites/haemjji_evolved/poop_6f_alpha_smooth.png", "columns": 6, "rows": 1, "frames": 6, "fps": 6.0, "loop": true, "foot_padding": [12.0, 12.0, 12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [1.5, 1.5, 0.0, 1.5, 1.5, 1.5]},
-				"evolved2": {"path": "res://assets/sprites/haemjji_evolved2/poop_6f_alpha_smooth.png", "columns": 6, "rows": 1, "frames": 6, "fps": 6.0, "loop": true, "foot_padding": [12.0, 12.0, 12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [0.5, 0.5, 0.0, 0.5, 1.0, 0.5]},
-			},
-			"Pet": {
-				"base": {"path": "res://assets/sprites/haemjji/pet_6f_alpha_smooth.png", "columns": 6, "rows": 1, "frames": 6, "fps": 10.0, "loop": false, "foot_padding": [12.0, 12.0, 12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [0.0, 0.5, 0.5, -0.5, -0.5, -0.5]},
-				"evolved": {"path": "res://assets/sprites/haemjji_evolved/pet_6f_alpha_smooth.png", "columns": 6, "rows": 1, "frames": 6, "fps": 10.0, "loop": false, "foot_padding": [12.0, 12.0, 12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [2.0, 0.0, 2.0, -1.0, 1.0, 1.5]},
-				"evolved2": {"path": "res://assets/sprites/haemjji_evolved2/pet_6f_alpha_smooth.png", "columns": 6, "rows": 1, "frames": 6, "fps": 10.0, "loop": false, "foot_padding": [12.0, 12.0, 12.0, 12.0, 12.0, 12.0], "horizontal_offsets": [1.0, 1.5, 1.0, 1.0, 1.0, 0.5]},
-			},
-		},
-	},
 	# 뚱실이: 3티어 전부 시트가 있다(2026-08-11 완비). 정지 폴백 경로를 타는 티어가 없어져
 	# CHARACTERS의 walk_static/walk_face_inverted를 제거했다 — 두 플래그는 walk_state.gd가
 	# 시트 재생에 실패했을 때만 읽는데 이제 그 분기에 도달하지 않는다.
@@ -455,85 +374,175 @@ const ANIMATED_POSE_OVERRIDES := {
 	# 붙이므로 불필요하고, 정지 아트에는 z가 그려져 있어 켜면 이중 표시가 된다.
 	"ddungsil": {
 		# 확정 산식(VISIBLE_ALPHA). 시트 Idle f0은 3티어 공통 135px이고 정지 아트만 다르다:
-		#   base 104 / 135 = 0.7591   evolved 200 / 135 = 1.4815   evolved2 158 / 135 = 1.1704
-		"sheet_scale": {"base": 0.7591, "evolved": 1.4815, "evolved2": 1.1704},
+		#   base 104 / 135 = 0.7704   evolved 200 / 135 = 1.4815   evolved2 158 / 135 = 1.1704
+		"sheet_scale": {"base": 0.7704, "evolved": 1.4815, "evolved2": 1.1704},
 		"tiers": ["base", "evolved", "evolved2"],
 		"states": {
 			"Idle": {
-				"base": {"path": "res://assets/sprites/ddungsil/idle_4f.png", "columns": 4, "rows": 1, "frames": 4, "fps": 4.0, "loop": true, "foot_padding": [16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [-0.5, 0.5, 0.0, 0.0]},
-				"evolved": {"path": "res://assets/sprites/ddungsil_evolved/idle_4f.png", "columns": 4, "rows": 1, "frames": 4, "fps": 4.0, "loop": true, "foot_padding": [16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.5, 0.0, 0.0, 0.0]},
-				"evolved2": {"path": "res://assets/sprites/ddungsil_evolved2/idle_4f.png", "columns": 4, "rows": 1, "frames": 4, "fps": 4.0, "loop": true, "foot_padding": [16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.0, 0.0, 0.0, 0.5]},
+				"base": {"path": "res://assets/sprites/ddungsil/idle_4f_remake.png", "columns": 4, "rows": 1, "frames": 4, "fps": 4.0, "loop": true, "foot_padding": [16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.5, 0.5, 0.5, 0.5]},
+				"evolved": {"path": "res://assets/sprites/ddungsil_evolved/idle_4f_remake.png", "columns": 4, "rows": 1, "frames": 4, "fps": 4.0, "loop": true, "foot_padding": [16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.0, 0.0, 0.5, 0.5]},
+				"evolved2": {"path": "res://assets/sprites/ddungsil_evolved2/idle_4f_remake.png", "columns": 4, "rows": 1, "frames": 4, "fps": 4.0, "loop": true, "foot_padding": [16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.0, 0.5, 0.5, 0.0]},
 			},
 			"Walk": {
-				"base": {"path": "res://assets/sprites/ddungsil/walk_8f.png", "columns": 4, "rows": 2, "frames": 8, "fps": 10.0, "loop": true, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]},
-				"evolved": {"path": "res://assets/sprites/ddungsil_evolved/walk_8f.png", "columns": 4, "rows": 2, "frames": 8, "fps": 10.0, "loop": true, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.5, 0.5, 0.5, 0.5, 0.5, -0.5, 0.5, 0.5]},
-				"evolved2": {"path": "res://assets/sprites/ddungsil_evolved2/walk_8f.png", "columns": 4, "rows": 2, "frames": 8, "fps": 10.0, "loop": true, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.0, -0.5, 0.0, 0.0, -0.5, 0.5, -0.5, -0.5]},
+				"base": {"path": "res://assets/sprites/ddungsil/walk_8f_remake.png", "columns": 4, "rows": 2, "frames": 8, "fps": 10.0, "loop": true, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.0, 0.0, 0.0, 0.5, 0.0, 0.0, 0.5, 0.0]},
+				"evolved": {"path": "res://assets/sprites/ddungsil_evolved/walk_8f_remake.png", "columns": 4, "rows": 2, "frames": 8, "fps": 10.0, "loop": true, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.5, 0.5, 0.5, 0.5, 0.0, 0.5, 0.0, 0.5]},
+				"evolved2": {"path": "res://assets/sprites/ddungsil_evolved2/walk_8f_remake.png", "columns": 4, "rows": 2, "frames": 8, "fps": 10.0, "loop": true, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.5, 0.0, 0.5, 0.0, 0.0, 0.5, 0.5, 0.0]},
 			},
 			"Sleep": {
-				"base": {"path": "res://assets/sprites/ddungsil/sleep_6f.png", "columns": 6, "rows": 1, "frames": 6, "fps": 4.0, "loop": true, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.5, 0.5, 0.0, 0.5, 0.0, -0.5]},
-				"evolved": {"path": "res://assets/sprites/ddungsil_evolved/sleep_6f.png", "columns": 6, "rows": 1, "frames": 6, "fps": 4.0, "loop": true, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [-0.5, 0.0, 0.0, 0.0, 0.0, -0.5]},
-				"evolved2": {"path": "res://assets/sprites/ddungsil_evolved2/sleep_6f.png", "columns": 6, "rows": 1, "frames": 6, "fps": 4.0, "loop": true, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.0, 0.0, -0.5, 0.5, -0.5, 0.0]},
+				"base": {"path": "res://assets/sprites/ddungsil/sleep_6f_remake.png", "columns": 6, "rows": 1, "frames": 6, "fps": 4.0, "loop": true, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.5, 0.5, 0.5, -0.5, 0.5, 0.5]},
+				"evolved": {"path": "res://assets/sprites/ddungsil_evolved/sleep_6f_remake.png", "columns": 6, "rows": 1, "frames": 6, "fps": 4.0, "loop": true, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.0, 0.0, 0.5, -0.5, 0.0, 0.5]},
+				"evolved2": {"path": "res://assets/sprites/ddungsil_evolved2/sleep_6f_remake.png", "columns": 6, "rows": 1, "frames": 6, "fps": 4.0, "loop": true, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.0, 0.5, 0.5, -0.5, -0.5, 0.5]},
 			},
 			"Eat": {
-				"base": {"path": "res://assets/sprites/ddungsil/eat_4f.png", "columns": 4, "rows": 1, "frames": 4, "fps": 6.0, "loop": true, "foot_padding": [16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.5, 0.0, 0.5, 0.5]},
-				"evolved": {"path": "res://assets/sprites/ddungsil_evolved/eat_4f.png", "columns": 4, "rows": 1, "frames": 4, "fps": 6.0, "loop": true, "foot_padding": [16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.0, -0.5, 0.0, 0.0]},
-				"evolved2": {"path": "res://assets/sprites/ddungsil_evolved2/eat_4f.png", "columns": 4, "rows": 1, "frames": 4, "fps": 6.0, "loop": true, "foot_padding": [16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.5, 0.0, -0.5, 0.0]},
+				"base": {"path": "res://assets/sprites/ddungsil/eat_4f_remake.png", "columns": 4, "rows": 1, "frames": 4, "fps": 6.0, "loop": true, "foot_padding": [16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.0, 0.0, 0.5, 0.5]},
+				"evolved": {"path": "res://assets/sprites/ddungsil_evolved/eat_4f_remake.png", "columns": 4, "rows": 1, "frames": 4, "fps": 6.0, "loop": true, "foot_padding": [16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.0, 0.5, 0.0, 0.0]},
+				"evolved2": {"path": "res://assets/sprites/ddungsil_evolved2/eat_4f_remake.png", "columns": 4, "rows": 1, "frames": 4, "fps": 6.0, "loop": true, "foot_padding": [16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.5, 0.0, 0.0, 0.5]},
 			},
 			"Sick": {
-				"base": {"path": "res://assets/sprites/ddungsil/sick_6f.png", "columns": 6, "rows": 1, "frames": 6, "fps": 5.0, "loop": true, "runtime_sick_mark": true, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.0, 0.5, -0.5, 0.0, -0.5, 0.0]},
-				"evolved": {"path": "res://assets/sprites/ddungsil_evolved/sick_6f.png", "columns": 6, "rows": 1, "frames": 6, "fps": 5.0, "loop": true, "runtime_sick_mark": true, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.0, -0.5, -0.5, 0.0, 0.0, -0.5]},
-				"evolved2": {"path": "res://assets/sprites/ddungsil_evolved2/sick_6f.png", "columns": 6, "rows": 1, "frames": 6, "fps": 5.0, "loop": true, "runtime_sick_mark": true, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [-0.5, 0.0, 0.0, 0.5, -0.5, 0.5]},
+				"base": {"path": "res://assets/sprites/ddungsil/sick_6f_remake.png", "columns": 6, "rows": 1, "frames": 6, "fps": 5.0, "loop": true, "runtime_sick_mark": true, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [-0.5, 0.5, 0.0, 0.5, 0.0, 0.0]},
+				"evolved": {"path": "res://assets/sprites/ddungsil_evolved/sick_6f_remake.png", "columns": 6, "rows": 1, "frames": 6, "fps": 5.0, "loop": true, "runtime_sick_mark": true, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.0, 0.5, -0.5, 0.5, 0.5, 0.0]},
+				"evolved2": {"path": "res://assets/sprites/ddungsil_evolved2/sick_6f_remake.png", "columns": 6, "rows": 1, "frames": 6, "fps": 5.0, "loop": true, "runtime_sick_mark": true, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [-0.5, 0.0, 0.0, 0.0, 0.0, 0.0]},
 			},
 			"Sulk": {
-				"base": {"path": "res://assets/sprites/ddungsil/sulk_6f.png", "columns": 6, "rows": 1, "frames": 6, "fps": 5.0, "loop": true, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.0, -0.5, -0.5, 0.0, 0.5, -0.5]},
-				"evolved": {"path": "res://assets/sprites/ddungsil_evolved/sulk_6f.png", "columns": 6, "rows": 1, "frames": 6, "fps": 5.0, "loop": true, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.5, 0.0, -0.5, -0.5, 0.0, -0.5]},
-				"evolved2": {"path": "res://assets/sprites/ddungsil_evolved2/sulk_6f.png", "columns": 6, "rows": 1, "frames": 6, "fps": 5.0, "loop": true, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.5, 0.0, 0.0, 0.5, 0.5, -0.5]},
+				"base": {"path": "res://assets/sprites/ddungsil/sulk_6f_remake.png", "columns": 6, "rows": 1, "frames": 6, "fps": 5.0, "loop": true, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [-0.5, 0.0, 0.5, 0.5, 0.5, 0.5]},
+				"evolved": {"path": "res://assets/sprites/ddungsil_evolved/sulk_6f_remake.png", "columns": 6, "rows": 1, "frames": 6, "fps": 5.0, "loop": true, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.0, 0.0, 0.0, -0.5, 0.0, 0.5]},
+				"evolved2": {"path": "res://assets/sprites/ddungsil_evolved2/sulk_6f_remake.png", "columns": 6, "rows": 1, "frames": 6, "fps": 5.0, "loop": true, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [-0.5, 0.0, 0.0, -0.5, -0.5, 0.0]},
 			},
 			"Play": {
-				"base": {"path": "res://assets/sprites/ddungsil/play_6f.png", "columns": 6, "rows": 1, "frames": 6, "fps": 8.0, "loop": true, "airborne": true, "foot_padding": [16.0, 49.0, 50.0, 42.0, 19.0, 16.0], "horizontal_offsets": [-0.5, 0.0, 0.5, 0.5, 0.0, 0.0]},
-				"evolved": {"path": "res://assets/sprites/ddungsil_evolved/play_6f.png", "columns": 6, "rows": 1, "frames": 6, "fps": 8.0, "loop": true, "airborne": true, "foot_padding": [16.0, 26.0, 53.0, 25.0, 27.0, 16.0], "horizontal_offsets": [0.0, 0.0, 0.5, 0.0, -0.5, 0.5]},
-				"evolved2": {"path": "res://assets/sprites/ddungsil_evolved2/play_6f.png", "columns": 6, "rows": 1, "frames": 6, "fps": 8.0, "loop": true, "airborne": true, "foot_padding": [18.0, 17.0, 39.0, 32.0, 16.0, 16.0], "horizontal_offsets": [-0.5, 0.0, 0.0, 0.0, 0.0, 0.0]},
+				"base": {"path": "res://assets/sprites/ddungsil/play_6f_remake.png", "columns": 6, "rows": 1, "frames": 6, "fps": 8.0, "loop": true, "airborne": true, "foot_padding": [16.0, 49.0, 50.0, 42.0, 19.0, 16.0], "horizontal_offsets": [0.0, -0.5, 0.5, -0.5, 0.5, 0.0]},
+				"evolved": {"path": "res://assets/sprites/ddungsil_evolved/play_6f_remake.png", "columns": 6, "rows": 1, "frames": 6, "fps": 8.0, "loop": true, "airborne": true, "foot_padding": [16.0, 26.0, 53.0, 25.0, 27.0, 16.0], "horizontal_offsets": [0.0, 0.0, -0.5, 0.0, 0.5, 0.0]},
+				"evolved2": {"path": "res://assets/sprites/ddungsil_evolved2/play_6f_remake.png", "columns": 6, "rows": 1, "frames": 6, "fps": 8.0, "loop": true, "airborne": true, "foot_padding": [18.0, 17.0, 39.0, 32.0, 16.0, 16.0], "horizontal_offsets": [-0.5, -0.5, 0.5, 0.0, 0.5, 0.5]},
 			},
 			"Dragged": {
-				"base": {"path": "res://assets/sprites/ddungsil/dragged_4f.png", "columns": 4, "rows": 1, "frames": 4, "fps": 10.0, "loop": true, "airborne": true, "foot_padding": [32.0, 16.0, 21.0, 31.0], "horizontal_offsets": [0.0, -0.5, -0.5, -0.5]},
-				"evolved": {"path": "res://assets/sprites/ddungsil_evolved/dragged_4f.png", "columns": 4, "rows": 1, "frames": 4, "fps": 10.0, "loop": true, "airborne": true, "foot_padding": [36.0, 33.0, 16.0, 36.0], "horizontal_offsets": [0.0, 0.0, 0.0, 0.5]},
-				"evolved2": {"path": "res://assets/sprites/ddungsil_evolved2/dragged_4f.png", "columns": 4, "rows": 1, "frames": 4, "fps": 10.0, "loop": true, "airborne": true, "foot_padding": [42.0, 38.0, 16.0, 28.0], "horizontal_offsets": [-0.5, 0.0, 0.0, 0.0]},
+				"base": {"path": "res://assets/sprites/ddungsil/dragged_4f_remake.png", "columns": 4, "rows": 1, "frames": 4, "fps": 10.0, "loop": true, "airborne": true, "foot_padding": [32.0, 16.0, 21.0, 31.0], "horizontal_offsets": [0.5, 0.0, 0.0, 0.5]},
+				"evolved": {"path": "res://assets/sprites/ddungsil_evolved/dragged_4f_remake.png", "columns": 4, "rows": 1, "frames": 4, "fps": 10.0, "loop": true, "airborne": true, "foot_padding": [36.0, 33.0, 16.0, 36.0], "horizontal_offsets": [0.5, 0.5, 0.0, 0.5]},
+				"evolved2": {"path": "res://assets/sprites/ddungsil_evolved2/dragged_4f_remake.png", "columns": 4, "rows": 1, "frames": 4, "fps": 10.0, "loop": true, "airborne": true, "foot_padding": [42.0, 38.0, 16.0, 28.0], "horizontal_offsets": [0.5, 0.0, 0.0, 0.5]},
 			},
 			# Fall은 일회성 하강 호다 — loop이면 착지 직전 스쿼시에서 최고점으로 되돌아 튄다.
 			# 1주기 0.333초 = 낙하 133px이라 드래그마다 걸린다(Land와 같은 처리로 맞춘 것이다).
 			"Fall": {
-				"base": {"path": "res://assets/sprites/ddungsil/fall_4f.png", "columns": 4, "rows": 1, "frames": 4, "fps": 12.0, "loop": false, "airborne": true, "foot_padding": [70.0, 51.0, 28.0, 16.0], "horizontal_offsets": [0.0, 0.5, 0.0, 0.0]},
-				"evolved": {"path": "res://assets/sprites/ddungsil_evolved/fall_4f.png", "columns": 4, "rows": 1, "frames": 4, "fps": 12.0, "loop": false, "airborne": true, "foot_padding": [73.0, 53.0, 35.0, 16.0], "horizontal_offsets": [0.0, 0.0, -0.5, 0.0]},
-				"evolved2": {"path": "res://assets/sprites/ddungsil_evolved2/fall_4f.png", "columns": 4, "rows": 1, "frames": 4, "fps": 12.0, "loop": false, "airborne": true, "foot_padding": [67.0, 46.0, 23.0, 16.0], "horizontal_offsets": [0.0, 0.0, 0.0, 0.0]},
+				"base": {"path": "res://assets/sprites/ddungsil/fall_4f_remake.png", "columns": 4, "rows": 1, "frames": 4, "fps": 12.0, "loop": false, "airborne": true, "foot_padding": [70.0, 51.0, 28.0, 16.0], "horizontal_offsets": [0.5, 0.5, 0.5, 0.5]},
+				"evolved": {"path": "res://assets/sprites/ddungsil_evolved/fall_4f_remake.png", "columns": 4, "rows": 1, "frames": 4, "fps": 12.0, "loop": false, "airborne": true, "foot_padding": [73.0, 53.0, 35.0, 16.0], "horizontal_offsets": [-0.5, 0.5, 0.0, 0.5]},
+				"evolved2": {"path": "res://assets/sprites/ddungsil_evolved2/fall_4f_remake.png", "columns": 4, "rows": 1, "frames": 4, "fps": 12.0, "loop": false, "airborne": true, "foot_padding": [67.0, 46.0, 23.0, 16.0], "horizontal_offsets": [-0.5, 0.0, 0.5, 0.0]},
 			},
 			"Land": {
-				"base": {"path": "res://assets/sprites/ddungsil/land_4f.png", "columns": 4, "rows": 1, "frames": 4, "fps": 10.0, "loop": false, "foot_padding": [16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.0, 0.0, 0.0, 0.5]},
-				"evolved": {"path": "res://assets/sprites/ddungsil_evolved/land_4f.png", "columns": 4, "rows": 1, "frames": 4, "fps": 10.0, "loop": false, "foot_padding": [16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.5, -0.5, -0.5, 0.5]},
-				"evolved2": {"path": "res://assets/sprites/ddungsil_evolved2/land_4f.png", "columns": 4, "rows": 1, "frames": 4, "fps": 10.0, "loop": false, "foot_padding": [16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.5, 0.0, 0.0, 0.5]},
+				"base": {"path": "res://assets/sprites/ddungsil/land_4f_remake.png", "columns": 4, "rows": 1, "frames": 4, "fps": 10.0, "loop": false, "foot_padding": [16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.5, 0.0, 0.0, 0.0]},
+				"evolved": {"path": "res://assets/sprites/ddungsil_evolved/land_4f_remake.png", "columns": 4, "rows": 1, "frames": 4, "fps": 10.0, "loop": false, "foot_padding": [16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.0, 0.5, 0.5, 0.5]},
+				"evolved2": {"path": "res://assets/sprites/ddungsil_evolved2/land_4f_remake.png", "columns": 4, "rows": 1, "frames": 4, "fps": 10.0, "loop": false, "foot_padding": [16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.0, 0.5, 0.0, 0.5]},
 			},
 			"FileHover": {
-				"base": {"path": "res://assets/sprites/ddungsil/file_hover_4f.png", "columns": 4, "rows": 1, "frames": 4, "fps": 12.0, "loop": false, "foot_padding": [16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.0, -0.5, -0.5, 0.0]},
-				"evolved": {"path": "res://assets/sprites/ddungsil_evolved/file_hover_4f.png", "columns": 4, "rows": 1, "frames": 4, "fps": 12.0, "loop": false, "foot_padding": [16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.0, 0.5, -0.5, 0.0]},
-				"evolved2": {"path": "res://assets/sprites/ddungsil_evolved2/file_hover_4f.png", "columns": 4, "rows": 1, "frames": 4, "fps": 12.0, "loop": false, "foot_padding": [16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.0, 0.0, 0.5, 0.0]},
+				"base": {"path": "res://assets/sprites/ddungsil/file_hover_4f_remake.png", "columns": 4, "rows": 1, "frames": 4, "fps": 12.0, "loop": false, "foot_padding": [16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.0, 0.0, 0.5, 0.5]},
+				"evolved": {"path": "res://assets/sprites/ddungsil_evolved/file_hover_4f_remake.png", "columns": 4, "rows": 1, "frames": 4, "fps": 12.0, "loop": false, "foot_padding": [16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [-0.5, 0.0, 0.0, 0.0]},
+				"evolved2": {"path": "res://assets/sprites/ddungsil_evolved2/file_hover_4f_remake.png", "columns": 4, "rows": 1, "frames": 4, "fps": 12.0, "loop": false, "foot_padding": [16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.5, 0.0, 0.0, 0.5]},
 			},
 			"FileConsume": {
-				"base": {"path": "res://assets/sprites/ddungsil/file_consume_4f.png", "columns": 4, "rows": 1, "frames": 4, "fps": 12.0, "loop": false, "foot_padding": [16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.5, 0.5, 0.0, 0.0]},
-				"evolved": {"path": "res://assets/sprites/ddungsil_evolved/file_consume_4f.png", "columns": 4, "rows": 1, "frames": 4, "fps": 12.0, "loop": false, "foot_padding": [16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.5, 0.0, -0.5, -0.5]},
-				"evolved2": {"path": "res://assets/sprites/ddungsil_evolved2/file_consume_4f.png", "columns": 4, "rows": 1, "frames": 4, "fps": 12.0, "loop": false, "foot_padding": [16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.0, 0.0, 0.0, 0.0]},
+				"base": {"path": "res://assets/sprites/ddungsil/file_consume_4f_remake.png", "columns": 4, "rows": 1, "frames": 4, "fps": 12.0, "loop": false, "foot_padding": [16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [-0.5, 0.0, 0.5, -0.5]},
+				"evolved": {"path": "res://assets/sprites/ddungsil_evolved/file_consume_4f_remake.png", "columns": 4, "rows": 1, "frames": 4, "fps": 12.0, "loop": false, "foot_padding": [16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.5, 0.0, 0.5, 0.5]},
+				"evolved2": {"path": "res://assets/sprites/ddungsil_evolved2/file_consume_4f_remake.png", "columns": 4, "rows": 1, "frames": 4, "fps": 12.0, "loop": false, "foot_padding": [16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.5, 0.5, 0.5, 0.0]},
 			},
 			"Poop": {
-				"base": {"path": "res://assets/sprites/ddungsil/poop_6f.png", "columns": 6, "rows": 1, "frames": 6, "fps": 6.0, "loop": true, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]},
-				"evolved": {"path": "res://assets/sprites/ddungsil_evolved/poop_6f.png", "columns": 6, "rows": 1, "frames": 6, "fps": 6.0, "loop": true, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.0, 0.0, 0.5, 0.0, 0.0, -0.5]},
-				"evolved2": {"path": "res://assets/sprites/ddungsil_evolved2/poop_6f.png", "columns": 6, "rows": 1, "frames": 6, "fps": 6.0, "loop": true, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.0, 0.0, 0.0, -0.5, 0.0, 0.0]},
+				"base": {"path": "res://assets/sprites/ddungsil/poop_6f_remake.png", "columns": 6, "rows": 1, "frames": 6, "fps": 6.0, "loop": true, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.0, 0.0, 0.5, 0.0, 0.5, 0.5]},
+				"evolved": {"path": "res://assets/sprites/ddungsil_evolved/poop_6f_remake.png", "columns": 6, "rows": 1, "frames": 6, "fps": 6.0, "loop": true, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [-0.5, 0.0, 0.0, -0.5, -0.5, 0.0]},
+				"evolved2": {"path": "res://assets/sprites/ddungsil_evolved2/poop_6f_remake.png", "columns": 6, "rows": 1, "frames": 6, "fps": 6.0, "loop": true, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.5, 0.0, 0.5, 0.0, 0.5, 0.5]},
 			},
 			"Pet": {
-				"base": {"path": "res://assets/sprites/ddungsil/pet_6f.png", "columns": 6, "rows": 1, "frames": 6, "fps": 10.0, "loop": false, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.0, 0.0, 0.5, -0.5, 0.5, 0.5]},
-				"evolved": {"path": "res://assets/sprites/ddungsil_evolved/pet_6f.png", "columns": 6, "rows": 1, "frames": 6, "fps": 10.0, "loop": false, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [-0.5, 0.0, 0.0, 0.0, 0.0, -0.5]},
-				"evolved2": {"path": "res://assets/sprites/ddungsil_evolved2/pet_6f.png", "columns": 6, "rows": 1, "frames": 6, "fps": 10.0, "loop": false, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.0, -0.5, 0.0, -0.5, -0.5, 0.5]},
+				"base": {"path": "res://assets/sprites/ddungsil/pet_6f_remake.png", "columns": 6, "rows": 1, "frames": 6, "fps": 10.0, "loop": false, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.0, 0.0, 0.5, 0.5, 0.0, 0.5]},
+				"evolved": {"path": "res://assets/sprites/ddungsil_evolved/pet_6f_remake.png", "columns": 6, "rows": 1, "frames": 6, "fps": 10.0, "loop": false, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [0.0, 0.0, 0.0, 0.5, 0.0, 0.0]},
+				"evolved2": {"path": "res://assets/sprites/ddungsil_evolved2/pet_6f_remake.png", "columns": 6, "rows": 1, "frames": 6, "fps": 10.0, "loop": false, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0], "horizontal_offsets": [-0.5, 0.0, 0.5, 0.5, 0.0, 0.0]},
 			},
 		},
 	},
 }
+
+const GENERATED_MOTION_SPECIES := [
+	"kkubeok", "nyang", "kong", "mundeok", "geobujang", "bulgeumjo",
+	"seureureuk", "tokki",
+]
+# 정지 아트 코어 / 시트 Idle f0 (양쪽 VISIBLE_ALPHA). 분모는 `generated_motion_config()`가
+# 로드하는 현행 `_motion` 세대 시트의 f0이다 — 8종 모두 아직 한 세대뿐이라 지금은 어긋남이 없다
+# (파리티 24조합 0.00%). 다음 세대 시트로 경로를 바꾸면 f0이 달라지므로 이 표를 함께 재유도해야
+# 한다. haemjji가 `_alpha_smooth` -> `_remake` 전환에서 이 표를 안 고쳐 애니메이션 몸통이 +68.9%
+# 커진 적이 있다(HAEMJJI_REMAKE_SHEET_SCALE 주석 참고).
+const GENERATED_MOTION_SHEET_SCALE := {
+	"kkubeok": {"base": 1.0, "evolved": 1.5775, "evolved2": 1.5766},
+	"nyang": {"base": 1.0, "evolved": 1.5764, "evolved2": 1.5745},
+	"kong": {"base": 1.0, "evolved": 1.1958, "evolved2": 1.5764},
+	"mundeok": {"base": 1.0, "evolved": 1.5778, "evolved2": 1.5725},
+	"geobujang": {"base": 1.0, "evolved": 1.5745, "evolved2": 1.5745},
+	"bulgeumjo": {"base": 1.0, "evolved": 1.5694, "evolved2": 1.5935},
+	"seureureuk": {"base": 1.0, "evolved": 1.5734, "evolved2": 1.5778},
+	"tokki": {"base": 1.0, "evolved": 1.2782, "evolved2": 1.1389},
+}
+# 정지 아트 코어 / 시트 Idle f0 (양쪽 VISIBLE_ALPHA) = 113/179, 228/173, 226/184.
+# 분모는 `haemjji_remake_config()`가 실제로 로드하는 192x208 셀 `_remake` 시트의 f0이다.
+# 이전 값(1.066 / 2.1714 / 2.1731)은 128 셀 `_alpha_smooth` f0(106/105/104)에서 유도된 것인데,
+# 런타임 경로가 `_remake`로 넘어간 뒤에도 남아 있어 애니메이션 상태에서만 몸통이 +68.9% 커져
+# 있었다. `_test_render_path_parity`는 런타임 경로가 아니라 ANIMATED_POSE_OVERRIDES 상수 항목
+# (haemjji에서는 이미 죽은 데이터)의 시트를 재기 때문에 이 어긋남을 통과시켰다.
+const HAEMJJI_REMAKE_SHEET_SCALE := {"base": 0.6313, "evolved": 1.3179, "evolved2": 1.2283}
+const HAEMJJI_REMAKE_AIRBORNE_PADDING := {
+	"Play": {
+		"base": [17.0, 50.0, 21.0, 16.0, 35.0, 17.0],
+		"evolved": [16.0, 45.0, 19.0, 16.0, 47.0, 16.0],
+		"evolved2": [16.0, 16.0, 25.0, 29.0, 16.0, 16.0],
+	},
+	"Dragged": {
+		"base": [52.0, 16.0, 63.0, 27.0],
+		"evolved": [24.0, 22.0, 16.0, 21.0],
+		"evolved2": [22.0, 19.0, 16.0, 21.0],
+	},
+	"Fall": {
+		"base": [29.0, 31.0, 21.0, 16.0],
+		"evolved": [24.0, 27.0, 21.0, 16.0],
+		"evolved2": [27.0, 23.0, 25.0, 16.0],
+	},
+}
+const GENERATED_MOTION_STATES := {
+	"Idle": {"file": "idle_6f_motion.png", "columns": 6, "rows": 1, "frames": 6, "fps": 4.0, "loop": true, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0]},
+	"Walk": {"file": "walk_8f_motion.png", "columns": 4, "rows": 2, "frames": 8, "fps": 10.0, "loop": true, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0, 16.0, 16.0]},
+	"Sleep": {"file": "sleep_6f_motion.png", "columns": 6, "rows": 1, "frames": 6, "fps": 4.0, "loop": true, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0]},
+	"Eat": {"file": "eat_6f_motion.png", "columns": 6, "rows": 1, "frames": 6, "fps": 6.0, "loop": true, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0]},
+	"Sick": {"file": "sick_6f_motion.png", "columns": 6, "rows": 1, "frames": 6, "fps": 5.0, "loop": true, "runtime_sick_mark": true, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0]},
+	"Sulk": {"file": "sulk_6f_motion.png", "columns": 6, "rows": 1, "frames": 6, "fps": 5.0, "loop": true, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0]},
+	"Play": {"file": "play_6f_motion.png", "columns": 6, "rows": 1, "frames": 6, "fps": 8.0, "loop": true, "airborne": true, "ground_padding": 16.0, "foot_padding": [16.0, 36.0, 56.0, 44.0, 26.0, 16.0]},
+	"Dragged": {"file": "dragged_4f_motion.png", "columns": 4, "rows": 1, "frames": 4, "fps": 10.0, "loop": true, "airborne": true, "ground_padding": 16.0, "foot_padding": [40.0, 46.0, 38.0, 44.0]},
+	"Fall": {"file": "fall_4f_motion.png", "columns": 4, "rows": 1, "frames": 4, "fps": 12.0, "loop": false, "airborne": true, "ground_padding": 16.0, "foot_padding": [40.0, 32.0, 24.0, 16.0]},
+	"Land": {"file": "land_4f_motion.png", "columns": 4, "rows": 1, "frames": 4, "fps": 10.0, "loop": false, "foot_padding": [16.0, 16.0, 16.0, 16.0]},
+	"FileHover": {"file": "file_hover_4f_motion.png", "columns": 4, "rows": 1, "frames": 4, "fps": 12.0, "loop": false, "foot_padding": [16.0, 16.0, 16.0, 16.0]},
+	"FileConsume": {"file": "file_consume_4f_motion.png", "columns": 4, "rows": 1, "frames": 4, "fps": 12.0, "loop": false, "foot_padding": [16.0, 16.0, 16.0, 16.0]},
+	"Poop": {"file": "poop_6f_motion.png", "columns": 6, "rows": 1, "frames": 6, "fps": 6.0, "loop": true, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0]},
+	"Pet": {"file": "pet_6f_motion.png", "columns": 6, "rows": 1, "frames": 6, "fps": 10.0, "loop": false, "foot_padding": [16.0, 16.0, 16.0, 16.0, 16.0, 16.0]},
+}
+
+
+static func generated_motion_config(species: String, tier: String, state_name: String) -> Dictionary:
+	if not (species in GENERATED_MOTION_SPECIES) or not GENERATED_MOTION_STATES.has(state_name):
+		return {}
+	var config: Dictionary = (GENERATED_MOTION_STATES[state_name] as Dictionary).duplicate(true)
+	var suffix := "" if tier == "base" else "_" + tier
+	config["path"] = "res://assets/sprites/chars/%s%s/%s" % [species, suffix, config["file"]]
+	config.erase("file")
+	var horizontal_offsets: Array[float] = []
+	horizontal_offsets.resize(int(config["frames"]))
+	horizontal_offsets.fill(0.0)
+	config["horizontal_offsets"] = horizontal_offsets
+	return config
+
+
+static func haemjji_remake_config(tier: String, state_name: String) -> Dictionary:
+	if not GENERATED_MOTION_STATES.has(state_name):
+		return {}
+	var config: Dictionary = (GENERATED_MOTION_STATES[state_name] as Dictionary).duplicate(true)
+	var suffix := "" if tier == "base" else "_" + tier
+	config["path"] = "res://assets/sprites/haemjji%s/%s" % [suffix, String(config["file"]).replace("_motion", "_remake")]
+	config.erase("file")
+	if HAEMJJI_REMAKE_AIRBORNE_PADDING.has(state_name):
+		config["foot_padding"] = (HAEMJJI_REMAKE_AIRBORNE_PADDING[state_name] as Dictionary)[tier]
+	var horizontal_offsets: Array[float] = []
+	horizontal_offsets.resize(int(config["frames"]))
+	horizontal_offsets.fill(0.0)
+	config["horizontal_offsets"] = horizontal_offsets
+	return config
 
 var ps: Node
 var machine: Node
@@ -999,6 +1008,10 @@ func _advance_override_frame(delta: float, fps: float, frame_count: int, loop: b
 func _pose_override_config(state_name: String) -> Dictionary:
 	if ps == null or ps.stage == "egg":
 		return {}
+	if ps.species == "haemjji":
+		return haemjji_remake_config(_body_tier, state_name)
+	if ps.species in GENERATED_MOTION_SPECIES:
+		return generated_motion_config(ps.species, _body_tier, state_name)
 	var entry: Dictionary = ANIMATED_POSE_OVERRIDES.get(ps.species, {})
 	# "tiers"가 있으면 그 티어에서만 시트를 쓴다 — 진화 단계 아트가 없는 종족은 정지 포즈로 폴백.
 	var tiers: Array = entry.get("tiers", [])
@@ -1097,6 +1110,11 @@ func _resolve_sheet_scale(raw: Variant, fallback: float) -> float:
 ## 실측 기준이었다 — 거의 안 보이는 알파 프린지까지 세던 것을 VISIBLE_ALPHA로 바꾸자 세 상태가
 ## 서로 1px 안으로 모였고, 종족-티어 값 재보정만으로 전부 ±0.6%에 들어왔다.)
 func _pose_override_body_scale() -> float:
+	if ps.species == "haemjji":
+		return _static_body_scale() * float(HAEMJJI_REMAKE_SHEET_SCALE.get(_body_tier, 1.0))
+	if ps.species in GENERATED_MOTION_SPECIES:
+		var generated_scale: Dictionary = GENERATED_MOTION_SHEET_SCALE.get(ps.species, {})
+		return _static_body_scale() * float(generated_scale.get(_body_tier, 1.0))
 	var entry: Dictionary = ANIMATED_POSE_OVERRIDES.get(ps.species, {})
 	return _static_body_scale() * _resolve_sheet_scale(entry.get("sheet_scale"), 1.0)
 

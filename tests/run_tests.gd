@@ -107,7 +107,7 @@ const REGISTRATION_OFF_TOLERANCE := 0.0
 # 이 검사가 첫 실행에서 잡아낸 건이다.
 const REGISTRATION_KNOWN := []
 # 종족별 시트 계약. 전수 실측(2026-08-10)에서 셀 크기와 접지 기준선은 종족 안에서 완전히
-# 균일했다 — mochi 192x208/16 (42개 config), haemjji·ppiyak 128x128/12 (각 42개),
+# 균일했다 — mochi·ppiyak 192x208/16 (각 42개 config), haemjji 128x128/12 (42개),
 # ddungsil 192x208/16 (14개). 예외가 하나도 없어 그대로 잠근다. 하드코딩인 이유는 등록
 # 데이터에서 유도하면 덮임 사고에서 기대값이 같이 오염돼 검사가 무력해지기 때문이다.
 # 오프셋 한도(base +-2.0 / 진화 +-3.5)는 여기 넣지 않았다 — 같은 실측에서 종족마다 갈렸다
@@ -115,7 +115,7 @@ const REGISTRATION_KNOWN := []
 const SPECIES_SHEET_CONTRACT := {
 	"mochi": {"cell_w": 192, "cell_h": 208, "baseline": 16.0},
 	"haemjji": {"cell_w": 128, "cell_h": 128, "baseline": 12.0},
-	"ppiyak": {"cell_w": 128, "cell_h": 128, "baseline": 12.0},
+	"ppiyak": {"cell_w": 192, "cell_h": 208, "baseline": 16.0},
 	"ddungsil": {"cell_w": 192, "cell_h": 208, "baseline": 16.0},
 }
 # 순환(loop) 상태의 "마지막 프레임 -> 첫 프레임" 이음새. 상태를 나갈 때만 보는 전환 팝
@@ -171,7 +171,8 @@ const OFFSET_CEILING := {
 	"ddungsil/base": 0.5, "ddungsil/evolved": 0.5, "ddungsil/evolved2": 0.5,
 	"haemjji/base": 2.0, "haemjji/evolved": 3.5, "haemjji/evolved2": 3.0,
 	"mochi/base": 5.0, "mochi/evolved": 6.0, "mochi/evolved2": 6.0,
-	"ppiyak/base": 3.25, "ppiyak/evolved": 5.0, "ppiyak/evolved2": 7.0,
+	# 2026-08-11 리메이크에서 세 티어 모두 bbox 중심 정렬로 최대 편차를 0.5px까지 낮췄다.
+	"ppiyak/base": 0.5, "ppiyak/evolved": 0.5, "ppiyak/evolved2": 0.5,
 }
 # fps는 설계값이라 픽셀에서 유도할 수 없고, 지금까지 어느 검사도 보지 않던 마지막 필드다
 # (gd-integrator가 재구성 때 인계 표에서 손으로 옮기고 손으로 대조해 맞췄다 — 다음엔 못 잡는다).
@@ -213,6 +214,12 @@ const TRANSITION_POP_KNOWN := []
 # "mochi/evolved/진입" 26.0%는 Idle f2의 과도한 진폭이, 중간단 두 건(15.8% / 15.5%)은
 # FileConsume f0의 폭이 원인이었고, 그 시트들을 고치자 4.5% / 8.4%로 내려왔다.
 # 증상이 나타난 단계(FileHover 전이)와 원인이 있는 시트가 다를 수 있다는 사례다.
+# 2026-08-12에 비었다. haemjji/evolved가 `_remake` 전환으로 18.8%까지 벌어졌다가 아트 수정으로
+# 5.3%가 되어 빠졌다 — 그 결함은 검사가 죽은 `_alpha_smooth` 상수를 읽는 동안 가려져 있었고,
+# `_pose_config`를 런타임 경로로 고치면서 처음 드러났다(제품 보증이 0이던 구간이다).
+# 수정 방식이 좋은 선례다: Idle **높이를 프레임별로 원본과 일치**시켜(f0 173 불변) `sheet_scale`을
+# 건드리지 않고 폭만 중앙값 133으로 맞췄다. 배율을 손대면 반응 8상태가 함께 축소된다.
+# 세 티어 현재값: base 7.7% / evolved 5.3% / evolved2 13.7%(한도 근접이라 계속 지켜볼 것).
 const REACTION_CHAIN_POP_KNOWN := []
 # 케어 반응 테스트가 야간 판정을 끄고 빌려 쓴 원래 값 (_test_mochi_pose_runtime 끝에서 되돌린다).
 var _saved_night_window: Array = []
@@ -221,6 +228,7 @@ var _saved_night_window: Array = []
 func _init() -> void:
 	# 픽셀 검사 전체의 전제라 가장 먼저 본다 — 캐시가 낡으면 아래 결과를 믿을 수 없다.
 	_test_import_cache_fresh()
+	_test_referenced_assets_tracked()
 	_test_sheet_value_sync()
 	_test_decay_basic()
 	_test_decay_geobujang()
@@ -237,6 +245,7 @@ func _init() -> void:
 	_test_mochi_pose_manifest()
 	_test_mochi_evolved_walk_keeps_body_width()
 	_test_haemjji_pose_manifest()
+	_test_generated_motion_catalog()
 	_test_serialize_roundtrip()
 	_test_stage_progression()
 	_test_digest()
@@ -270,6 +279,28 @@ func _init() -> void:
 	call_deferred("_test_bichon_care_reactions")
 
 
+func _test_generated_motion_catalog() -> void:
+	var expected_species := [
+		"kkubeok", "nyang", "kong", "mundeok", "geobujang", "bulgeumjo",
+		"seureureuk", "tokki",
+	]
+	var expected_states := [
+		"Idle", "Walk", "Sleep", "Eat", "Sick", "Sulk", "Play", "Dragged",
+		"Fall", "Land", "FileHover", "FileConsume", "Poop", "Pet",
+	]
+	check(PetScript.GENERATED_MOTION_SPECIES == expected_species,
+		"해솔 제외 정지 포즈 8종이 등록 순서대로 모션 카탈로그에 등록")
+	for species in expected_species:
+		for tier in ["base", "evolved", "evolved2"]:
+			for state in expected_states:
+				var config: Dictionary = PetScript.generated_motion_config(species, tier, state)
+				check(not config.is_empty(), "%s/%s/%s 14상태 모션 설정" % [species, tier, state])
+				check(ResourceLoader.exists(String(config.get("path", ""))),
+					"%s/%s/%s 모션 시트 로드" % [species, tier, state])
+				check(int(config.get("frames", 0)) == (config.get("foot_padding", []) as Array).size(),
+					"%s/%s/%s 프레임 앵커 수 일치" % [species, tier, state])
+
+
 func _finish() -> void:
 	# 빌려 쓴 야간 설정 복원. SaveManager는 오토로드(전역 상태)이고 설정이 디스크로
 	# 저장될 수 있어, 스위트가 사용자 야간 구간을 0으로 남기면 안 된다.
@@ -301,6 +332,11 @@ func approx(a: float, b: float, eps := 0.01) -> bool:
 ## 원래 이 검사가 잡으려던 회귀가 그것이다(sheet_scale 누락 -> evolved2만 12.7% 큼).
 ## sheet_scale "값이 옳은가"는 _test_sheet_scale_formula()가 아트와 대조해 따로 본다.
 func effective_body_scale(species: String, tier: String) -> float:
+	if species == "haemjji":
+		return float((Characters.BODY_SCALE.get(species, {}) as Dictionary).get(tier, 1.0)) * float(PetScript.HAEMJJI_REMAKE_SHEET_SCALE.get(tier, 1.0))
+	if species in PetScript.GENERATED_MOTION_SPECIES:
+		var generated: Dictionary = PetScript.GENERATED_MOTION_SHEET_SCALE.get(species, {})
+		return float((Characters.BODY_SCALE.get(species, {}) as Dictionary).get(tier, 1.0)) * float(generated.get(tier, 1.0))
 	var entry: Dictionary = PetScript.ANIMATED_POSE_OVERRIDES.get(species, {})
 	var raw: Variant = entry.get("sheet_scale", 1.0)
 	var sheet: float = float((raw as Dictionary).get(tier, 1.0)) if raw is Dictionary else float(raw)
@@ -454,33 +490,33 @@ func _test_bichon_animation_manifest() -> void:
 		check(not bool(config.get("airborne", false)), "비숑 %s airborne 미선언 (접지 재고정 유지)" % animation)
 
 
-# 삐약 계열: 10상태 x 3티어(base/evolved/evolved2) 애니메이션 오버라이드 매니페스트.
-# 셀은 전부 128x128, 접지 상태의 foot_padding은 12.0 고정. Happy(=Play)/Dragged/Fall만
+# 삐약 계열: 14상태 x 3티어(base/evolved/evolved2) 애니메이션 오버라이드 매니페스트.
+# 리메이크 셀은 전부 192x208, 접지 상태의 foot_padding은 16.0 고정. Happy(=Play)/Dragged/Fall만
 # 의도적으로 공중에 떠서 프레임마다 값이 커진다. Land만 loop=false.
 const PPIYAK_TIERS := ["base", "evolved", "evolved2"]
 const PPIYAK_SHEET_DIR := {"base": "ppiyak", "evolved": "ppiyak_evolved", "evolved2": "ppiyak_evolved2"}
 const PPIYAK_EXPECTED_STATES := {
 	# Idle만 물리 6칸을 sprite_frame_sequence로 논리 16프레임에 매핑한다 — 격자 칸 수 != frames.
-	"Idle": {"file": "idle_blink_6f.png", "frames": 16, "columns": 6, "rows": 1, "loop": true, "grounded": true, "sequence": [0, 0, 1, 1, 2, 2, 3, 3, 0, 4, 5, 4, 0, 0, 2, 2]},
-	"Walk": {"file": "walk_8f.png", "frames": 8, "columns": 4, "rows": 2, "loop": true, "grounded": true},
-	"Sleep": {"file": "sleep_6f.png", "frames": 6, "columns": 6, "rows": 1, "loop": true, "grounded": true},
-	"Eat": {"file": "eat_6f.png", "frames": 6, "columns": 6, "rows": 1, "loop": true, "grounded": true},
-	"Sick": {"file": "sick_6f.png", "frames": 6, "columns": 6, "rows": 1, "loop": true, "grounded": true},
-	"Sulk": {"file": "sulk_6f.png", "frames": 6, "columns": 6, "rows": 1, "loop": true, "grounded": true},
+	"Idle": {"file": "idle_blink_6f_remake.png", "frames": 16, "columns": 6, "rows": 1, "loop": true, "grounded": true, "sequence": [0, 0, 1, 1, 2, 2, 3, 3, 0, 4, 5, 4, 0, 0, 2, 2]},
+	"Walk": {"file": "walk_8f_remake.png", "frames": 8, "columns": 4, "rows": 2, "loop": true, "grounded": true},
+	"Sleep": {"file": "sleep_6f_remake.png", "frames": 6, "columns": 6, "rows": 1, "loop": true, "grounded": true},
+	"Eat": {"file": "eat_6f_remake.png", "frames": 6, "columns": 6, "rows": 1, "loop": true, "grounded": true},
+	"Sick": {"file": "sick_6f_remake.png", "frames": 6, "columns": 6, "rows": 1, "loop": true, "grounded": true},
+	"Sulk": {"file": "sulk_6f_remake.png", "frames": 6, "columns": 6, "rows": 1, "loop": true, "grounded": true},
 	# Happy 시트는 state_machine에 없는 "Happy"가 아니라 "Play" 상태 키로 등록된다.
-	"Play": {"file": "happy_6f.png", "frames": 6, "columns": 6, "rows": 1, "loop": true, "grounded": false},
-	"Dragged": {"file": "dragged_4f.png", "frames": 4, "columns": 4, "rows": 1, "loop": true, "grounded": false},
+	"Play": {"file": "happy_6f_remake.png", "frames": 6, "columns": 6, "rows": 1, "loop": true, "grounded": false},
+	"Dragged": {"file": "dragged_4f_remake.png", "frames": 4, "columns": 4, "rows": 1, "loop": true, "grounded": false},
 	# Fall은 loop:false다(2026-08-10 변경). 시트가 단조 하강 호이고 마지막 칸이 착지 직전
 	# 스쿼시라, 루프면 그 스쿼시에서 최고점의 늘어난 포즈로 되돌아 튄다(mochi/base 83.3%).
 	# 낙하 1주기가 4프레임/12fps = 0.333초 = 133px이라 드래그마다 사실상 매번 되돌았다.
 	# 지금은 Land와 같은 처리 — 호를 한 번 재생하고 착지 직전 프레임을 유지한다.
-	"Fall": {"file": "fall_4f.png", "frames": 4, "columns": 4, "rows": 1, "loop": false, "grounded": false},
-	"Land": {"file": "land_4f.png", "frames": 4, "columns": 4, "rows": 1, "loop": false, "grounded": true},
+	"Fall": {"file": "fall_4f_remake.png", "frames": 4, "columns": 4, "rows": 1, "loop": false, "grounded": false},
+	"Land": {"file": "land_4f_remake.png", "frames": 4, "columns": 4, "rows": 1, "loop": false, "grounded": true},
 	# 잔여 4상태(2026-08-10 추가) — 이로써 삐약 3티어가 비숑과 동일한 14상태를 갖춘다.
-	"FileHover": {"file": "file_hover_4f.png", "frames": 4, "columns": 4, "rows": 1, "loop": false, "grounded": true},
-	"FileConsume": {"file": "file_consume_6f.png", "frames": 6, "columns": 6, "rows": 1, "loop": false, "grounded": true},
-	"Poop": {"file": "poop_6f.png", "frames": 6, "columns": 6, "rows": 1, "loop": true, "grounded": true},
-	"Pet": {"file": "pet_6f.png", "frames": 6, "columns": 6, "rows": 1, "loop": false, "grounded": true},
+	"FileHover": {"file": "file_hover_4f_remake.png", "frames": 4, "columns": 4, "rows": 1, "loop": false, "grounded": true},
+	"FileConsume": {"file": "file_consume_6f_remake.png", "frames": 6, "columns": 6, "rows": 1, "loop": false, "grounded": true},
+	"Poop": {"file": "poop_6f_remake.png", "frames": 6, "columns": 6, "rows": 1, "loop": true, "grounded": true},
+	"Pet": {"file": "pet_6f_remake.png", "frames": 6, "columns": 6, "rows": 1, "loop": false, "grounded": true},
 }
 
 
@@ -535,22 +571,22 @@ func _test_ppiyak_animated_sleep_manifest() -> void:
 			check(texture != null, "삐약 %s/%s 시트 로드" % [state, tier])
 			if texture != null:
 				var size: Vector2 = texture.get_size()
-				check(int(size.x) == 128 * columns and int(size.y) == 128 * rows,
-					"삐약 %s/%s 시트 크기 %dx%d == 격자 x 128" % [state, tier, int(size.x), int(size.y)])
+				check(int(size.x) == 192 * columns and int(size.y) == 208 * rows,
+					"삐약 %s/%s 시트 크기 %dx%d == 192x208 격자" % [state, tier, int(size.x), int(size.y)])
 			for key in ["foot_padding", "horizontal_offsets"]:
 				var arr: Array = config.get(key, [])
 				check(arr.size() == frames, "삐약 %s/%s %s 길이(%d) == frames(%d)" % [state, tier, key, arr.size(), frames])
-			# 접지 상태는 발바닥 기준선이 전 프레임 12.0으로 고정 — 상태를 바꿔도 발이 튀지 않는다.
-			# 공중 상태(Play/Dragged/Fall)는 foot_padding이 점프·부유 높이를 만들므로 12 이상이면 된다.
+			# 접지 상태는 발바닥 기준선이 전 프레임 16.0으로 고정 — 상태를 바꿔도 발이 튀지 않는다.
+			# 공중 상태(Play/Dragged/Fall)는 foot_padding이 점프·부유 높이를 만들므로 16 이상이면 된다.
 			var padding_ok := true
 			for value in config.get("foot_padding", []):
 				if expected["grounded"]:
-					if not approx(float(value), 12.0):
+					if not approx(float(value), 16.0):
 						padding_ok = false
-				elif float(value) < 12.0:
+				elif float(value) < 16.0:
 					padding_ok = false
 			check(padding_ok, "삐약 %s/%s foot_padding %s" % [state, tier,
-				"전 프레임 12.0" if expected["grounded"] else ">= 12.0 (공중 진폭)"])
+				"전 프레임 16.0" if expected["grounded"] else ">= 16.0 (공중 진폭)"])
 			# 공중 상태는 "airborne": true 가 반드시 있어야 한다 — 없으면 런타임이 매 프레임 발을
 			# 지면에 재고정해 foot_padding 진폭을 그대로 상쇄한다(2026-08-06 블로커 회귀 방지).
 			var want_airborne: bool = not bool(expected["grounded"])
@@ -577,16 +613,16 @@ func _test_ppiyak_animated_sleep_manifest() -> void:
 			var padding: Array = states.get(state, {}).get(tier, {}).get("foot_padding", [])
 			var varies := false
 			for value in padding:
-				if not approx(float(value), 12.0):
+				if not approx(float(value), 16.0):
 					varies = true
-			check(varies, "삐약 %s/%s 공중 진폭 존재 (foot_padding이 전부 12.0이 아님)" % [state, tier])
+			check(varies, "삐약 %s/%s 공중 진폭 존재 (foot_padding이 전부 16.0이 아님)" % [state, tier])
 
 	# Sick 시트에는 어지럼 기호가 없다 — 런타임 @_@ 라벨을 띄우도록 플래그가 켜져 있어야 한다.
 	for tier in PPIYAK_TIERS:
 		check(bool(states.get("Sick", {}).get(tier, {}).get("runtime_sick_mark", false)),
 			"삐약 Sick/%s runtime_sick_mark == true (@_@ 라벨 런타임 렌더)" % tier)
 
-	# 밉맵: 축소 렌더링 자산이므로 30장 전부 mipmaps/generate=true여야 한다 (제작 가이드 §2).
+	# 밉맵: 축소 렌더링 자산이므로 42장 전부 mipmaps/generate=true여야 한다 (제작 가이드 §2).
 	for tier in PPIYAK_TIERS:
 		for state in PPIYAK_EXPECTED_STATES:
 			var import_path: String = "res://assets/sprites/%s/%s.import" % [PPIYAK_SHEET_DIR[tier], PPIYAK_EXPECTED_STATES[state]["file"]]
@@ -601,7 +637,7 @@ func _test_ppiyak_animated_sleep_manifest() -> void:
 				"삐약 %s 레거시 정지 %s.png 잔존(보존)" % [dir_name, pose])
 
 
-# 삐약 Idle 눈 깜박임: 물리 6칸(768x128) 시트를 논리 16프레임에 매핑한다.
+# 삐약 Idle 눈 깜박임: 물리 6칸(1152x208) 시트를 논리 16프레임에 매핑한다.
 # 인덱스 4/5가 "눈 감은" 셀이라, 시퀀스에서 이 둘이 빠지면 시트만 교체되고 깜박임은 사라진다.
 const PPIYAK_BLINK_CELLS := [4, 5]
 
@@ -638,15 +674,15 @@ func _test_ppiyak_idle_blink_sheet() -> void:
 		if texture == null:
 			continue
 		var image: Image = texture.get_image()
-		check(image.get_width() == 768 and image.get_height() == 128,
-			"삐약 블링크 Idle/%s 시트 크기 %dx%d == 768x128" % [tier, image.get_width(), image.get_height()])
-		if image.get_width() != 768 or image.get_height() != 128:
+		check(image.get_width() == 1152 and image.get_height() == 208,
+			"삐약 블링크 Idle/%s 시트 크기 %dx%d == 1152x208" % [tier, image.get_width(), image.get_height()])
+		if image.get_width() != 1152 or image.get_height() != 208:
 			continue
 		# 6칸이 서로 다른 그림이어야 한다 — 복사된 칸이 섞이면 매니페스트는 통과하는데
 		# 화면에서는 깜박이지 않는다(2026-08-07 헤드리스 QA에서 픽셀로 확인).
 		var cells: Array[Image] = []
 		for index in 6:
-			cells.append(image.get_region(Rect2i(index * 128, 0, 128, 128)))
+			cells.append(image.get_region(Rect2i(index * 192, 0, 192, 208)))
 		var duplicates := ""
 		for i in 6:
 			for j in range(i + 1, 6):
@@ -689,33 +725,29 @@ const HAEMJJI_EXPECTED_STATES := {
 }
 
 
+# 2026-08-12 재작성. 이전 판은 `ANIMATED_POSE_OVERRIDES["haemjji"]`(구세대 `_alpha_smooth`
+# 128셀)를 검증했는데, 런타임은 `pet.gd:1085`의 무조건 early return으로 이미
+# `haemjji_remake_config`(신세대 `_remake` 192x208셀)를 쓰고 있었다. 즉 이 검사는 **제품이
+# 쓰지 않는 데이터를 검증하며 초록을 유지**하고 있었고, 그 구조가 화면 몸통 +68.9% 결함을
+# 가린 것과 같은 뿌리다. 그래서 런타임 config를 직접 보게 고쳤다.
+#
+# 셀 규약이 128 -> 192x208로 바뀌었으므로 접지 기준선도 12.0 -> 16.0이다(mochi와 같은 208 규약).
+# 실측으로 확인했다: 42조합 전부 셀 192x208, 접지 상태 foot_padding 전 프레임 16.0 균일,
+# 공중 3상태만 편차, horizontal_offsets 전부 0.0(조립 시 0으로 채워진다).
 func _test_haemjji_pose_manifest() -> void:
-	var entry: Dictionary = PetScript.ANIMATED_POSE_OVERRIDES.get("haemjji", {})
-	check(not entry.is_empty(), "햄찌 포즈 오버라이드 등록됨")
-	var states: Dictionary = entry.get("states", {})
-	check(states.size() == HAEMJJI_EXPECTED_STATES.size(),
-		"햄찌 등록 상태 수 %d == 기대 %d" % [states.size(), HAEMJJI_EXPECTED_STATES.size()])
-	# base(햄찌)·evolved(함장님)·evolved2(햄왕) 3티어 전부 애니메이션 시트를 갖는다.
-	check(entry.get("tiers", []) == ["base", "evolved", "evolved2"], "햄찌 tiers == 3티어 전부")
-	# sheet_scale은 티어맵 — 티어마다 정지 아트와 시트 몸통 비율이 다르다.
-	# 2026-08-07 §12: evolved 계열 정지 아트만 256px로 복원돼 art_ratio(2.0177 / 2.0089)만큼
-	# 커졌다. sheet_scale = 정지 몸통 / 시트 몸통 이므로 분자만 커져 같은 배수로 올라간다
-	# (시트 자산은 128px 그대로). 1.125 -> 2.2699, 1.056 -> 2.1214.
-	# 값 자체가 옳은지는 _test_sheet_scale_formula()가 아트와 대조해 본다 — 여기서는 구조만.
-	var sheet_scale: Variant = entry.get("sheet_scale")
-	check(sheet_scale is Dictionary, "햄찌 sheet_scale 티어맵 구조")
+	var scale_map: Dictionary = PetScript.HAEMJJI_REMAKE_SHEET_SCALE
+	check(scale_map.size() == 3, "햄찌 sheet_scale 티어맵 구조 (HAEMJJI_REMAKE_SHEET_SCALE %d개)" % scale_map.size())
 	for tier in ["base", "evolved", "evolved2"]:
-		check(sheet_scale is Dictionary and float((sheet_scale as Dictionary).get(tier, 0.0)) > 0.0,
-			"햄찌 sheet_scale[%s] 등록됨 (%.4f)" % [tier, float((sheet_scale as Dictionary).get(tier, 0.0))])
-	var tier_dirs := {"base": "haemjji", "evolved": "haemjji_evolved", "evolved2": "haemjji_evolved2"}
+		check(float(scale_map.get(tier, 0.0)) > 0.0,
+			"햄찌 sheet_scale[%s] 등록됨 (%.4f)" % [tier, float(scale_map.get(tier, 0.0))])
+	var covered := 0
 
 	for state in HAEMJJI_EXPECTED_STATES:
 		var expected: Dictionary = HAEMJJI_EXPECTED_STATES[state]
-		var by_tier: Dictionary = states.get(state, {})
-		check(not by_tier.has("path"), "햄찌 %s 는 티어맵 구조" % state)
 		for tier in ["base", "evolved", "evolved2"]:
 			var label: String = "햄찌 %s %s" % [tier, state]
-			var config: Dictionary = by_tier.get(tier, {})
+			var config: Dictionary = PetScript.haemjji_remake_config(tier, state)
+			covered += 1
 			check(not config.is_empty(), "%s 등록됨" % label)
 			if config.is_empty():
 				continue
@@ -728,14 +760,16 @@ func _test_haemjji_pose_manifest() -> void:
 			check(bool(config.get("loop", false)) == expected["loop"], "%s loop == %s" % [label, expected["loop"]])
 			check(float(config.get("fps", 0.0)) > 0.0, "%s fps > 0" % label)
 			var path: String = String(config.get("path", ""))
-			check(path.begins_with("res://assets/sprites/%s/" % tier_dirs[tier]) and ResourceLoader.exists(path),
+			var expected_dir: String = "res://assets/sprites/haemjji%s/" % ("" if tier == "base" else "_" + tier)
+			check(path.begins_with(expected_dir) and ResourceLoader.exists(path),
 				"%s 시트 경로·존재: %s" % [label, path.get_file()])
 			var texture: Texture2D = load(path) if ResourceLoader.exists(path) else null
 			check(texture != null, "%s 시트 로드" % label)
 			if texture != null:
+				# 신세대 `_remake`는 192x208 셀이다(구 128 정사각이 아니다).
 				var size: Vector2 = texture.get_size()
-				check(int(size.x) == 128 * columns and int(size.y) == 128 * rows,
-					"%s 시트 크기 %dx%d == 격자 x 128" % [label, int(size.x), int(size.y)])
+				check(int(size.x) == 192 * columns and int(size.y) == 208 * rows,
+					"%s 시트 크기 %dx%d == 격자 x 192x208" % [label, int(size.x), int(size.y)])
 			for key in ["foot_padding", "horizontal_offsets"]:
 				var arr: Array = config.get(key, [])
 				check(arr.size() == frames, "%s %s 길이(%d) == frames(%d)" % [label, key, arr.size(), frames])
@@ -753,16 +787,16 @@ func _test_haemjji_pose_manifest() -> void:
 				var min_pad: float = 9999.0
 				for value in paddings:
 					min_pad = minf(min_pad, float(value))
-				check(approx(min_pad, 12.0),
-					"%s 공중 상태 foot_padding 최솟값 12.0 (편차 = 부양 높이)" % label)
+				check(approx(min_pad, 16.0),
+					"%s 공중 상태 foot_padding 최솟값 16.0 (편차 = 부양 높이)" % label)
 				_check_airborne_ground_reference(label, config, min_pad)
 				_check_fall_descends(label, state, paddings)
 			else:
 				var padding_uniform := true
 				for value in paddings:
-					if not approx(float(value), 12.0):
+					if not approx(float(value), 16.0):
 						padding_uniform = false
-				check(padding_uniform, "%s foot_padding 전 프레임 12.0" % label)
+				check(padding_uniform, "%s foot_padding 전 프레임 16.0" % label)
 			# evolved는 셰프 토크·앞치마 때문에 base(±2.0)보다 중심 흔들림이 크다(핸드오프 실측 ±3.5).
 			# 진화 티어는 착용물(토크·앞치마·금관) 때문에 base(±2.0)보다 중심 흔들림이 크다.
 			var offset_bound: float = 2.0 if tier == "base" else 3.5
@@ -1668,7 +1702,13 @@ func _test_size_rules() -> void:
 	# 2026-08-07 §12부터 아트 캔버스가 티어마다 다르다: base/egg 128px, evolved/evolved2 256px.
 	# 그래서 위치 계산은 상수(STATIC_POSE_FALLBACK_SIZE)가 아니라 실측 텍스처 크기를 써야 한다.
 	# 이 검사가 없으면 256px 티어가 화면에서 위아래로 절반쯤 어긋난 채 조용히 통과한다.
+	# 종족-티어 단위 예외만 둔다. 전역으로 느슨하게 만들면 위 주석의 버그(상수 128을 256px
+	# 티어에 곱하던 것)가 다시 조용히 통과한다 — 그래서 기본 맵은 그대로 두고 덮어쓴다.
+	# mochi/base 192: 눈 크기 기준(사용자 지정 "눈이 다른 애들과 비슷하게")을 지키면서 진화
+	# 사다리를 맞추려면 몸통을 1.497배(코어 72 -> 109) 키워야 했는데, 그러면 폭이 139가 되어
+	# 128 캔버스를 넘는다. 그래서 그 티어만 캔버스를 넓혔다(Task #10, 2026-08-12).
 	var expected_canvas := {"base": 128, "evolved": 256, "evolved2": 256}
+	var canvas_override := {"mochi": {"base": 192}}
 	for species in Characters.BODY_SCALE.keys():
 		pet_state.debug_set_species(species)
 		for tier in ["base", "evolved", "evolved2"]:
@@ -1678,8 +1718,12 @@ func _test_size_rules() -> void:
 			pet.refresh_appearance()
 			var tex: Texture2D = pet._sprite.texture
 			var canvas: int = int(tex.get_size().y) if tex != null else 0
-			check(canvas == int(expected_canvas[tier]),
-				"[%s/%s] 정지 포즈 캔버스 %dpx == %dpx" % [species, tier, canvas, expected_canvas[tier]])
+			var want_canvas: int = int(expected_canvas[tier])
+			var per_species: Dictionary = canvas_override.get(species, {})
+			if per_species.has(tier):
+				want_canvas = int(per_species[tier])
+			check(canvas == want_canvas,
+				"[%s/%s] 정지 포즈 캔버스 %dpx == %dpx" % [species, tier, canvas, want_canvas])
 			# 캔버스 크기와 무관하게 발이 지면(y=0)에 닿아야 한다. 아트 하단 여백은 0px 규약이라
 			# 허용 오차는 1px(반올림)로 충분하다.
 			# 허용 오차가 티어별로 다르다. evolved/evolved2는 §12.3에서 하단 여백을 0px로 맞춰
@@ -1816,8 +1860,7 @@ func _test_pose_reaction_triggers() -> void:
 		"삐약 set_file_hover → FileHover 시트 재생 (state=%s)" % ppiyak._pose_override_state)
 	ppiyak.set_file_hover(false)
 
-	# 7) 포즈 오버라이드 자체가 없는 종족은 조용히 무시되어야 한다 — 무시하지 않고 비숑
-	# 카탈로그로 새면 다른 종족이 비숑 시트를 물게 된다(모찌 트리거 수정 때의 회귀 지점).
+	# 7) 새로 등록한 종족도 케어·파일 반응이 자기 모션 시트로 연결되어야 한다.
 	var tokki_state := make_pet("tokki")
 	tokki_state.stage = "adult"
 	var tokki: Node2D = PetScene.instantiate()
@@ -1827,13 +1870,12 @@ func _test_pose_reaction_triggers() -> void:
 	await process_frame
 	tokki.ps = tokki_state
 	tokki.refresh_appearance()
-	var tokki_before: String = tokki._pose_override_state
 	tokki._on_care_performed("pet")
-	check(tokki._pose_override_state == tokki_before and not tokki._pose_override_active,
-		"당근이 care(pet) 무시 (포즈 오버라이드 미등록 종족)")
+	check(tokki._pose_override_state == "Pet" and tokki._pose_override_active,
+		"당근이 care(pet) → Pet 모션")
 	tokki.set_file_hover(true)
-	check(tokki._pose_override_state == tokki_before and not tokki._pose_override_active,
-		"당근이 set_file_hover 무시 (비숑 시트로 안 샘)")
+	check(tokki._pose_override_state == "FileHover" and tokki._pose_override_active,
+		"당근이 set_file_hover → FileHover 모션")
 	root.remove_child(tokki)
 	tokki.free()
 	tokki_state.free()
@@ -2345,6 +2387,94 @@ func _check_sheet_sync(label: String, config: Dictionary) -> int:
 	return 1
 
 
+# pet.gd가 참조하는 PNG가 git에 올라가 있지 않으면, 워킹트리에는 있으니 스위트는 전부 통과하지만
+# 커밋에서 빠진 채 다른 머신에서 런타임 경로가 깨진다. 2026-08-11에 ppiyak 12장
+# (file_hover_4f / file_consume_6f / pet_6f / poop_6f x 3티어)이 정확히 그 상태였고,
+# 그대로 커밋됐으면 ppiyak 3티어의 12개 상태가 전부 깨졌다.
+# 사람 절차로는 두 번 연속 과소 보고됐다(참조 여부만 보고 untracked 전수를 뜨지 않아서
+# "2장"으로 보고 → 실제 12장). 그래서 검사로 잠근다.
+#
+# .import도 쌍으로 본다: Godot은 PNG와 .import가 함께 있어야 uid가 안정적이고, PNG만 커밋하면
+# 다른 머신에서 uid가 재배정돼 .tscn/.gd 참조가 흔들린다.
+#
+# 한계: _all_sheet_paths()가 도는 것은 상수로 박힌 시트 경로다. 정지 포즈 아트
+# (chars/{종족}/{포즈}.png)는 런타임에 문자열을 조립해 만들므로 여기서 커버되지 않는다.
+func _test_referenced_assets_tracked() -> void:
+	var root := ProjectSettings.globalize_path("res://").trim_suffix("/")
+	var output := []
+	# git ls-files는 인덱스 내용을 찍으므로 "추적 중"과 "새로 스테이징됨"을 한 번에 잡는다.
+	var code := OS.execute("git", ["-C", root, "ls-files"], output, true)
+	var listing := "" if output.is_empty() else String(output[0])
+	check(code == 0 and not listing.is_empty(),
+		"git ls-files 실행 가능 (종료코드 %d, %d바이트) — 실패하면 이 검사는 아무것도 보증하지 못한다"
+		% [code, listing.length()])
+	if code != 0 or listing.is_empty():
+		return
+	var indexed := {}
+	for line in listing.split("\n", false):
+		indexed[line.strip_edges()] = true
+	var missing_png := []
+	var missing_import := []
+	var checked := 0
+	for path in _all_sheet_paths() + _runtime_assembled_sheet_paths():
+		var rel := String(path).trim_prefix("res://")
+		checked += 1
+		if not indexed.has(rel):
+			missing_png.append(rel)
+		# .import는 디스크에 있을 때만 쌍을 요구한다(아직 임포트되지 않은 신규 자산은 제외).
+		if FileAccess.file_exists(String(path) + ".import") and not indexed.has(rel + ".import"):
+			missing_import.append(rel + ".import")
+	check(checked > 0, "참조 시트 경로를 수집했다 (%d개)" % checked)
+	check(missing_png.is_empty(),
+		"참조 PNG %d개 전부 git에 올라가 있다%s" % [checked, _tracking_hint(missing_png, "git add 하라")])
+	check(missing_import.is_empty(),
+		"참조 PNG의 .import가 쌍으로 올라가 있다%s"
+			% _tracking_hint(missing_import, "PNG만 커밋하면 uid가 재배정된다"))
+
+
+## 누락 목록을 읽을 수 있는 길이로 요약한다. 84개를 한 줄에 쏟으면 실패 메시지가 화면을 덮어
+## 다른 실패를 못 보게 된다(실제로 그랬다) — 디렉터리별 개수 + 예시 3개까지만 남긴다.
+func _tracking_hint(missing: Array, advice: String) -> String:
+	if missing.is_empty():
+		return ""
+	var by_dir := {}
+	for path in missing:
+		var dir := String(path).get_base_dir()
+		by_dir[dir] = int(by_dir.get(dir, 0)) + 1
+	var groups := []
+	for dir in by_dir:
+		groups.append("%s x%d" % [String(dir).trim_prefix("assets/sprites/"), int(by_dir[dir])])
+	groups.sort()
+	var sample := []
+	for i in range(mini(3, missing.size())):
+		sample.append(String(missing[i]).get_file())
+	return " — 누락 %d개 [%s] 예: %s (%s)" % [
+		missing.size(), ", ".join(groups), ", ".join(sample), advice]
+
+
+## 런타임이 문자열로 조립하는 시트 경로. `_all_sheet_paths()`는 상수로 박힌 경로만 보므로
+## 이쪽이 추적 검사의 사각지대였다 — 그리고 하필 그 사각지대가 가장 큰 자산 묶음이다.
+## `_pose_override_config`(pet.gd:1082)는 haemjji와 GENERATED_MOTION_SPECIES 8종에 대해
+## **조건 없이** 조립 경로를 먼저 반환하므로, 이 9종의 런타임은 전적으로 이 경로들에 의존한다.
+## (haemjji의 ANIMATED_POSE_OVERRIDES 항목은 그 early return 뒤에 있어 포즈 오버라이드에는
+##  더 이상 도달하지 않는다 — 상수는 남아 있지만 이 경로가 실제로 쓰이는 것이다.)
+##
+## 경로를 문자열로 다시 조립하지 않고 런타임 함수를 그대로 호출한다. 재조립하면 규칙이
+## 갈릴 때 검사만 조용히 옛 경로를 보게 된다.
+func _runtime_assembled_sheet_paths() -> Array:
+	var paths := []
+	for tier in ["base", "evolved", "evolved2"]:
+		for state in PetScript.GENERATED_MOTION_STATES:
+			var haemjji: Dictionary = PetScript.haemjji_remake_config(tier, state)
+			if haemjji.has("path"):
+				paths.append(String(haemjji["path"]))
+			for species in PetScript.GENERATED_MOTION_SPECIES:
+				var generated: Dictionary = PetScript.generated_motion_config(species, tier, state)
+				if generated.has("path"):
+					paths.append(String(generated["path"]))
+	return paths
+
+
 func _test_import_cache_fresh() -> void:
 	var stale := []
 	var checked := 0
@@ -2554,8 +2684,8 @@ const PATH_PARITY_TOLERANCE := 0.01
 
 
 func _test_render_path_parity() -> void:
-	for species in PetScript.ANIMATED_POSE_OVERRIDES:
-		var entry: Dictionary = PetScript.ANIMATED_POSE_OVERRIDES[species]
+	for species in _checked_species():
+		var entry: Dictionary = PetScript.ANIMATED_POSE_OVERRIDES.get(species, {})
 		var covered: Array = entry.get("tiers", ["base", "evolved", "evolved2"])
 		for tier in ["base", "evolved", "evolved2"]:
 			if not (tier in covered):
@@ -2593,17 +2723,53 @@ const STATIC_ART_DIR := {
 }
 
 
-func _test_sheet_scale_formula() -> void:
+## 애니메이션 계약 검사가 돌아야 하는 종족 전체. `ANIMATED_POSE_OVERRIDES`만 돌면
+## GENERATED_MOTION_SPECIES 8종이 테이블에 없어 조용히 건너뛰어진다 — 2026-08-12까지 그 8종은
+## 3티어 x 14상태 전부가 어떤 애니메이션 검사에도 들어오지 않았다(12종 중 4종만 보고 있었다).
+##
+## 주의: 이 목록을 **모든** 루프에 쓰면 안 된다. OFFSET_CEILING·SPECIES_FPS_OVERRIDE처럼
+## 종족별 선언 테이블을 요구하는 검사는 8종 항목이 없어 "선언되지 않음"으로 대량 실패한다.
+## 지금은 실패 0건을 실측으로 확인한 세 검사(파리티 / sheet_scale 산식 / 낙하 방향)에만 쓴다.
+## 나머지 검사로 넓히려면 그 종족별 테이블을 먼저 채워야 한다.
+func _checked_species() -> Array:
+	var names := []
 	for species in PetScript.ANIMATED_POSE_OVERRIDES:
-		var entry: Dictionary = PetScript.ANIMATED_POSE_OVERRIDES[species]
+		names.append(String(species))
+	for species in PetScript.GENERATED_MOTION_SPECIES:
+		if not (String(species) in names):
+			names.append(String(species))
+	# haemjji는 두 목록 어디에도 없다 — 상수 항목은 2026-08-12에 삭제됐고
+	# GENERATED_MOTION_SPECIES에도 없다(자기 전용 haemjji_remake_config를 쓴다).
+	# 명시하지 않으면 파리티·sheet_scale 산식·낙하 방향 세 검사에서 조용히 빠진다.
+	# 실제로 삭제 직후 그 상태였고, 그래서 "파리티가 불변인지" 확인 자체가 불가능했다.
+	if not ("haemjji" in names):
+		names.append("haemjji")
+	return names
+
+
+## 그 종족·티어에 런타임이 실제로 곱하는 sheet_scale. `effective_body_scale()`과 같은 우선순위다.
+func _resolved_sheet_scale(species: String, tier: String, raw: Variant) -> float:
+	if species == "haemjji":
+		return float(PetScript.HAEMJJI_REMAKE_SHEET_SCALE.get(tier, 0.0))
+	if species in PetScript.GENERATED_MOTION_SPECIES:
+		var generated: Dictionary = PetScript.GENERATED_MOTION_SHEET_SCALE.get(species, {})
+		return float(generated.get(tier, 0.0))
+	if raw is Dictionary:
+		return float((raw as Dictionary).get(tier, 0.0))
+	return float(raw) if raw != null else 0.0
+
+
+func _test_sheet_scale_formula() -> void:
+	for species in _checked_species():
+		var entry: Dictionary = PetScript.ANIMATED_POSE_OVERRIDES.get(species, {})
 		var raw: Variant = entry.get("sheet_scale", null)
-		if raw == null:
-			continue
 		var covered: Array = entry.get("tiers", ["base", "evolved", "evolved2"])
 		for tier in ["base", "evolved", "evolved2"]:
 			if not (tier in covered):
 				continue
-			var registered: float = float((raw as Dictionary).get(tier, 0.0)) if raw is Dictionary else float(raw)
+			# 런타임이 실제로 곱하는 값을 봐야 한다. haemjji는 HAEMJJI_REMAKE_SHEET_SCALE을 쓰므로
+			# ANIMATED_POSE_OVERRIDES의 sheet_scale은 죽은 값이다(그걸 읽으면 거짓 실패한다).
+			var registered := _resolved_sheet_scale(species, tier, raw)
 			if registered <= 0.0:
 				continue
 			var static_path := "res://assets/sprites/chars/%s%s/idle.png" % [species, String(STATIC_ART_DIR[tier])]
@@ -2784,7 +2950,7 @@ func _test_loop_seam() -> void:
 # 루프에서만 불려서 ppiyak 3장이 검사 밖이었고, 그 사이에 ppiyak evolved·evolved2가 같은
 # 방향 결함을 갖고 있었다(2026-08-10 발견). 종족을 늘릴 때 빠뜨리지 않도록 한 곳에서 훑는다.
 func _test_fall_direction_all_species() -> void:
-	for species in PetScript.ANIMATED_POSE_OVERRIDES:
+	for species in _checked_species():
 		for tier in ["base", "evolved", "evolved2"]:
 			var config := _pose_config_of(species, tier, "Fall")
 			if config.is_empty():
@@ -2810,7 +2976,22 @@ func _test_fall_direction_all_species() -> void:
 
 ## 종족·티어·상태 config. `_pose_config`와 달리 tiers 제한까지 본다 — 티어 아트가 없는
 ## 종족을 "등록됐다"고 잘못 집어서 거짓 실패를 내지 않게 한다.
+## 런타임과 **같은 우선순위**로 시트 config를 해석한다. pet.gd `_pose_override_config`(:1082)가
+## haemjji와 GENERATED_MOTION_SPECIES 8종에 대해 조건 없이 조립 config를 먼저 반환하므로,
+## 상수 테이블만 읽으면 그 9종에 대해 **런타임이 쓰지 않는 파일**을 재게 된다.
+##
+## 실제로 그래서 오판이 두 번 났다(2026-08-12):
+##  1) haemjji 파리티가 오차 0.00%로 통과했다 — 죽은 _alpha_smooth(f0 106)에 옛 배율(1.066)을
+##     곱하면 마침 정지 경로와 같아졌기 때문이다. 그때 런타임은 _remake(f0 179)를 쓰고 있었고
+##     화면 몸통이 +32.5~42.7% 어긋나 있었다.
+##  2) sheet_scale이 0.6313으로 고쳐져 런타임이 정상(188.4 == 정지 188.4)이 된 뒤에는 반대로
+##     같은 검사가 111.6 vs 188.4로 **거짓 실패**했다 — 106 x 1.0524 = 111.6, 여전히 죽은 시트다.
+## 두 방향 모두 원인이 하나였다: 검사와 런타임이 다른 파일을 본다.
 func _pose_config_of(species: String, tier: String, state: String) -> Dictionary:
+	if species == "haemjji":
+		return PetScript.haemjji_remake_config(tier, state)
+	if species in PetScript.GENERATED_MOTION_SPECIES:
+		return PetScript.generated_motion_config(species, tier, state)
 	var entry: Dictionary = PetScript.ANIMATED_POSE_OVERRIDES.get(species, {})
 	var tiers: Array = entry.get("tiers", [])
 	if not tiers.is_empty() and not (tier in tiers):
@@ -2824,7 +3005,15 @@ func _pose_config_of(species: String, tier: String, state: String) -> Dictionary
 
 
 ## 종족·티어·상태에 걸린 시트 config. 티어 딕셔너리 한 단을 알아서 푼다.
+## `_pose_config_of`와 같은 이유로 런타임 우선순위를 따른다(그쪽 주석 참고).
+## 이걸 빠뜨리면 조립 경로 종족이 빈 config를 받아 검사가 조용히 `continue`한다 —
+## 2026-08-12에 haemjji 죽은 항목을 지웠을 때 `_test_airborne_lift_coverage`가
+## "haemjji 9조합이 등록에서 사라졌다"로 실패한 원인이 이것이었다.
 func _pose_config(species: String, tier: String, state: String) -> Dictionary:
+	if species == "haemjji":
+		return PetScript.haemjji_remake_config(tier, state)
+	if species in PetScript.GENERATED_MOTION_SPECIES:
+		return PetScript.generated_motion_config(species, tier, state)
 	var entry: Dictionary = PetScript.ANIMATED_POSE_OVERRIDES.get(species, {})
 	var config: Dictionary = entry.get("states", {}).get(state, {})
 	if config.is_empty():
@@ -3007,8 +3196,11 @@ func _test_airborne_lift_coverage() -> void:
 	for species in ["mochi", "haemjji"]:
 		for tier in ["base", "evolved", "evolved2"]:
 			var body: float = float((Characters.BODY_SCALE.get(species, {}) as Dictionary).get(tier, 0.0))
-			var raw: Variant = PetScript.ANIMATED_POSE_OVERRIDES.get(species, {}).get("sheet_scale", 1.0)
-			var sheet: float = float((raw as Dictionary).get(tier, 1.0)) if raw is Dictionary else float(raw)
+			# 런타임이 실제로 곱하는 배율을 써야 한다 — haemjji는 HAEMJJI_REMAKE_SHEET_SCALE이다.
+			var raw: Variant = PetScript.ANIMATED_POSE_OVERRIDES.get(species, {}).get("sheet_scale", null)
+			var sheet: float = _resolved_sheet_scale(species, tier, raw)
+			if sheet <= 0.0:
+				sheet = 1.0
 			var scale: float = float(PetScript.STAGE_SCALE["adult"]) * body * sheet
 			for state in ["Play", "Dragged", "Fall"]:
 				var config := _pose_config(species, tier, state)

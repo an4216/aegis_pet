@@ -94,7 +94,9 @@ const TIER_SIZE_LADDER := {"base": 1.0, "evolved": 1.0926, "evolved2": 1.1852}
 static func get_tier_size_ladder(tier: String) -> float:
 	return float(TIER_SIZE_LADDER.get(tier, 1.0))
 
-# 코어 몸통 높이 실측값(px @128 캔버스, idle.png, α>0.125 기준).
+# 코어 몸통 높이 실측값(그 티어 캔버스 기준 px, idle.png, α>0.125 기준).
+# 캔버스는 티어마다 다르다: base/egg 128, evolved/evolved2 256, 단 mochi base만 192다.
+# 그래서 티어 간 비교는 이 값이 아니라 BODY_SCALE을 곱한 expected_torso로 한다.
 # docs/02-design/characters/body-size-audit.md — 36장 전수 시각 실측(2026-08-07)의 SSoT다.
 # 판정 규칙: 융합형(얼굴-몸통 경계 없음)은 덩어리 전체, 분리형(kkubeok/nyang)은 머리 정수리
 # (귀·모자 제외)부터 접지선까지의 코어 덩어리. 제외: 귀·뿔·볏·꼬리·팔다리·촉수·김/불꽃/반짝임
@@ -103,7 +105,9 @@ static func get_tier_size_ladder(tier: String) -> float:
 const BODY_CORE_HEIGHT := {
 	# ⚠️ 2026-08-07(§12): evolved/evolved2는 **256px 캔버스 기준**이다(base/egg만 128px).
 	# 아트가 커진 만큼(art_ratio ~2.0) 이 값도 커졌고 BODY_SCALE은 같은 비율로 내려갔다.
-	"mochi": {"base": 72.0, "evolved": 222.00, "evolved2": 205.06},
+	# base만 192 캔버스다(2026-08-12 Task #10 재생성). 눈 크기 기준을 지키면서 진화 사다리를
+	# 맞추려면 몸통을 1.497배 키워야 했는데, 폭 139가 128 캔버스를 넘어 캔버스를 확장했다.
+	"mochi": {"base": 109.0, "evolved": 222.00, "evolved2": 205.06},
 	"ppiyak": {"base": 93.0, "evolved": 176.00, "evolved2": 143.51},
 	"haemjji": {"base": 96.0, "evolved": 187.65, "evolved2": 186.83},
 	"kkubeok": {"base": 104.0, "evolved": 185.17, "evolved2": 164.00},
@@ -148,7 +152,7 @@ const BODY_CORE_HEIGHT := {
 const TORSO_NORMALIZATION_EXEMPT := {
 	"mochi": {
 		"reason": "사용자 지정 기준(2026-08-07): \"눈 크기가 다른 애들과 비슷할 정도로\". 몸통 높이가 아니라 **눈 세로 높이**를 지표로 12종 전수 실측(ddungsil은 4px 실눈이라 제외)해 중앙값 13.44px에 맞췄다. 티어별 눈 원본 17/17/16px -> 세 티어가 1.76~1.87로 수렴한다. body-size-audit.md §8.1.",
-		"expected_torso": {"base": 126.5, "evolved": 213.1, "evolved2": 227.9},
+		"expected_torso": {"base": 191.5, "evolved": 213.1, "evolved2": 227.9},
 	},
 	"mundeok": {
 		"reason": "사용자 지정 기준(2026-08-07): \"머리끝이 다른 애들 머리끝과 맞을 정도로\". 몸통 높이가 아니라 **머리 정수리(부속물 제외)~접지선 높이**를 지표로 12종 전수 실측해 중앙값 75.85px에 맞췄다. 이전 지표(코어 몸통)로는 촉수를 제외한 탓에 머리끝이 95.2px로 혼자 높았다. body-size-audit.md §8.2.",
