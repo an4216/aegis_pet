@@ -466,7 +466,7 @@ const GENERATED_MOTION_SPECIES := [
 const GENERATED_MOTION_SHEET_SCALE := {
 	"kkubeok": {"base": 1.0, "evolved": 1.5775, "evolved2": 1.5766},
 	"nyang": {"base": 1.0, "evolved": 1.5764, "evolved2": 1.5745},
-	"kong": {"base": 1.0, "evolved": 1.1958, "evolved2": 1.5764},
+	"kong": {"base": 1.0, "evolved": 1.2727, "evolved2": 1.5764},
 	"mundeok": {"base": 1.0, "evolved": 1.5778, "evolved2": 1.5725},
 	"geobujang": {"base": 1.0, "evolved": 1.5745, "evolved2": 1.5745},
 	"bulgeumjo": {"base": 1.0, "evolved": 1.5694, "evolved2": 1.5935},
@@ -691,17 +691,46 @@ func get_click_rect() -> Rect2:
 	if _is_animated_pet():
 		var size := SPRITE_SIZE * float(STAGE_SCALE.get(ps.stage, 0.5)) * _animated_visible_size_multiplier()
 		return Rect2(global_position + Vector2(-size * 0.5, -size), Vector2(size, size)).grow(8.0)
+	# Windows의 mouse-passthrough 영역은 입력뿐 아니라 렌더링도 실제로 자른다. 포즈 캐릭터는
+	# 캐릭터마다 캔버스/배율이 크게 다른데 고정 75%×85% 클릭 사각형만 쓰면, 긴 귀·꼬리·당근·
+	# 소품이 그 사각형 밖에서 잘린다. 런타임에 실제 그리는 셀 전체를 안전 영역으로 사용한다.
+	if _has_active_frame_animation():
+		var frame_size := _frame_size * _base_scale.abs()
+		return Rect2(
+			global_position + _sprite.position - frame_size * 0.5,
+			frame_size
+		).grow(_active_frame_edge_padding())
 	# 캐릭터가 실제로 그려지는 영역만 클릭 감지 (스프라이트 캔버스 대비 ~75%).
 	# 나머지 여백까지 클릭을 막으면 펫이 지나가는 궤적이 넓게 blocked 되어 뒤 창 조작이 불편함.
-	var w: float = _frame_size.x * _base_scale.x * 0.75
-	var h: float = _frame_size.y * _base_scale.y * 0.85
+	# 당근이는 긴 귀·당근·등 장식이 몸통 비율 사각형 밖까지 나가므로 정지 포즈에서도 캔버스
+	# 전체가 Windows 렌더 영역에 들어가야 한다. 클릭 영역이 조금 넓어지는 대신 잘림을 막는다.
+	var visible_ratio := 1.0 if ps.species == "tokki" else 0.75
+	var w: float = _frame_size.x * _base_scale.x * visible_ratio
+	var h: float = _frame_size.y * _base_scale.y * (1.0 if ps.species == "tokki" else 0.85)
 	return Rect2(global_position + Vector2(-w * 0.5, -h - 4.0), Vector2(w, h))
+
+
+## Windows의 mouse-passthrough 다각형은 입력뿐 아니라 실제 렌더링도 자른다. 드래그/낙하는
+## 빠른 이동 때문에 이미 전체 영역을 쓰며, Eat은 손·지팡이처럼 셀 가장자리의 가는 소품이
+## 32px 영역 갱신 지연에 잘릴 수 있어 재생 중에만 같은 보호를 적용한다.
+func requires_full_render_region() -> bool:
+	return machine.current_name() in ["Dragged", "Fall", "Eat"] \
+		or _pose_override_state == "Eat"
 
 
 func horizontal_edge_margin() -> float:
 	if _is_animated_pet():
 		return SPRITE_SIZE * float(STAGE_SCALE.get(ps.stage, 0.5)) * _animated_visible_size_multiplier() * 0.5 + _animated_edge_buffer()
+	# 화면 끝에서 이동을 멈추는 기준도 실제 렌더 캔버스와 같아야 한다. 렌더 영역만 넓혀도
+	# 중심점이 기존 고정 80px까지 접근하면 긴 귀·당근·소품이 모니터 밖으로 잘릴 수 있다.
+	if _has_active_frame_animation() or ps.species == "tokki":
+		return maxf(80.0,
+			_frame_size.x * absf(_base_scale.x) * 0.5 + _active_frame_edge_padding())
 	return 80.0
+
+
+func _active_frame_edge_padding() -> float:
+	return 24.0 if machine.current_name() == "Eat" or _pose_override_state == "Eat" else 16.0
 
 
 func move_speed() -> float:
@@ -1053,6 +1082,9 @@ func start_animated_pose(state_name: String) -> bool:
 	_base_scale = Vector2.ONE * _stage_scale() * _pose_override_body_scale()
 	_sprite.scale = _base_scale
 	_set_bichon_frame(0)
+	if state_name == "Eat":
+		var margin := horizontal_edge_margin()
+		position.x = clampf(position.x, margin, screen_size.x - margin)
 	# 잠자기 중 Zzz 라벨 등 마커는 몸통 높이를 기준으로 붙는다.
 	_update_mark_positions()
 	return true

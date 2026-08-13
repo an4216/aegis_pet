@@ -14,6 +14,13 @@ from tempfile import TemporaryDirectory
 from typing import Final
 
 import typer
+from motion_alpha_cleanup import (
+    clear_right_residue,
+    remove_remote_fragments,
+    remove_solid_fragments,
+    remove_tiny_fragments,
+    remove_tiny_fragments_in_box,
+)
 from PIL import Image
 
 CELL_WIDTH: Final = 192
@@ -22,6 +29,12 @@ BOTTOM_PADDING: Final = 16
 CHROMA_HELPER: Final = (
     Path.home() / ".codex/skills/.system/imagegen/scripts/remove_chroma_key.py"
 )
+
+
+class MotionBuildError(RuntimeError):
+    pass
+
+
 KEYPOSE_NAMES: Final = (
     "idle",
     "walk1",
@@ -31,6 +44,41 @@ KEYPOSE_NAMES: Final = (
     "sulk",
     "sick",
     "eat",
+)
+
+EVOLVED2_FALL_WING_RESIDUE_BOXES: Final = (
+    (
+        (28, 70, 42, 84),
+        (31, 86, 38, 100),
+        (39, 106, 46, 116),
+        (39, 126, 58, 158),
+        (158, 78, 162, 84),
+        (155, 104, 159, 109),
+    ),
+    (
+        (33, 76, 39, 87),
+        (31, 91, 39, 100),
+        (33, 105, 40, 119),
+        (42, 123, 50, 134),
+        (157, 75, 161, 90),
+        (157, 112, 162, 127),
+    ),
+    (
+        (32, 78, 36, 89),
+        (32, 106, 39, 115),
+        (35, 119, 43, 132),
+        (43, 135, 56, 164),
+        (156, 73, 163, 96),
+        (158, 110, 164, 130),
+    ),
+    (
+        (29, 88, 38, 114),
+        (29, 117, 36, 125),
+        (35, 129, 44, 141),
+        (40, 145, 57, 171),
+        (156, 79, 164, 98),
+        (157, 107, 168, 131),
+    ),
 )
 
 
@@ -69,12 +117,6 @@ MOTIONS: Final = (
         6,
         1,
         "0,1,1,0,0;0,1.01,.99,0,0;0,1,1,0,0;0,.99,1.01,0,0;0,1,1,0,0;0,1.01,.99,0,0",
-    ),
-    _motion(
-        "walk_8f_motion.png",
-        4,
-        2,
-        "1,1,1,-1,0;2,1.02,.98,1,0;1,1,1,-1,0;2,.99,1.01,1,0;1,1.02,.98,-1,0;2,1,1,1,0;1,.99,1.01,-1,0;2,1,1,1,0",
     ),
     _motion(
         "sleep_6f_motion.png",
@@ -157,7 +199,7 @@ def extract_keyposes(sheet: Image.Image) -> tuple[Image.Image, ...]:
         cell = sheet.crop((left, top, right, bottom))
         bounds = cell.getchannel("A").getbbox()
         if bounds is None:
-            raise RuntimeError(f"key pose {index} is empty")
+            raise MotionBuildError(f"key pose {index} is empty")
         poses.append(cell.crop(bounds))
     return tuple(poses)
 
@@ -169,8 +211,8 @@ def load_keypose_directory(source_root: Path) -> tuple[Image.Image, ...]:
             pose = source.convert("RGBA")
         bounds = pose.getchannel("A").getbbox()
         if bounds is None:
-            raise RuntimeError(f"key pose {name} is empty")
-        poses.append(pose.crop(bounds))
+            raise MotionBuildError(f"key pose {name} is empty")
+        poses.append(remove_remote_fragments(pose.crop(bounds)))
     return tuple(poses)
 
 
@@ -185,12 +227,24 @@ def _render_frame(
     return frame
 
 
-def build_motion_sheets(poses: Sequence[Image.Image], output_root: Path) -> None:
+def build_motion_sheets(
+    poses: Sequence[Image.Image],
+    output_root: Path,
+    *,
+    clear_dragged_right: bool = False,
+    clean_fall_fragments: bool = False,
+    clean_fall_wing_tip: bool = False,
+) -> None:
     if len(poses) != 8:
-        raise RuntimeError("expected eight key poses")
+        raise MotionBuildError("expected eight key poses")
+    transformed_sizes = tuple(
+        _render_frame(poses[transform.pose], transform, 1.0).size
+        for motion in MOTIONS
+        for transform in motion.frames
+    )
     common_scale = min(
-        160 / max(pose.width for pose in poses),
-        144 / max(pose.height for pose in poses),
+        (CELL_WIDTH - 24) / max(width for width, _height in transformed_sizes),
+        (CELL_HEIGHT - 24) / max(height for _width, height in transformed_sizes),
         1.0,
     )
     output_root.mkdir(parents=True, exist_ok=True)
@@ -202,6 +256,12 @@ def build_motion_sheets(poses: Sequence[Image.Image], output_root: Path) -> None
         )
         for index, transform in enumerate(motion.frames):
             frame = _render_frame(poses[transform.pose], transform, common_scale)
+            if motion.name == "dragged_4f_motion.png" or (
+                motion.name == "fall_4f_motion.png" and clean_fall_fragments
+            ):
+                frame = remove_tiny_fragments(frame)
+                if clear_dragged_right:
+                    frame = clear_right_residue(frame)
             cell_x = index % motion.columns
             cell_y = index // motion.columns
             x = cell_x * CELL_WIDTH + (CELL_WIDTH - frame.width) // 2
@@ -212,6 +272,22 @@ def build_motion_sheets(poses: Sequence[Image.Image], output_root: Path) -> None
                 - frame.height
             )
             sheet.alpha_composite(frame, (x, y))
+        if motion.name == "dragged_4f_motion.png" and clear_dragged_right:
+            for index in range(len(motion.frames)):
+                left = index * CELL_WIDTH
+                box = (left, 0, left + CELL_WIDTH, CELL_HEIGHT)
+                frame = clear_right_residue(sheet.crop(box))
+                frame = remove_solid_fragments(remove_tiny_fragments(frame))
+                sheet.paste(remove_tiny_fragments(frame), box)
+        if motion.name == "fall_4f_motion.png" and clean_fall_wing_tip:
+            for index in range(len(motion.frames)):
+                left = index * CELL_WIDTH
+                box = (left, 0, left + CELL_WIDTH, CELL_HEIGHT)
+                frame = sheet.crop(box)
+                frame = remove_tiny_fragments_in_box(frame, (150, 72, 170, 122))
+                for residue_box in EVOLVED2_FALL_WING_RESIDUE_BOXES[index]:
+                    frame.paste((0, 0, 0, 0), residue_box)
+                sheet.paste(frame, box)
         sheet.save(output_root / motion.name, optimize=True)
 
 
@@ -240,9 +316,13 @@ def remove_background(source: Path, output: Path) -> None:
 def main(source: Path, output_root: Path) -> None:
     if source.is_dir():
         build_motion_sheets(
-            load_keypose_directory(source.resolve()), output_root.resolve()
+            load_keypose_directory(source.resolve()),
+            output_root.resolve(),
+            clear_dragged_right=source.resolve().name == "bulgeumjo_evolved2",
+            clean_fall_fragments=source.resolve().name == "bulgeumjo_evolved",
+            clean_fall_wing_tip=source.resolve().name == "bulgeumjo_evolved2",
         )
-        typer.echo(f"saved 14 motion sheets to {output_root.resolve()}")
+        typer.echo(f"saved 13 non-walk motion sheets to {output_root.resolve()}")
         return
     with TemporaryDirectory(prefix="keypose-motion-") as temporary:
         alpha_path = Path(temporary) / "alpha.png"
@@ -250,7 +330,7 @@ def main(source: Path, output_root: Path) -> None:
         with Image.open(alpha_path) as source_image:
             poses = extract_keyposes(source_image.convert("RGBA"))
         build_motion_sheets(poses, output_root.resolve())
-    typer.echo(f"saved 14 motion sheets to {output_root.resolve()}")
+    typer.echo(f"saved 13 non-walk motion sheets to {output_root.resolve()}")
 
 
 if __name__ == "__main__":

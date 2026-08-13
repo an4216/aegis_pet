@@ -270,6 +270,8 @@ func _init() -> void:
 	_test_state_fps_contract()
 	_test_sheet_scale_formula()
 	_test_render_path_parity()
+	_test_generated_walk_size_continuity()
+	_test_kong_walk_torso_stability()
 	_test_loop_seam()
 	_test_static_fallback_walk_flags()
 	_test_transition_pop()
@@ -2015,6 +2017,72 @@ func _test_haemjji_pose_runtime() -> void:
 # 그래서 ppiyak/bichon도 이제 다른 종족과 똑같이 소품이 보여야 한다(예전엔 미등록이라
 # 빈 사각형이 정상이었지만, 지금 빈 사각형이면 그게 회귀다).
 func _test_food_prop_render_clip() -> void:
+	# Windows의 mouse-passthrough 영역은 스프라이트 렌더링도 자른다. 당근이는 정지 포즈의
+	# 긴 귀·당근과 14개 애니메이션 상태의 셀 전체가 이 영역 안에 들어가야 한다.
+	for tier in ["base", "evolved", "evolved2"]:
+		var tokki_state: Node = PetStateScript.new()
+		tokki_state.debug_set_species("tokki", "adult")
+		tokki_state.evolved = tier != "base"
+		tokki_state.evolved_2 = tier == "evolved2"
+		var tokki: Node2D = PetScene.instantiate()
+		tokki.screen_size = Vector2(1280.0, 720.0)
+		tokki.ground_y = 714.0
+		root.add_child(tokki)
+		await process_frame
+		tokki.ps = tokki_state
+		tokki.refresh_appearance()
+		var static_canvas: Vector2 = tokki._frame_size * tokki._base_scale.abs()
+		check(tokki.get_click_rect().size.x >= static_canvas.x
+			and tokki.get_click_rect().size.y >= static_canvas.y,
+			"당근이[%s] 정지 포즈 전체 캔버스가 렌더 영역 안" % tier)
+		check(tokki.horizontal_edge_margin() >= static_canvas.x * 0.5,
+			"당근이[%s] 정지 포즈가 화면 가장자리 밖으로 나가지 않음" % tier)
+		for state in ["Idle", "Walk", "Sleep", "Eat", "Sick", "Sulk", "Play",
+				"Dragged", "Fall", "Land", "FileHover", "FileConsume", "Poop", "Pet"]:
+			tokki.play_state_animation(state)
+			var motion_canvas: Vector2 = tokki._frame_size * tokki._base_scale.abs()
+			var motion_config: Dictionary = tokki._pose_override_config(state)
+			check(_sheet_cells_have_alpha_inset(
+				String(motion_config["path"]),
+				int(motion_config["columns"]),
+				int(motion_config["rows"])
+			), "당근이[%s] %s 모든 프레임에 투명 경계 여백" % [tier, state])
+			check(tokki.get_click_rect().size.x >= motion_canvas.x
+				and tokki.get_click_rect().size.y >= motion_canvas.y,
+				"당근이[%s] %s 셀 전체가 렌더 영역 안" % [tier, state])
+			check(tokki.horizontal_edge_margin() >= motion_canvas.x * 0.5,
+				"당근이[%s] %s가 화면 가장자리 밖으로 나가지 않음" % [tier, state])
+		root.remove_child(tokki)
+		tokki.free()
+		tokki_state.free()
+	# 거부장 2진화 Eat의 지팡이·하트도 같은 경로에서 잘렸던 회귀를 직접 잠근다.
+	var geobujang_state: Node = PetStateScript.new()
+	geobujang_state.debug_set_species("geobujang", "adult")
+	geobujang_state.evolved = true
+	geobujang_state.evolved_2 = true
+	var geobujang: Node2D = PetScene.instantiate()
+	root.add_child(geobujang)
+	await process_frame
+	geobujang.ps = geobujang_state
+	geobujang.refresh_appearance()
+	geobujang.position.x = 1.0
+	geobujang.play_state_animation("Eat")
+	check(geobujang.requires_full_render_region(),
+		"거부장[evolved2] 밥/간식 Eat 동안 Windows 렌더 영역 지연의 영향을 받지 않음")
+	var eat_canvas: Vector2 = geobujang._frame_size * geobujang._base_scale.abs()
+	check(geobujang.get_click_rect().size.x >= eat_canvas.x
+		and geobujang.get_click_rect().size.y >= eat_canvas.y,
+		"거부장[evolved2] Eat 셀 전체가 렌더 영역 안")
+	check(geobujang.get_click_rect().size.x >= eat_canvas.x + 48.0
+		and geobujang.get_click_rect().size.y >= eat_canvas.y + 48.0,
+		"거부장[evolved2] Eat 손·지팡이 안티앨리어스용 24px 렌더 여백")
+	check(geobujang.position.x >= eat_canvas.x * 0.5 + 24.0,
+		"거부장[evolved2] Eat 시작 시 왼쪽 화면 끝에서 지팡이 여백 확보")
+	check(geobujang.horizontal_edge_margin() >= eat_canvas.x * 0.5 + 24.0,
+		"거부장[evolved2] Eat가 화면 가장자리 밖으로 나가지 않음")
+	root.remove_child(geobujang)
+	geobujang.free()
+	geobujang_state.free()
 	for species in ["mochi", "haemjji", "ppiyak", "bichon"]:
 		var pet_state: Node = PetStateScript.new()
 		pet_state.debug_set_species(species, "adult")
@@ -2711,6 +2779,58 @@ func _test_render_path_parity() -> void:
 				% [species, tier, anim_screen, static_screen, gap * 100.0, PATH_PARITY_TOLERANCE * 100.0])
 
 
+# Walk 진입 첫 프레임은 Idle과 같은 크기여야 하며, 한 보행 주기의 상하 움직임은 자연스러운
+# 바운스 범위 안에 있어야 한다. 2026-08-12 Walk 시트가 Idle보다 최대 1.63배 크게 보여
+# 걷기 시작 순간 몸집이 튀었던 회귀를 실제 표시 bbox 기준으로 잠근다.
+const WALK_ENTRY_SIZE_TOLERANCE := 0.05
+const WALK_BOUNCE_TOLERANCE := 0.15
+
+
+func _test_generated_walk_size_continuity() -> void:
+	for species in PetScript.GENERATED_MOTION_SPECIES:
+		for tier in ["base", "evolved", "evolved2"]:
+			var idle_config := _pose_config_of(species, tier, "Idle")
+			var walk_config := _pose_config_of(species, tier, "Walk")
+			var idle_area := _bbox_area(
+				String(idle_config["path"]),
+				int(idle_config["columns"]),
+				int(idle_config["rows"]),
+				0
+			)
+			var walk_areas: Array[float] = []
+			for frame_index in range(int(walk_config["frames"])):
+				walk_areas.append(_bbox_area(
+					String(walk_config["path"]),
+					int(walk_config["columns"]),
+					int(walk_config["rows"]),
+					frame_index
+				))
+			var entry_gap := absf(walk_areas[0] / maxf(idle_area, 0.001) - 1.0)
+			check(entry_gap <= WALK_ENTRY_SIZE_TOLERANCE,
+				"%s/%s Walk 진입 몸통 면적 오차 %.2f%% <= %.0f%%"
+				% [species, tier, entry_gap * 100.0, WALK_ENTRY_SIZE_TOLERANCE * 100.0])
+			var minimum: float = walk_areas.min()
+			var maximum: float = walk_areas.max()
+			check(
+				minimum >= idle_area * (1.0 - WALK_BOUNCE_TOLERANCE)
+				and maximum <= idle_area * (1.0 + WALK_BOUNCE_TOLERANCE),
+				"%s/%s Walk 몸통 면적 %.1f~%.1f가 Idle %.1f의 ±%.0f%% 이내"
+				% [species, tier, minimum, maximum, idle_area, WALK_BOUNCE_TOLERANCE * 100.0]
+			)
+
+
+func _test_kong_walk_torso_stability() -> void:
+	for tier in ["base", "evolved", "evolved2"]:
+		var config := _pose_config_of("kong", tier, "Walk")
+		var centers: Array[float] = []
+		for frame_index in range(int(config["frames"])):
+			centers.append(_bbox_torso_center(
+				String(config["path"]), int(config["columns"]), int(config["rows"]), frame_index
+			))
+		check(centers.max() - centers.min() <= 1.0,
+			"kong/%s Walk 몸통 중심 흔들림 %.2fpx <= 1px" % [tier, centers.max() - centers.min()])
+
+
 # sheet_scale이 확정 산식과 일치하는지 아트와 직접 대조한다.
 #   sheet_scale = 정지 아트 몸통 높이 / 시트 Idle f0 몸통 높이   (양쪽 VISIBLE_ALPHA bbox)
 # 2026-08-11 team-lead가 기준을 VISIBLE_ALPHA로 확정하고 10개 값을 재유도한 뒤 성립하게 됐다.
@@ -2811,6 +2931,60 @@ func _bbox_height(path: String, columns: int, rows: int, cell: int) -> float:
 	if max_y < 0:
 		return -1.0
 	return float(max_y - min_y + 1)
+
+
+func _bbox_area(path: String, columns: int, rows: int, cell: int) -> float:
+	var texture: Texture2D = load(path)
+	var image := texture.get_image()
+	var cell_w: int = image.get_width() / columns
+	var cell_h: int = image.get_height() / rows
+	var visible_pixels := 0
+	for y in range(cell_h):
+		for x in range(cell_w):
+			if image.get_pixel((cell % columns) * cell_w + x, (cell / columns) * cell_h + y).a >= 0.125:
+				visible_pixels += 1
+	return float(visible_pixels)
+
+
+func _sheet_cells_have_alpha_inset(path: String, columns: int, rows: int) -> bool:
+	var image: Image = (load(path) as Texture2D).get_image()
+	var cell_w: int = image.get_width() / columns
+	var cell_h: int = image.get_height() / rows
+	for row in range(rows):
+		for column in range(columns):
+			for x in range(cell_w):
+				if image.get_pixel(column * cell_w + x, row * cell_h).a > 0.0 \
+					or image.get_pixel(column * cell_w + x, (row + 1) * cell_h - 1).a > 0.0:
+					return false
+			for y in range(cell_h):
+				if image.get_pixel(column * cell_w, row * cell_h + y).a > 0.0 \
+					or image.get_pixel((column + 1) * cell_w - 1, row * cell_h + y).a > 0.0:
+					return false
+	return true
+
+
+func _bbox_torso_center(path: String, columns: int, rows: int, cell: int) -> float:
+	var texture: Texture2D = load(path)
+	var image := texture.get_image()
+	var cell_w: int = image.get_width() / columns
+	var cell_h: int = image.get_height() / rows
+	var origin := Vector2i((cell % columns) * cell_w, (cell / columns) * cell_h)
+	var min_y := cell_h
+	var max_y := -1
+	for y in range(cell_h):
+		for x in range(cell_w):
+			if image.get_pixelv(origin + Vector2i(x, y)).a >= 0.125:
+				min_y = mini(min_y, y)
+				max_y = maxi(max_y, y)
+	var torso_bottom := min_y + roundi(float(max_y - min_y + 1) * 0.7)
+	var total := 0.0
+	var pixels := 0
+	for y in range(min_y, torso_bottom):
+		for x in range(cell_w):
+			if image.get_pixelv(origin + Vector2i(x, y)).a >= 0.125:
+				total += x
+				pixels += 1
+	return total / maxf(float(pixels), 1.0)
 
 
 # fps를 전 종족·전 티어에 대해 동결값과 대조한다. 티어 간 fps가 갈리는 것도 함께 잡는다 —
