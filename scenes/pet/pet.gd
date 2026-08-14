@@ -468,11 +468,16 @@ const GENERATED_MOTION_SHEET_SCALE := {
 	"nyang": {"base": 1.0, "evolved": 1.5764, "evolved2": 1.5745},
 	"kong": {"base": 1.0, "evolved": 1.2727, "evolved2": 1.5764},
 	"mundeok": {"base": 1.0, "evolved": 1.5778, "evolved2": 1.5725},
-	"geobujang": {"base": 1.0, "evolved": 1.5745, "evolved2": 1.5745},
-	"bulgeumjo": {"base": 1.0, "evolved": 1.5694, "evolved2": 1.5935},
+	"geobujang": {"base": 1.0, "evolved": 1.5745, "evolved2": 1.3293},
+	"bulgeumjo": {"base": 1.0, "evolved": 1.5694, "evolved2": 1.3803},
 	"seureureuk": {"base": 1.0, "evolved": 1.5734, "evolved2": 1.5778},
-	"tokki": {"base": 1.0, "evolved": 1.2782, "evolved2": 1.1389},
+	"tokki": {"base": 1.0, "evolved": 1.0241, "evolved2": 1.1469},
 }
+# 2026-08-14: 위 경고가 그대로 현실이 됐다. `build_keypose_motion.py`의 셀 배율이 "변환 후 실측
+# 크기 / (셀-24px)" 기준으로 바뀌면서 Idle f0 몸통이 커진 시트가 5개 생겼는데(bulgeumjo_evolved2,
+# geobujang_evolved2, kong_evolved, tokki_evolved, tokki_evolved2) 재유도된 것은 kong뿐이었다.
+# 나머지 4개는 애니메이션 몸통만 정지 아트보다 15~25% 크게 그려지고 있었다. 실측 재유도:
+#   geobujang/evolved2 222/167, bulgeumjo/evolved2 196/142, tokki/evolved 170/166, tokki/evolved2 164/143
 # 정지 아트 코어 / 시트 Idle f0 (양쪽 VISIBLE_ALPHA) = 113/179, 228/173, 226/184.
 # 분모는 `haemjji_remake_config()`가 실제로 로드하는 192x208 셀 `_remake` 시트의 f0이다.
 # 이전 값(1.066 / 2.1714 / 2.1731)은 128 셀 `_alpha_smooth` f0(106/105/104)에서 유도된 것인데,

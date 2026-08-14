@@ -2016,6 +2016,15 @@ func _test_haemjji_pose_runtime() -> void:
 # 2026-08-11: 소품이 종족별 전용에서 13종 공용(FOOD_PROPS가 action만 키)으로 바뀌었다 —
 # 그래서 ppiyak/bichon도 이제 다른 종족과 똑같이 소품이 보여야 한다(예전엔 미등록이라
 # 빈 사각형이 정상이었지만, 지금 빈 사각형이면 그게 회귀다).
+## 렌더 영역 비교용 허용오차(px). 이 검사들은 "여백 >= 캔버스 절반 + padding"처럼 **설계상
+## 정확히 같은 값**을 양쪽에서 따로 계산해 맞댄다. 그런데 한쪽은 Vector2/position에 float32로
+## 저장된 값이고 다른 쪽은 GDScript가 double로 계산한 값이라 마지막 자리가 갈린다. 그래서
+## 무관한 상수 하나(sheet_scale)만 바뀌어도 4e-6px 차이로 통과/실패가 뒤집혔다(2026-08-14 실측:
+## 같은 수정에서 한 검사가 붙자 다른 검사가 떨어졌다). 실제 결함은 항상 1px 단위이므로
+## 1/100px 허용오차는 검출력을 전혀 깎지 않으면서 이 뒤집힘만 없앤다.
+const RENDER_REGION_EPSILON := 0.01
+
+
 func _test_food_prop_render_clip() -> void:
 	# Windows의 mouse-passthrough 영역은 스프라이트 렌더링도 자른다. 당근이는 정지 포즈의
 	# 긴 귀·당근과 14개 애니메이션 상태의 셀 전체가 이 영역 안에 들어가야 한다.
@@ -2032,10 +2041,10 @@ func _test_food_prop_render_clip() -> void:
 		tokki.ps = tokki_state
 		tokki.refresh_appearance()
 		var static_canvas: Vector2 = tokki._frame_size * tokki._base_scale.abs()
-		check(tokki.get_click_rect().size.x >= static_canvas.x
-			and tokki.get_click_rect().size.y >= static_canvas.y,
+		check(tokki.get_click_rect().size.x >= static_canvas.x - RENDER_REGION_EPSILON
+			and tokki.get_click_rect().size.y >= static_canvas.y - RENDER_REGION_EPSILON,
 			"당근이[%s] 정지 포즈 전체 캔버스가 렌더 영역 안" % tier)
-		check(tokki.horizontal_edge_margin() >= static_canvas.x * 0.5,
+		check(tokki.horizontal_edge_margin() >= static_canvas.x * 0.5 - RENDER_REGION_EPSILON,
 			"당근이[%s] 정지 포즈가 화면 가장자리 밖으로 나가지 않음" % tier)
 		for state in ["Idle", "Walk", "Sleep", "Eat", "Sick", "Sulk", "Play",
 				"Dragged", "Fall", "Land", "FileHover", "FileConsume", "Poop", "Pet"]:
@@ -2047,10 +2056,10 @@ func _test_food_prop_render_clip() -> void:
 				int(motion_config["columns"]),
 				int(motion_config["rows"])
 			), "당근이[%s] %s 모든 프레임에 투명 경계 여백" % [tier, state])
-			check(tokki.get_click_rect().size.x >= motion_canvas.x
-				and tokki.get_click_rect().size.y >= motion_canvas.y,
+			check(tokki.get_click_rect().size.x >= motion_canvas.x - RENDER_REGION_EPSILON
+				and tokki.get_click_rect().size.y >= motion_canvas.y - RENDER_REGION_EPSILON,
 				"당근이[%s] %s 셀 전체가 렌더 영역 안" % [tier, state])
-			check(tokki.horizontal_edge_margin() >= motion_canvas.x * 0.5,
+			check(tokki.horizontal_edge_margin() >= motion_canvas.x * 0.5 - RENDER_REGION_EPSILON,
 				"당근이[%s] %s가 화면 가장자리 밖으로 나가지 않음" % [tier, state])
 		root.remove_child(tokki)
 		tokki.free()
@@ -2070,15 +2079,15 @@ func _test_food_prop_render_clip() -> void:
 	check(geobujang.requires_full_render_region(),
 		"거부장[evolved2] 밥/간식 Eat 동안 Windows 렌더 영역 지연의 영향을 받지 않음")
 	var eat_canvas: Vector2 = geobujang._frame_size * geobujang._base_scale.abs()
-	check(geobujang.get_click_rect().size.x >= eat_canvas.x
-		and geobujang.get_click_rect().size.y >= eat_canvas.y,
+	check(geobujang.get_click_rect().size.x >= eat_canvas.x - RENDER_REGION_EPSILON
+		and geobujang.get_click_rect().size.y >= eat_canvas.y - RENDER_REGION_EPSILON,
 		"거부장[evolved2] Eat 셀 전체가 렌더 영역 안")
-	check(geobujang.get_click_rect().size.x >= eat_canvas.x + 48.0
-		and geobujang.get_click_rect().size.y >= eat_canvas.y + 48.0,
+	check(geobujang.get_click_rect().size.x >= eat_canvas.x + 48.0 - RENDER_REGION_EPSILON
+		and geobujang.get_click_rect().size.y >= eat_canvas.y + 48.0 - RENDER_REGION_EPSILON,
 		"거부장[evolved2] Eat 손·지팡이 안티앨리어스용 24px 렌더 여백")
-	check(geobujang.position.x >= eat_canvas.x * 0.5 + 24.0,
+	check(geobujang.position.x >= eat_canvas.x * 0.5 + 24.0 - RENDER_REGION_EPSILON,
 		"거부장[evolved2] Eat 시작 시 왼쪽 화면 끝에서 지팡이 여백 확보")
-	check(geobujang.horizontal_edge_margin() >= eat_canvas.x * 0.5 + 24.0,
+	check(geobujang.horizontal_edge_margin() >= eat_canvas.x * 0.5 + 24.0 - RENDER_REGION_EPSILON,
 		"거부장[evolved2] Eat가 화면 가장자리 밖으로 나가지 않음")
 	root.remove_child(geobujang)
 	geobujang.free()

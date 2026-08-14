@@ -3,7 +3,8 @@
 # dependencies = ["pillow>=11,<13", "typer>=0.16,<1"]
 # ///
 # ─── How to run ───
-# uv run tools/import_walk_cycle.py <generated-atlas> <output-png>
+# uv run tools/import_walk_cycle.py import-cycle <generated-atlas> <output-png>
+# uv run tools/import_walk_cycle.py renormalize <walk-sheet-png> [idle-sheet-png]
 
 import hashlib
 import subprocess
@@ -228,6 +229,76 @@ def render_walk_sheet(
     return sheet
 
 
+def _cell_of(sheet: Image.Image, index: int) -> Image.Image:
+    column = index % 4
+    row = index // 4
+    return sheet.crop(
+        (
+            column * CELL_WIDTH,
+            row * CELL_HEIGHT,
+            (column + 1) * CELL_WIDTH,
+            (row + 1) * CELL_HEIGHT,
+        )
+    )
+
+
+def _visible_bbox(frame: Image.Image) -> tuple[int, int, int, int]:
+    bounds = frame.getchannel("A").point(VISIBLE_ALPHA_LUT).getbbox()
+    if bounds is None:
+        raise WalkCycleError("walk frame has no visible pixels")
+    return bounds
+
+
+def renormalize_walk_sheet(
+    walk_sheet: Image.Image, idle_sheet: Image.Image
+) -> Image.Image:
+    """이미 조립된 walk 시트를 **현재** idle 시트의 몸통 크기에 다시 맞춘다.
+
+    `import_walk_cycle()`은 임포트 시점의 idle f0 면적을 목표로 삼는다. 그래서 walk를
+    임포트한 뒤 idle 시트를 재생성하면 목표가 조용히 낡고, 걷기에 들어가는 순간 몸통이
+    툭 튄다(2026-08-14 실측: geobujang/evolved2 -28%, tokki/evolved -35%). 원본 아틀라스가
+    남아 있지 않아도 복구할 수 있도록, 조립된 시트만으로 배율을 다시 잡는 경로를 둔다.
+
+    발 접지선(각 셀의 보이는 아래끝)과 셀 중심 기준 좌우 앵커는 그대로 두고 배율만 바꾼다.
+    """
+    idle_area = _visible_pixels(_cell_of(idle_sheet, 0))
+    if idle_area <= 0:
+        raise WalkCycleError("idle sheet frame 0 has no visible pixels")
+    cells = tuple(_cell_of(walk_sheet, index) for index in range(8))
+    boxes = tuple(_visible_bbox(cell) for cell in cells)
+    walk_area = _visible_pixels(cells[0])
+    if walk_area <= 0:
+        raise WalkCycleError("walk sheet frame 0 has no visible pixels")
+    scale = min(
+        sqrt(idle_area / walk_area),
+        MAX_WIDTH / max(box[2] - box[0] for box in boxes),
+        MAX_HEIGHT / max(box[3] - box[1] for box in boxes),
+    )
+    sheet = Image.new("RGBA", (CELL_WIDTH * 4, CELL_HEIGHT * 2), (0, 0, 0, 0))
+    for index, (cell, box) in enumerate(zip(cells, boxes)):
+        content = cell.crop(box)
+        width = max(1, round(content.width * scale))
+        height = max(1, round(content.height * scale))
+        rendered = content.resize((width, height), Image.Resampling.LANCZOS)
+        # 좌우는 셀 중심 기준 오프셋을 같은 배율로 늘려 torso 앵커를 유지하고,
+        # 세로는 보이는 아래끝(발바닥)을 원래 y에 고정한다.
+        center_x = (box[0] + box[2]) / 2
+        local_x = round(CELL_WIDTH / 2 + (center_x - CELL_WIDTH / 2) * scale - width / 2)
+        local_y = box[3] - height
+        if local_x < 1 or local_y < 1 or local_x + width > CELL_WIDTH - 1 \
+                or local_y + height > CELL_HEIGHT - 1:
+            raise WalkCycleError(
+                f"renormalized frame {index} would touch the cell border "
+                f"({local_x},{local_y} {width}x{height})"
+            )
+        column = index % 4
+        row = index // 4
+        sheet.alpha_composite(
+            rendered, (column * CELL_WIDTH + local_x, row * CELL_HEIGHT + local_y)
+        )
+    return sheet
+
+
 def remove_background(source: Path, output: Path) -> None:
     _ = subprocess.run(
         (
@@ -269,10 +340,26 @@ def import_walk_cycle(source: Path, output: Path) -> None:
     sheet.save(output, optimize=True)
 
 
+app = typer.Typer(add_completion=False)
+
+
+@app.command("import-cycle")
 def main(source: Path, output: Path) -> None:
+    """생성 아틀라스에서 진짜 8프레임 걷기 사이클을 임포트한다."""
     import_walk_cycle(source, output.resolve())
     typer.echo(f"saved true 8-frame walk cycle to {output.resolve()}")
 
 
+@app.command("renormalize")
+def renormalize(walk_sheet: Path, idle_sheet: Path | None = None) -> None:
+    """조립된 walk 시트를 같은 폴더의 현행 idle 시트 몸통 크기에 다시 맞춘다."""
+    walk_path = walk_sheet.resolve()
+    idle_path = (idle_sheet or walk_path.parent / "idle_6f_motion.png").resolve()
+    with Image.open(walk_path) as walk, Image.open(idle_path) as idle:
+        sheet = renormalize_walk_sheet(walk.convert("RGBA"), idle.convert("RGBA"))
+    sheet.save(walk_path, optimize=True)
+    typer.echo(f"renormalized {walk_path} against {idle_path}")
+
+
 if __name__ == "__main__":
-    typer.run(main)
+    app()

@@ -10,9 +10,92 @@ from import_walk_cycle import (
     anchor_torso_centers,
     extract_walk_frames,
     remove_detached_debris,
+    renormalize_walk_sheet,
     render_walk_sheet,
     smooth_cycle_order,
 )
+
+
+def _visible_area(cell: Image.Image) -> int:
+    return sum(1 for alpha in cell.getchannel("A").tobytes() if alpha >= 32)
+
+
+def _cell(sheet: Image.Image, index: int) -> Image.Image:
+    column = index % 4
+    row = index // 4
+    return sheet.crop((column * 192, row * 208, (column + 1) * 192, (row + 1) * 208))
+
+
+def _walk_sheet_with_body(radius_x: int, radius_y: int) -> Image.Image:
+    sheet = Image.new("RGBA", (768, 416), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(sheet)
+    for index in range(8):
+        column = index % 4
+        row = index // 4
+        center_x = column * 192 + 96
+        baseline = (row + 1) * 208 - 16
+        draw.ellipse(
+            (
+                center_x - radius_x,
+                baseline - radius_y * 2,
+                center_x + radius_x,
+                baseline,
+            ),
+            fill=(120, 80, 40, 255),
+        )
+    return sheet
+
+
+def _idle_sheet_with_body(radius_x: int, radius_y: int) -> Image.Image:
+    sheet = Image.new("RGBA", (192 * 6, 208), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(sheet)
+    for index in range(6):
+        center_x = index * 192 + 96
+        baseline = 208 - 16
+        draw.ellipse(
+            (
+                center_x - radius_x,
+                baseline - radius_y * 2,
+                center_x + radius_x,
+                baseline,
+            ),
+            fill=(120, 80, 40, 255),
+        )
+    return sheet
+
+
+def test_renormalize_walk_sheet_matches_current_idle_body_area() -> None:
+    # walk를 임포트한 뒤 idle 시트를 더 크게 재생성한 상황(2026-08-14 실제 회귀).
+    walk = _walk_sheet_with_body(40, 50)
+    idle = _idle_sheet_with_body(50, 62)
+
+    renormalized = renormalize_walk_sheet(walk, idle)
+
+    idle_area = _visible_area(_cell(idle.crop((0, 0, 192, 208)), 0))
+    entry_area = _visible_area(_cell(renormalized, 0))
+    assert abs(entry_area / idle_area - 1.0) <= 0.05
+
+
+def test_renormalize_walk_sheet_keeps_foot_contact_and_cell_inset() -> None:
+    walk = _walk_sheet_with_body(40, 50)
+    idle = _idle_sheet_with_body(50, 62)
+    before = [_cell(walk, index).getchannel("A").point(
+        tuple(255 if a >= 32 else 0 for a in range(256))
+    ).getbbox() for index in range(8)]
+
+    renormalized = renormalize_walk_sheet(walk, idle)
+
+    for index in range(8):
+        cell = _cell(renormalized, index)
+        bounds = cell.getchannel("A").getbbox()
+        assert bounds is not None
+        # 셀 경계에 닿지 않아야 런타임 알파 인셋 검사를 통과한다.
+        assert bounds[0] > 0 and bounds[1] > 0
+        assert bounds[2] < 192 and bounds[3] < 208
+        # 발 접지선(보이는 아래끝)은 그대로여야 걷기 진입에서 발이 튀지 않는다.
+        old = before[index]
+        assert old is not None
+        assert abs(bounds[3] - old[3]) <= 1
 
 
 def test_extract_walk_frames_uses_top_then_bottom_order() -> None:
