@@ -8,6 +8,7 @@ const TimeM := preload("res://autoload/time_manager.gd")
 const PetStateScript := preload("res://autoload/pet_state.gd")
 const PetScript := preload("res://scenes/pet/pet.gd")
 const PetScene := preload("res://scenes/pet/pet.tscn")
+const RegionBuilder := preload("res://scripts/platform/region_builder.gd")
 
 var fails := 0
 var passes := 0
@@ -273,6 +274,7 @@ func _init() -> void:
 	_test_generated_walk_size_continuity()
 	_test_kong_walk_torso_stability()
 	_test_mirror_forbidden_species()
+	_test_region_builder_never_self_intersects()
 	_test_loop_seam()
 	_test_static_fallback_walk_flags()
 	_test_transition_pop()
@@ -2827,6 +2829,51 @@ func _test_generated_walk_size_continuity() -> void:
 				"%s/%s Walk 몸통 면적 %.1f~%.1f가 Idle %.1f의 ±%.0f%% 이내"
 				% [species, tier, minimum, maximum, idle_area, WALK_BOUNCE_TOLERANCE * 100.0]
 			)
+
+
+## 클릭통과 폴리곤은 **항상 볼록 사각형 하나**여야 한다.
+##
+## Windows에서 이 영역 밖은 렌더링도 잘리는데, DisplayServer는 폴리곤을 하나만 받는다.
+## 예전 build()는 떨어진 사각형들의 정점을 그냥 이어붙여서, 사각형이 2개 이상이면 자기교차
+## 도형이 되고 와인딩 상쇄로 영역이 사라졌다 — 응아를 한 뒤 펫이 걸어서 멀어지는 순간
+## (두 사각형이 분리되는 순간) 치울 때까지 펫이 화면에서 사라졌다(2026-08-14 사용자 신고).
+## 사각형 1개일 때만 우연히 정상이었기 때문에 어떤 검사에도 걸리지 않았다.
+func _test_region_builder_never_self_intersects() -> void:
+	var pet_rect := Rect2(200.0, 500.0, 160.0, 200.0)
+	var far_poop := Rect2(900.0, 660.0, 48.0, 48.0)
+
+	# 1) 사각형 하나 — 그 사각형이 그대로 나온다.
+	var single: PackedVector2Array = RegionBuilder.build([pet_rect], 704.0)
+	check(single.size() == 4, "영역 1개는 정점 4개 (실측 %d)" % single.size())
+	check(_polygon_bounds(single) == pet_rect, "영역 1개는 입력 사각형 그대로")
+
+	# 2) 떨어진 사각형 둘 — 여전히 정점 4개(볼록)이고, 둘 다 덮어야 한다.
+	var pair: PackedVector2Array = RegionBuilder.build([pet_rect, far_poop], 704.0)
+	check(pair.size() == 4,
+		"떨어진 영역 2개도 정점 4개여야 자기교차가 없다 (실측 %d)" % pair.size())
+	var covered := _polygon_bounds(pair)
+	check(covered.encloses(pet_rect), "펫 영역이 폴리곤 안에 있다(펫이 보인다)")
+	check(covered.encloses(far_poop), "멀리 있는 응아도 폴리곤 안에 있다")
+
+	# 3) 겹치는 사각형은 예전처럼 합집합 하나로 접힌다.
+	var overlap: PackedVector2Array = RegionBuilder.build(
+		[pet_rect, Rect2(300.0, 550.0, 100.0, 100.0)], 704.0)
+	check(overlap.size() == 4, "겹치는 영역도 정점 4개")
+
+	# 4) 응아 여러 개가 화면 양쪽에 흩어져도 펫은 항상 덮인다 — 실제 사용 패턴이다.
+	var many: PackedVector2Array = RegionBuilder.build(
+		[pet_rect, far_poop, Rect2(40.0, 660.0, 48.0, 48.0),
+			Rect2(1180.0, 660.0, 48.0, 48.0)], 704.0)
+	check(many.size() == 4, "영역 4개도 정점 4개")
+	check(_polygon_bounds(many).encloses(pet_rect),
+		"응아가 여러 개 흩어져 있어도 펫이 폴리곤 안에 있다")
+
+
+func _polygon_bounds(polygon: PackedVector2Array) -> Rect2:
+	var bounds := Rect2(polygon[0], Vector2.ZERO)
+	for index in range(1, polygon.size()):
+		bounds = bounds.expand(polygon[index])
+	return bounds
 
 
 ## 시트에 글자가 그려진 종족은 절대 좌우 반전되면 안 된다 — 반전되면 그 글자가 거울 문자가
