@@ -10,6 +10,7 @@ from build_keypose_motion import (
     extract_keyposes,
     load_keypose_directory,
 )
+from fit_keypose import measure
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
@@ -170,13 +171,30 @@ def test_build_motion_sheets_keep_wide_props_inside_every_cell(tmp_path: Path) -
                     assert bounds[2] < 192 and bounds[3] < 208
 
 
-def test_geobujang_evolved2_eat_keeps_complete_cane_hook() -> None:
+def test_geobujang_evolved2_eat_cane_reaches_the_ground() -> None:
+    """Eat 키포즈의 지팡이는 손잡이부터 물미까지 이어져 바닥에 닿아야 한다.
+
+    2026-08-14 이전 아트는 지팡이를 들어올린 자세여서 지팡이 끝이 배 높이 공중에서 끝났고,
+    사용자에게는 "지팡이가 잘려 보인다"로 읽혔다(Eat 와 FileConsume 두 상태에서). 이 검사는
+    옛 좌표를 박아두는 대신 그 계약 자체를 본다 — 발보다 왼쪽 영역의 픽셀이 접지선까지
+    내려와 있는지.
+    """
     static_path = PROJECT_ROOT / "assets/sprites/chars/geobujang_evolved2/eat.png"
     with Image.open(static_path) as static_pose:
-        alpha = static_pose.getchannel("A")
-        hook = alpha.crop((28, 45, 62, 110))
-        assert hook.getbbox() is not None
-        assert alpha.getbbox()[0] >= 24
+        pose = static_pose.convert("RGBA")
+    stats = measure(pose)
+    alpha = pose.getchannel("A")
+    assert alpha.getbbox()[0] >= 24, "왼쪽 안전 여백"
+
+    # 발 무리보다 확실히 왼쪽인 열들 = 지팡이가 서 있는 영역
+    cane_right = stats["feet_center_x"] - 40
+    cane_strip = alpha.crop((0, 0, cane_right, pose.height))
+    cane_bounds = cane_strip.point(tuple(255 if a >= 32 else 0 for a in range(256))).getbbox()
+    assert cane_bounds is not None, "발 왼쪽에 지팡이가 없다"
+    assert cane_bounds[3] >= stats["feet_bottom"] - 20, (
+        f"지팡이 끝이 접지선까지 내려오지 않았다: 지팡이 아래끝 {cane_bounds[3]}, "
+        f"접지선 {stats['feet_bottom']}"
+    )
 
 
 def test_geobujang_evolved2_eat_has_only_one_cane_hook() -> None:

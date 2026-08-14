@@ -272,6 +272,7 @@ func _init() -> void:
 	_test_render_path_parity()
 	_test_generated_walk_size_continuity()
 	_test_kong_walk_torso_stability()
+	_test_mirror_forbidden_species()
 	_test_loop_seam()
 	_test_static_fallback_walk_flags()
 	_test_transition_pop()
@@ -2826,6 +2827,48 @@ func _test_generated_walk_size_continuity() -> void:
 				"%s/%s Walk 몸통 면적 %.1f~%.1f가 Idle %.1f의 ±%.0f%% 이내"
 				% [species, tier, minimum, maximum, idle_area, WALK_BOUNCE_TOLERANCE * 100.0]
 			)
+
+
+## 시트에 글자가 그려진 종족은 절대 좌우 반전되면 안 된다 — 반전되면 그 글자가 거울 문자가
+## 된다. 거부장은 배낭 명패에 "명예회장"이 그려져 있는데, 오른쪽으로 걷고 나면 flip_h가 켜진
+## 채로 남아 그 뒤 먹기·잠자기·삐침 등 모든 상태에서 글자가 뒤집혀 있었다(2026-08-14 사용자
+## 스크린샷으로 확인). face_towards()/mirror_face() 두 경로를 모두 잠근다 — 한쪽만 막으면
+## walk_state가 쓰는 mirror_face()로 되살아난다.
+func _test_mirror_forbidden_species() -> void:
+	for species in PetScript.MIRROR_FORBIDDEN_SPECIES:
+		var state: Node = PetStateScript.new()
+		state.debug_set_species(String(species), "adult")
+		var pet: Node2D = PetScene.instantiate()
+		pet.screen_size = Vector2(1280.0, 720.0)
+		root.add_child(pet)
+		await process_frame
+		pet.ps = state
+		pet.refresh_appearance()
+		pet.position.x = 640.0
+		pet.face_towards(1200.0)
+		check(not pet._sprite.flip_h,
+			"%s 오른쪽을 향해도 반전되지 않음(명패 글자 보존)" % species)
+		pet.mirror_face()
+		check(not pet._sprite.flip_h, "%s mirror_face()로도 반전되지 않음" % species)
+		root.remove_child(pet)
+		pet.free()
+		state.free()
+	# 글자가 없는 종족은 그대로 반전해야 한다 — 금지 목록이 전역 규칙으로 새면
+	# 12종이 전부 뒷걸음질하게 되므로 반대 방향도 함께 잠근다.
+	var plain: Node = PetStateScript.new()
+	plain.debug_set_species("mochi", "adult")
+	var plain_pet: Node2D = PetScene.instantiate()
+	plain_pet.screen_size = Vector2(1280.0, 720.0)
+	root.add_child(plain_pet)
+	await process_frame
+	plain_pet.ps = plain
+	plain_pet.refresh_appearance()
+	plain_pet.position.x = 640.0
+	plain_pet.face_towards(1200.0)
+	check(plain_pet._sprite.flip_h, "모찌는 오른쪽을 향할 때 정상적으로 반전됨")
+	root.remove_child(plain_pet)
+	plain_pet.free()
+	plain.free()
 
 
 func _test_kong_walk_torso_stability() -> void:

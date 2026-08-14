@@ -749,12 +749,27 @@ func move_speed() -> float:
 	return speed
 
 
+## 좌우 반전이 금지된 종족. 시트에 **글자가 그려져 있으면** flip_h가 그 글자까지 뒤집어
+## 거울 문자로 만든다 — 거부장은 배낭 명패에 "명예회장"이 그려진 유일한 캐릭터라
+## 오른쪽으로 걷고 나면 그 뒤 모든 상태(먹기·잠자기·삐침…)에서 글자가 뒤집힌 채로 남았다.
+## flip은 방향 표현이므로 이 종족은 항상 그려진 방향(왼쪽)을 유지한다 — 오른쪽으로 이동할 때
+## 뒷걸음처럼 보이는 대신, 읽을 수 있는 명패를 얻는다. 글자 없는 나머지 12종은 그대로 반전한다.
+const MIRROR_FORBIDDEN_SPECIES := ["geobujang"]
+
+
+func _can_mirror() -> bool:
+	return ps == null or not (ps.species in MIRROR_FORBIDDEN_SPECIES)
+
+
 func face_towards(target_x: float) -> void:
+	if not _can_mirror():
+		_sprite.flip_h = false
+		return
 	_sprite.flip_h = target_x > position.x
 
 
 func mirror_face() -> void:
-	if _sprite:
+	if _sprite and _can_mirror():
 		_sprite.flip_h = not _sprite.flip_h
 
 
