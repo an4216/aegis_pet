@@ -977,8 +977,14 @@ func _test_bichon_care_reactions() -> void:
 	#       격리 실행에서 실패 0건이라 시퀀스 자체는 원인이 아니다.
 	#   (2) 반응 창(0.8초) 중 idle_state의 자율 Walk 전환으로 복귀 대상 시트가 바뀜 —
 	#       상태머신을 켠 채 20회 관측했으나 Idle 이탈 0건이라 반증됐다.
-	# 즉 원인 미규명 상태이고, 이 줄은 격리 목적일 뿐 수정으로 간주하면 안 된다.
+	# 2026-08-18 원인 규명: 세 번째 경로였다. `root.add_child(pet)` 다음 한 프레임에서 상태머신이
+	# 이미 한 번 평가되는데, 그때 `pet.ps`는 아직 테스트 인스턴스가 아니라 **세이브에서 로드된
+	# 실제 사용자 펫**이다. 그 펫이 병들어 있으면(개발 PC 실측: health 0 / is_sick true) Sick으로
+	# 전이하고, 아래 set_process(false)가 그 상태를 그대로 얼려서 반응 복귀 대상이 Idle이 아니라
+	# Sick이 된다 — 즉 이 검사들은 개발자 세이브 파일 내용에 따라 통과/실패했다. 얼린 직후
+	# 알려진 기준 상태로 다시 맞춰 세이브와의 결합을 끊는다.
 	pet.machine.set_process(false)
+	pet.machine.transition_to("Idle")
 	check(pet._is_animated_pet(), "비숑이 애니메이션 펫 경로를 사용")
 	check(pet._animation_catalog() == PetScript.BICHON_ANIMATIONS, "비숑 전용 애니메이션 카탈로그 선택")
 	for care_reaction in ["Pet", "Play"]:
@@ -1767,6 +1773,9 @@ func _test_pose_reaction_triggers() -> void:
 	# idle_state가 자율적으로 Walk로 넘어가 복귀 대상이 바뀌고, 검사가 시간에 따라 흔들린다.
 	# 여기서 보려는 건 자율 전이가 아니라 반응 오버라이드라서 상태머신 처리를 멈춘다.
 	pet.machine.set_process(false)
+	# 얼기 전 한 프레임은 세이브에서 로드된 실제 펫을 봤다 — 그 펫이 병들어 있으면 Sick으로
+	# 얼어붙어 복귀 대상이 바뀐다. 알려진 기준 상태로 맞춘다(_test_care_reaction_paths 상세 주석).
+	pet.machine.transition_to("Idle")
 
 	# 1) 쓰다듬기 — _on_care_performed → _play_care_reaction → Pet 시트
 	pet.play_state_animation("Idle")
@@ -1905,6 +1914,8 @@ func _test_haemjji_pose_runtime() -> void:
 	pet.refresh_appearance()
 	# 아래 반응 트리거 검사가 대기 중 자율 전이(idle_state → Walk)에 흔들리지 않도록 멈춘다.
 	pet.machine.set_process(false)
+	# 세이브에서 로드된 병든 펫 때문에 Sick으로 얼어붙는 것을 막는다(위 상세 주석 참고).
+	pet.machine.transition_to("Idle")
 
 	var stage_scale: float = float(PetScript.STAGE_SCALE[pet_state.stage])
 	# 실효 배율 = STAGE_SCALE x BODY_SCALE(티어별) x sheet_scale(티어별)
