@@ -1319,8 +1319,16 @@ func _on_care_performed(action: String) -> void:
 
 
 func _on_pooped() -> void:
-	if ps.stage != "egg" and machine.current_name() not in machine.UNINTERRUPTIBLE:
-		machine.transition_to("Poop")
+	if ps.stage == "egg" or machine.current_name() in machine.UNINTERRUPTIBLE:
+		return
+	# 시트 재생 중인 캐릭터라도 Poop 시트가 없으면 상태 전이를 하지 않는다.
+	# 전이하면 stop_animated_pose가 스프라이트를 정지 배율(예: 0.4966)로 되돌려서
+	# 시트 배율(예: 1.179)에서 급격히 작아지는 "똥싸면 캐릭터가 작아지는" 현상이 발생한다.
+	# 이 경우엔 현재 재생 중인 시트 위에 squat 애니메이션만 얹어 자연스럽게 표현한다.
+	if _pose_override_active and _pose_override_config("Poop").is_empty():
+		squat()
+		return
+	machine.transition_to("Poop")
 
 
 func _float_text(text: String) -> void:
