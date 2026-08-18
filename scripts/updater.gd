@@ -97,18 +97,50 @@ func _on_download_done(result: int, code: int, _headers: PackedStringArray, _bod
 
 
 ## 실행 중인 exe는 자신을 덮어쓸 수 없으므로, 종료 후 교체·재시작하는 bat을 남긴다.
+## v0.8.6: 부모 PID 대기 + 최대 60회 재시도 + 로그로 실패 원인 추적 가능하게 강화.
 func _apply() -> void:
 	var new_exe := ProjectSettings.globalize_path(NEW_EXE_PATH).replace("/", "\\")
 	var target := OS.get_executable_path().replace("/", "\\")
 	var bat_path := ProjectSettings.globalize_path("user://update/apply_update.bat")
+	var log_path := ProjectSettings.globalize_path("user://update/update.log").replace("/", "\\")
+	var parent_pid := OS.get_process_id()
 	var bat := "\r\n".join([
 		"@echo off",
-		":wait",
-		"ping -n 2 127.0.0.1 >nul",
-		"copy /y \"%s\" \"%s\" >nul 2>&1" % [new_exe, target],
-		"if errorlevel 1 goto wait",
+		"setlocal EnableExtensions",
+		"echo [%%DATE%% %%TIME%%] update start (pid=%d) >> \"%s\"" % [parent_pid, log_path],
+		# 부모(게임) 프로세스가 확실히 종료될 때까지 대기 — 최대 30초
+		"set /a WPID=0",
+		":waitparent",
+		"tasklist /FI \"PID eq %d\" 2>nul | find \"%d\" >nul" % [parent_pid, parent_pid],
+		"if errorlevel 1 goto ready",
+		"set /a WPID+=1",
+		"if %%WPID%% GEQ 30 (",
+		"  echo [%%DATE%% %%TIME%%] parent still alive after 30s, forcing kill >> \"%s\"" % log_path,
+		"  taskkill /F /PID %d >nul 2>&1" % parent_pid,
+		"  goto ready",
+		")",
+		"timeout /t 1 /nobreak >nul",
+		"goto waitparent",
+		":ready",
+		# 파일 교체 — 최대 60회 재시도 (파일 락 해제 대기)
+		"set /a CRET=0",
+		":copyloop",
+		"copy /y \"%s\" \"%s\" >>\"%s\" 2>&1" % [new_exe, target, log_path],
+		"if not errorlevel 1 goto done",
+		"set /a CRET+=1",
+		"if %%CRET%% GEQ 60 (",
+		"  echo [%%DATE%% %%TIME%%] copy failed after 60 retries >> \"%s\"" % log_path,
+		"  exit /b 1",
+		")",
+		"timeout /t 1 /nobreak >nul",
+		"goto copyloop",
+		":done",
 		"del \"%s\" >nul 2>&1" % new_exe,
-		"start \"\" \"%s\"" % target,
+		"echo [%%DATE%% %%TIME%%] copy ok, launching >> \"%s\"" % log_path,
+		# start /D <workdir> "" "<exe>" 로 작업 디렉토리도 exe 폴더로 맞춰서 상대경로 리소스 접근 실패 방지
+		"start \"\" /D \"%s\" \"%s\"" % [target.get_base_dir(), target],
+		"echo [%%DATE%% %%TIME%%] update done >> \"%s\"" % log_path,
+		"exit /b 0",
 		"",
 	])
 	var f := FileAccess.open(bat_path, FileAccess.WRITE)

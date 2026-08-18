@@ -41,6 +41,11 @@ const SPRITE_SIZE := 256.0  # bichon fit_scale 전용 정규화 기준 — 실�
 # 실측이 불가능할 때만 쓰이는 최후 폴백이다. 2026-08-07 이전에는 celebrate()/play_frolic()/
 # reset_sprite_pose()가 이 값을 직접 곱해서, 256px 티어가 화면에서 위아래로 크게 어긋났다.
 const STATIC_POSE_FALLBACK_SIZE := 128.0
+# 클릭/렌더 영역의 최소 한 변(px). Windows의 SetWindowRgn은 이 영역 밖을 렌더링까지 잘라내는데,
+# 스타트업 첫 프레임에는 `_frame_size`가 아직 세팅되지 않아 거의 0인 사각형이 나온다. 그러면
+# 창 전체가 잘려 펫이 아예 안 보인다(main v0.8.4 "시작 시 사라짐"이 이 경로였다). 실측값이
+# 이 하한보다 작을 일은 정상 동작에서는 없으므로, 넉넉한 쪽으로 틀리는 안전망이다.
+const MIN_RENDER_REGION_SIZE := 96.0
 # 2026-08-07 주의: 이 값은 **아직 실루엣 기준**이다(256 * 0.871 = 223px = 예전 12종 공통 목표).
 # 12종은 몸통(코어) 기준으로 옮겼지만 bichon은 body-size-audit 36장 실측 대상이 아니었고,
 # 앉은 자세에서 무엇을 몸통으로 볼지(귀·꼬리 제외 경계)가 실측되지 않아 추정으로 바꾸지 않았다.
@@ -697,21 +702,24 @@ func get_click_rect() -> Rect2:
 		var size := SPRITE_SIZE * float(STAGE_SCALE.get(ps.stage, 0.5)) * _animated_visible_size_multiplier()
 		return Rect2(global_position + Vector2(-size * 0.5, -size), Vector2(size, size)).grow(8.0)
 	# Windows의 mouse-passthrough 영역은 입력뿐 아니라 렌더링도 실제로 자른다. 포즈 캐릭터는
-	# 캐릭터마다 캔버스/배율이 크게 다른데 고정 75%×85% 클릭 사각형만 쓰면, 긴 귀·꼬리·당근·
+	# 캐릭터마다 캔버스/배율이 크게 다른데 고정 75%x85% 클릭 사각형만 쓰면, 긴 귀·꼬리·당근·
 	# 소품이 그 사각형 밖에서 잘린다. 런타임에 실제 그리는 셀 전체를 안전 영역으로 사용한다.
+	# 하한을 두는 이유는 따로다: `_frame_size`가 아직 세팅되지 않은 스타트업 첫 프레임에는
+	# 거의 0인 사각형이 나오고, 그러면 SetWindowRgn이 창 전체를 잘라 펫이 사라진다(v0.8.4).
+	var frame_w: float = maxf(_frame_size.x * absf(_base_scale.x), MIN_RENDER_REGION_SIZE)
+	var frame_h: float = maxf(_frame_size.y * absf(_base_scale.y), MIN_RENDER_REGION_SIZE)
 	if _has_active_frame_animation():
-		var frame_size := _frame_size * _base_scale.abs()
 		return Rect2(
-			global_position + _sprite.position - frame_size * 0.5,
-			frame_size
+			global_position + _sprite.position - Vector2(frame_w, frame_h) * 0.5,
+			Vector2(frame_w, frame_h)
 		).grow(_active_frame_edge_padding())
-	# 캐릭터가 실제로 그려지는 영역만 클릭 감지 (스프라이트 캔버스 대비 ~75%).
+	# 정지 포즈는 캔버스 여백이 넓어 캐릭터가 실제 그려지는 영역만 감지한다(캔버스 대비 ~75%).
 	# 나머지 여백까지 클릭을 막으면 펫이 지나가는 궤적이 넓게 blocked 되어 뒤 창 조작이 불편함.
 	# 당근이는 긴 귀·당근·등 장식이 몸통 비율 사각형 밖까지 나가므로 정지 포즈에서도 캔버스
 	# 전체가 Windows 렌더 영역에 들어가야 한다. 클릭 영역이 조금 넓어지는 대신 잘림을 막는다.
 	var visible_ratio := 1.0 if ps.species == "tokki" else 0.75
-	var w: float = _frame_size.x * _base_scale.x * visible_ratio
-	var h: float = _frame_size.y * _base_scale.y * (1.0 if ps.species == "tokki" else 0.85)
+	var w: float = frame_w * visible_ratio
+	var h: float = frame_h * (1.0 if ps.species == "tokki" else 0.85)
 	return Rect2(global_position + Vector2(-w * 0.5, -h - 4.0), Vector2(w, h))
 
 
@@ -1121,14 +1129,28 @@ func stop_animated_pose() -> void:
 	_bichon_sprite_frame_sequence = []
 	_frame_airborne = false
 	_frame_ground_padding = 0.0
-	# 정지 포즈는 단일 프레임 텍스처라 격자를 되돌려야 한다. 되돌리지 않으면 다음 set_pose()가
-	# 128x128 이미지를 6칸으로 계속 잘라 몸통 1/6만 보인다.
+	# 정적 포즈는 단일 프레임 텍스처라 격자를 되돌린다.
 	_sprite.hframes = 1
 	_sprite.vframes = 1
 	_sprite.frame = 0
 	_bichon_frame = 0
 	# 시트 텍스처가 그대로 남으면 격자를 되돌린 순간 시트 전체가 한 칸으로 보인다.
+	# set_pose가 _frames[_pose]로 정적 텍스처를 로드해 이 문제를 해결한다.
 	set_pose(_pose)
+	# 안전망: _frames가 비어있어 set_pose가 텍스처를 못 바꿨으면 idle.png를 직접 로드.
+	# 그러지 않으면 시트가 한 프레임으로 그려져 캐릭터가 넓게 잘려 보인다.
+	if _sprite.texture != null and not _frames.has(_pose):
+		var char_key: String = "egg" if ps.stage == "egg" else ps.species
+		var candidates: Array = []
+		if ps.evolved_2 and ps.stage != "egg":
+			candidates.append("res://assets/sprites/chars/%s_evolved2/idle.png" % char_key)
+		if ps.evolved and ps.stage != "egg":
+			candidates.append("res://assets/sprites/chars/%s_evolved/idle.png" % char_key)
+		candidates.append("res://assets/sprites/chars/%s/idle.png" % char_key)
+		for p in candidates:
+			if ResourceLoader.exists(p):
+				_sprite.texture = load(p)
+				break
 	_frame_size = _sprite.texture.get_size() if _sprite.texture != null else Vector2.ONE * STATIC_POSE_FALLBACK_SIZE
 	_base_scale = Vector2.ONE * _stage_scale() * _static_body_scale()
 	_sprite.scale = _base_scale
@@ -1500,8 +1522,16 @@ func _on_care_performed(action: String) -> void:
 
 
 func _on_pooped() -> void:
-	if ps.stage != "egg" and machine.current_name() not in machine.UNINTERRUPTIBLE:
-		machine.transition_to("Poop")
+	if ps.stage == "egg" or machine.current_name() in machine.UNINTERRUPTIBLE:
+		return
+	# 시트 재생 중인 캐릭터라도 Poop 시트가 없으면 상태 전이를 하지 않는다.
+	# 전이하면 stop_animated_pose가 스프라이트를 정지 배율(예: 0.4966)로 되돌려서
+	# 시트 배율(예: 1.179)에서 급격히 작아지는 "똥싸면 캐릭터가 작아지는" 현상이 발생한다.
+	# 이 경우엔 현재 재생 중인 시트 위에 squat 애니메이션만 얹어 자연스럽게 표현한다.
+	if _pose_override_active and _pose_override_config("Poop").is_empty():
+		squat()
+		return
+	machine.transition_to("Poop")
 
 
 func _float_text(text: String) -> void:
