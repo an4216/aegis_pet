@@ -530,7 +530,7 @@ func _update_passthrough() -> void:
 	# 이러면 두 사각형 사이에 의도치 않은 변이 생겨 펫이 움직인 만큼 콘솔 쪽이 잘려 보인다.
 	# 관리자 콘솔이 열려 있는 동안은 펫 위치와 무관하게 창 전체를 클릭 가능하게 둬서
 	# 이 문제를 피하고, 패널을 자유롭게 드래그해서 옮길 수 있게 한다.
-	if pet.machine.current_name() in ["Dragged", "Fall"] \
+	if pet.requires_full_render_region() \
 			or (admin_console != null and admin_console.visible):
 		var full_rect := Rect2(Vector2.ZERO, Vector2(screen_rect.size))
 		if [full_rect] == _last_quantized:
@@ -546,6 +546,11 @@ func _update_passthrough() -> void:
 	# 진화 배지 제거 + 이펙트를 스프라이트 안으로 이동 → 상단 확장 최소화
 	# (celebrate/play_frolic 점프는 짧아서 15px면 충분)
 	var pet_rect: Rect2 = pet.get_click_rect().grow_individual(4.0, 15.0, 4.0, 0.0)
+	# 먹기 소품(밥그릇/간식)은 펫 클릭 영역 밖으로 옆에 떠 있어서, 포함시키지 않으면
+	# visible=true여도 이 창의 클릭통과 영역 밖이라 렌더링에서 잘려 안 보인다.
+	var food_rect: Rect2 = pet.food_prop_rect()
+	if food_rect.size != Vector2.ZERO:
+		pet_rect = pet_rect.merge(food_rect.grow(4.0))
 	# 걷기 등으로 펫이 계속 조금씩 움직이면 32px 격자를 자주 넘나들어 SetWindowRgn이 초당
 	# 여러 번 갱신되고, 그때마다 렌더링이 같이 잘려서 경계가 깜박인다(위 주석 참고). 이전에
 	# 잡아둔 영역이 지금 펫 사각형을 여전히 포함하면 그대로 재사용하고, 정말 벗어날 때만

@@ -11,3 +11,5 @@ assets/generated/
 
 # OMC 세션 상태 — 실행할 때마다 바뀌는 로컬 캐시다.
 .omc/
+
+__pycache__/

@@ -6,36 +6,25 @@ const RARITY_WEIGHT := {"common": 15.0, "uncommon": 8.0, "rare": 4.0}
 
 # 먹기 반응 중 캐릭터 옆에 잠깐 나타났다 사라지는 음식 소품. feed/snack을 몸동작이 아니라
 # 이 소품으로 구분한다(둘 다 같은 Eat 애니메이션을 쓴다) — 상태를 늘리지 않고 저비용으로 구분.
-# 종족에 값이 없으면 소품 없이 기존 Eat 동작만 재생된다(하위 호환, 점진 도입 가능).
 # 소품 크기는 PNG 안 오브젝트의 픽셀 크기가 그대로 정한다 — pet.gd가 소품에 펫과 같은
-# _base_scale을 걸고 소품별 배율 키는 없다. 제작 시 원하는 크기는 프롬프트가 아니라
-# 추출 safe_margin = (셀 - 원하는 크기) / 2 로 잡는다(프롬프트로는 조절되지 않는다).
+# _base_scale을 걸고 소품별 배율 키는 없다.
 #
-# ⚠️ 크기 기준은 높이가 아니라 **폭**으로 잡아라. 추출이 컴포넌트를 안전영역에 꽉 맞추므로
-# safe_margin 16으로 뽑은 소품은 형태와 무관하게 전부 폭 96px이 된다. 그런데 펫의 셀 폭은
-# 종족마다 다르다(모찌 192셀 = 몸통 156px / 햄찌 128셀 = 몸통 77px). 그래서 같은 96px 소품이
-# 모찌에선 몸통의 62%지만 햄찌에선 125%로 펫보다 커진다 — 실제로 햄찌 feed가 그렇다.
-# 높이 비율(feed 67~71% / snack 46~50%)만 보면 정상 대역이라 이 문제를 못 잡는다.
-# 새 소품을 요청할 땐 "그 종족 몸통 폭의 60~70%"를 목표 폭으로 주고 safe_margin을 역산해라.
-#
-# 아래 실측값은 폭×높이(px)와 그 종족 idle 몸통 폭 대비 비율이다
-# (idle 0프레임 알파 바운딩박스 폭: 모찌 156px / 햄찌 81px — 햄찌는 프레임에 따라 75~82px).
-# 햄찌 feed는 2026-08-07에 safe_margin 16 -> 40으로 **재추출만** 해서 96px -> 48px로 줄였다
-# (재생성 아님 — 같은 raw). 네 소품이 55~62% 대역에 모여 있어야 정상이다.
+# 2026-08-11: 종족별 전용 소품(모찌 분홍 경단, 햄찌 도토리 등)을 사용자 지시로 폐기하고,
+# **13종 전 캐릭터가 공유하는 범용 feed/snack 1장씩**으로 바꿨다. 몸통 폭이 종족마다
+# 69~156px(2.26배)까지 벌어져 있어 한 장으로 전 종족에 "딱 맞는" 비율은 기하학적으로
+# 불가능하다 — 오브젝트 폭 50px(safe_margin 39, 128 캔버스)로 잡아 몸통 폭 대비 32%(모찌)
+# ~72%(콩이) 사이에 오도록 했다. "작은 캐릭터 옆에서 소품이 펫보다 커 보이는" 실패가
+# "큰 캐릭터 옆에서 소품이 약간 작아 보이는" 실패보다 훨씬 두드러지므로, 큰 쪽이 작게
+# 나오는 쪽으로 일부러 치우쳤다. 제작 기록: assets/generated/sprites/food-universal-v1/,
+# 실측: docs/02-design/characters/food_props.handoff.md.
 const FOOD_PROPS := {
-	"mochi": {
-		"feed": "res://assets/sprites/mochi/food_feed.png",     # 파스텔 핑크 그릇 + 흰쌀밥, 96x86 (62%)
-		"snack": "res://assets/sprites/mochi/food_snack.png",   # 접시 위 분홍 모찌 경단 3개, 96x65 (62%)
-	},
-	"haemjji": {
-		"feed": "res://assets/sprites/haemjji/food_feed.png",   # 주황 테두리 그릇 + 해바라기씨·곡물, 48x37 (59%)
-		"snack": "res://assets/sprites/haemjji/food_snack.png", # 도토리 1개, 45x48 (56%)
-	},
+	"feed": "res://assets/sprites/food/food_feed.png",     # 베이지 도자기 그릇 + 흰쌀밥, 50x43
+	"snack": "res://assets/sprites/food/food_snack.png",   # 황갈색 버터쿠키(초코칩), 50x47
 }
 
 
-static func get_food_prop(species: String, action: String) -> String:
-	return FOOD_PROPS.get(species, {}).get(action, "")
+static func get_food_prop(action: String) -> String:
+	return FOOD_PROPS.get(action, "")
 
 # 1차 진화형 이름
 const EVOLVED_NAMES := {
@@ -105,7 +94,9 @@ const TIER_SIZE_LADDER := {"base": 1.0, "evolved": 1.0926, "evolved2": 1.1852}
 static func get_tier_size_ladder(tier: String) -> float:
 	return float(TIER_SIZE_LADDER.get(tier, 1.0))
 
-# 코어 몸통 높이 실측값(px @128 캔버스, idle.png, α>0.125 기준).
+# 코어 몸통 높이 실측값(그 티어 캔버스 기준 px, idle.png, α>0.125 기준).
+# 캔버스는 티어마다 다르다: base/egg 128, evolved/evolved2 256, 단 mochi base만 192다.
+# 그래서 티어 간 비교는 이 값이 아니라 BODY_SCALE을 곱한 expected_torso로 한다.
 # docs/02-design/characters/body-size-audit.md — 36장 전수 시각 실측(2026-08-07)의 SSoT다.
 # 판정 규칙: 융합형(얼굴-몸통 경계 없음)은 덩어리 전체, 분리형(kkubeok/nyang)은 머리 정수리
 # (귀·모자 제외)부터 접지선까지의 코어 덩어리. 제외: 귀·뿔·볏·꼬리·팔다리·촉수·김/불꽃/반짝임
@@ -114,7 +105,9 @@ static func get_tier_size_ladder(tier: String) -> float:
 const BODY_CORE_HEIGHT := {
 	# ⚠️ 2026-08-07(§12): evolved/evolved2는 **256px 캔버스 기준**이다(base/egg만 128px).
 	# 아트가 커진 만큼(art_ratio ~2.0) 이 값도 커졌고 BODY_SCALE은 같은 비율로 내려갔다.
-	"mochi": {"base": 72.0, "evolved": 222.00, "evolved2": 205.06},
+	# base만 192 캔버스다(2026-08-12 Task #10 재생성). 눈 크기 기준을 지키면서 진화 사다리를
+	# 맞추려면 몸통을 1.497배 키워야 했는데, 폭 139가 128 캔버스를 넘어 캔버스를 확장했다.
+	"mochi": {"base": 109.0, "evolved": 222.00, "evolved2": 205.06},
 	"ppiyak": {"base": 93.0, "evolved": 176.00, "evolved2": 143.51},
 	"haemjji": {"base": 96.0, "evolved": 187.65, "evolved2": 186.83},
 	"kkubeok": {"base": 104.0, "evolved": 185.17, "evolved2": 164.00},
@@ -159,7 +152,7 @@ const BODY_CORE_HEIGHT := {
 const TORSO_NORMALIZATION_EXEMPT := {
 	"mochi": {
 		"reason": "사용자 지정 기준(2026-08-07): \"눈 크기가 다른 애들과 비슷할 정도로\". 몸통 높이가 아니라 **눈 세로 높이**를 지표로 12종 전수 실측(ddungsil은 4px 실눈이라 제외)해 중앙값 13.44px에 맞췄다. 티어별 눈 원본 17/17/16px -> 세 티어가 1.76~1.87로 수렴한다. body-size-audit.md §8.1.",
-		"expected_torso": {"base": 126.5, "evolved": 213.1, "evolved2": 227.9},
+		"expected_torso": {"base": 191.5, "evolved": 213.1, "evolved2": 227.9},
 	},
 	"mundeok": {
 		"reason": "사용자 지정 기준(2026-08-07): \"머리끝이 다른 애들 머리끝과 맞을 정도로\". 몸통 높이가 아니라 **머리 정수리(부속물 제외)~접지선 높이**를 지표로 12종 전수 실측해 중앙값 75.85px에 맞췄다. 이전 지표(코어 몸통)로는 촉수를 제외한 탓에 머리끝이 95.2px로 혼자 높았다. body-size-audit.md §8.2.",
@@ -306,8 +299,9 @@ const CHARACTERS := {
 		"stat_modifiers": {"hunger_decay": 0.7, "energy_decay": 1.3, "move_speed": 0.6},
 		"care_modifiers": {"feed": 1.5, "snack": 1.5},
 		"special": [],
-		"walk_static": true,   # walk2가 walk1과 동일 → waddle 모션으로 보완
-		"walk_face_inverted": true,   # 걷기 시트가 뒤돌아본 상태 → 좌우 반전
+		# 2026-08-11: 3티어 전부 Walk 시트를 갖게 되어 walk_static·walk_face_inverted를 제거했다.
+		# 두 플래그는 walk_state.gd의 정지 폴백 경로에서만 읽히는데(시트가 있으면 조기 반환),
+		# 이제 어느 티어도 그 경로를 타지 않는다. 알 단계는 Egg 상태로 가 Walk에 진입하지 않는다.
 	},
 }
 
