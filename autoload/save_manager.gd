@@ -25,6 +25,16 @@ var settings := {
 
 var pomodoro_work := false  # 뽀모도로 집중 중 (비영속, 말풍선·산책 억제용)
 
+## 디스크 영속화 스위치. 헤드리스 테스트가 꺼서 `user://save.json` 을 건드리지 않게 한다.
+##
+## 왜 필요한가: 이 오토로드는 60초 타이머로 save_game() 을 호출하고, 종료 알림에서도 한 번
+## 더 저장한다. 그래서 테스트 스위트(수 분 소요)를 돌리는 것만으로 **개발자의 실제 펫 데이터가
+## 테스트 실행 상태로 덮여 쓰이고 있었다**. 반대 방향의 오염도 있었다 — 오토로드가 실제
+## 세이브를 로드한 상태라 `pet.gd` 가 `ps = /root/PetState` 를 잡는 순간 테스트가 실제 펫을
+## 보게 되고, 그 펫이 병들어 있으면 상태머신이 Sick 으로 전이해 검사 9건이 실패했다
+## (2026-08-18 실측: health 0 / is_sick true). 프로덕션 경로는 기본값 true 로 그대로다.
+var persistence_enabled := true
+
 
 func _ready() -> void:
 	var timer := Timer.new()
@@ -41,6 +51,8 @@ func _notification(what: int) -> void:
 
 
 func save_game() -> void:
+	if not persistence_enabled:
+		return
 	var pet := get_node_or_null("/root/PetState")
 	if pet == null:
 		return

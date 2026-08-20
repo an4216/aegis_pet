@@ -227,6 +227,9 @@ var _saved_night_window: Array = []
 
 
 func _init() -> void:
+	# 다른 무엇보다 먼저 실제 세이브 파일과의 결합을 끊는다 (아래 함수 주석 참고).
+	# await로 부르는 유일한 호출이다 — 오염 창구(root.add_child(pet))보다 반드시 앞서야 한다.
+	await _isolate_from_real_save()
 	# 픽셀 검사 전체의 전제라 가장 먼저 본다 — 캐시가 낡으면 아래 결과를 믿을 수 없다.
 	_test_import_cache_fresh()
 	_test_referenced_assets_tracked()
@@ -282,6 +285,38 @@ func _init() -> void:
 	_test_airborne_lift_coverage()
 	_test_bichon_evolution()
 	call_deferred("_test_bichon_care_reactions")
+
+
+## 실제 세이브 파일(`user://save.json`)과의 양방향 결합을 끊는다. 스위트 맨 처음에 한 번 부른다.
+##
+## 이 스위트는 오토로드가 살아 있는 실제 씬 트리에서 돈다. 그래서 두 방향으로 오염됐다:
+##
+##   쓰기 — SaveManager는 60초 타이머와 종료 알림에서 save_game()을 부른다. 스위트는 수 분
+##          걸리므로, **테스트를 돌리는 것만으로 개발자의 실제 펫이 테스트 상태로 덮였다.**
+##   읽기 — `pet.gd`는 `ps = get_node("/root/PetState")`로 오토로드를 잡는다. 테스트가
+##          `pet.ps`에 자기 인스턴스를 넣기 전 한 프레임 동안 상태머신은 **실제 펫**을 본다.
+##          그 펫이 병들어 있으면 Sick으로 전이하고, 얼린 상태머신은 그대로 남는다
+##          (2026-08-18 실측: health 0 / is_sick true → 반응 복귀 검사 9건 실패).
+##
+## 읽기 쪽은 상태머신을 얼리는 3곳에서 transition_to("Idle")로도 막고 있지만, 오염 창구는
+## `root.add_child(pet)` 11곳 전부다. 여기서 한 번 끊는 것이 그 전부를 덮는 유일한 지점이다.
+## CI에는 세이브가 없어 이 결합이 드러나지 않으므로, 로컬에서만 깨지는 종류의 결함이었다.
+func _isolate_from_real_save() -> void:
+	# 오토로드는 _init() 시점에 아직 트리에 없다 — 한 프레임 뒤에 붙는다.
+	await process_frame
+	var save_manager: Node = root.get_node_or_null("SaveManager")
+	check(save_manager != null, "격리 전제: SaveManager 오토로드 존재")
+	if save_manager != null:
+		save_manager.persistence_enabled = false
+		check(not save_manager.persistence_enabled,
+			"실제 세이브 파일 쓰기 차단됨 (persistence_enabled=false)")
+	var pet_state: Node = root.get_node_or_null("PetState")
+	check(pet_state != null, "격리 전제: PetState 오토로드 존재")
+	if pet_state != null:
+		pet_state.reset_to_egg()
+		check(not pet_state.is_sick and approx(pet_state.stats["health"], 100.0),
+			"오토로드 펫이 중립 상태로 초기화됨 (is_sick=%s, health=%.0f)"
+				% [pet_state.is_sick, pet_state.stats["health"]])
 
 
 func _test_generated_motion_catalog() -> void:
