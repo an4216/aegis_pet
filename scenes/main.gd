@@ -184,14 +184,26 @@ func _setup_ui() -> void:
 
 	# Plan FR-15 v3: 업무 활동 추적 시작
 	_ps.evolution_ready.connect(_on_evolution_ready)
-	var today := Time.get_datetime_dict_from_system()
-	_ps.note_activity_day("%04d-%02d-%02d" % [today.year, today.month, today.day])
+	_note_today()
+	# 날짜가 바뀌어도 계속 기록해야 한다. 이 앱은 며칠씩 켜두는 데스크톱 펫인데 이 호출이
+	# 시작 시 한 번뿐이어서, 세션이 자정을 넘겨도 그날이 기록되지 않았다 — 실측(2026-08-18
+	# 세이브)에서 active_sec은 24.5시간인데 last_active_day는 2026-08-14에 멈춰 있었다.
+	# 연속 출근일수(당근이)·활동일수 계열 진화 조건이 그만큼 적산되지 않았다.
+	# note_activity_day()는 같은 날 재호출을 스스로 걸러내므로 매분 불러도 안전하다.
+	TimeManager.minute_ticked.connect(_note_today)
 	var probe := get_node_or_null("/root/InputProbe")
 	if probe != null:
 		probe.counter_delta.connect(func(delta): _ps.add_input_delta(delta))
 		probe.disguise_toggle_requested.connect(_on_disguise_toggle)
 		probe.hide_toggle_requested.connect(_on_hide_toggle)
 		probe.start()
+
+
+
+## 오늘 날짜를 활동일로 기록한다(같은 날 중복은 note_activity_day가 무시한다).
+func _note_today() -> void:
+	var today := Time.get_datetime_dict_from_system()
+	_ps.note_activity_day("%04d-%02d-%02d" % [today.year, today.month, today.day])
 
 
 func _on_disguise_toggle() -> void:

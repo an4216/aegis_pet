@@ -9,6 +9,8 @@ signal disguise_toggle_requested()   # Ctrl+Shift+H
 signal hide_toggle_requested()       # Shift+Esc
 
 const POLL_SECONDS := 2.0
+## 헬퍼 생존 확인 주기(초). 카운터가 죽어도 아무도 몰랐던 결함을 막는다 — 아래 주석 참고.
+const HELPER_WATCHDOG_SECONDS := 10.0
 const JSON_PATH := "user://input_counts.json"
 const HELPER_EXE := "user://counter.exe"
 const CSC_PATHS := [
@@ -21,6 +23,7 @@ var idle_ms := 0   # 마지막 입력 이후 경과 시간 (자동 재시작 조
 
 var _helper_pid := -1
 var _timer := 0.0
+var _watchdog := HELPER_WATCHDOG_SECONDS
 var _last := {"kb": 0, "mouse": 0, "active_sec": 0.0, "friday_active_sec": 0.0}
 var _last_disguise_toggle := 0
 var _last_hide_toggle := 0
@@ -36,10 +39,39 @@ func start() -> void:
 	# helper 시작 전에 stale 파일을 삭제한다.
 	if FileAccess.file_exists(JSON_PATH):
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(JSON_PATH))
-	_helper_pid = OS.create_process(exe, [
+	_helper_pid = _spawn_helper(exe)
+	available = _helper_pid > 0
+
+
+func _spawn_helper(exe: String) -> int:
+	return OS.create_process(exe, [
 		ProjectSettings.globalize_path(JSON_PATH),
 		str(OS.get_process_id()),
 	])
+
+
+## 헬퍼 프로세스가 살아 있는지. `_helper_pid <= 0`이면 애초에 띄우지 못한 것이라 죽은 것으로 본다.
+func helper_is_alive() -> bool:
+	return _helper_pid > 0 and OS.is_process_running(_helper_pid)
+
+
+## 헬퍼가 죽었으면 다시 띄운다.
+##
+## 왜 필요한가: 카운터가 죽어도 `available`은 true로 남고, `_read_and_emit()`은 파일이 없으면
+## 조용히 반환하거나(삭제된 경우) 얼어붙은 값을 계속 읽어 델타 0을 내놓는다(남아 있는 경우).
+## 어느 쪽이든 **그 세션 내내 키보드·마우스 적산이 멈추고 아무 신호도 나오지 않는다.** 이 앱은
+## 며칠씩 켜두는 데스크톱 펫이라 세션이 길고, 진화 조건이 이 카운트라서 "진화가 안 된다"로
+## 드러난다. start()는 한 번만 호출되므로 복구 경로가 어디에도 없었다(2026-08-20).
+##
+## 재기동한 헬퍼는 0부터 다시 세는데, `_read_and_emit()`의 음수 델타 가드가 그 경우를 이미
+## "헬퍼 재시작"으로 보고 절대값을 쓴다 — 그래서 여기서 `_last`를 따로 만질 필요가 없다.
+func _restart_helper_if_dead() -> void:
+	if helper_is_alive():
+		return
+	var exe := _ensure_helper()
+	if exe == "":
+		return
+	_helper_pid = _spawn_helper(exe)
 	available = _helper_pid > 0
 
 
@@ -52,6 +84,10 @@ func _exit_tree() -> void:
 func _process(delta: float) -> void:
 	if not available:
 		return
+	_watchdog -= delta
+	if _watchdog <= 0.0:
+		_watchdog = HELPER_WATCHDOG_SECONDS
+		_restart_helper_if_dead()
 	_timer -= delta
 	if _timer > 0.0:
 		return
