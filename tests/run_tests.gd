@@ -277,6 +277,7 @@ func _init() -> void:
 	_test_generated_walk_size_continuity()
 	_test_kong_walk_torso_stability()
 	_test_mirror_forbidden_species()
+	_test_input_accumulation_liveness()
 	_test_region_builder_never_self_intersects()
 	_test_loop_seam()
 	_test_static_fallback_walk_flags()
@@ -2875,6 +2876,38 @@ func _test_generated_walk_size_continuity() -> void:
 				"%s/%s Walk 몸통 면적 %.1f~%.1f가 Idle %.1f의 ±%.0f%% 이내"
 				% [species, tier, minimum, maximum, idle_area, WALK_BOUNCE_TOLERANCE * 100.0]
 			)
+
+
+## 입력 카운터가 조용히 멈추지 않는지 잠근다 (모찌·당근이 등 진화 조건의 입력원).
+##
+## 2026-08-20 사용자 신고 "키보드 인식이 적산되지 않는다"를 추적해 두 경로를 찾았다:
+##   (1) counter.exe가 죽어도 `available`은 true로 남고 `_read_and_emit()`은 조용히 반환한다.
+##       start()는 한 번만 불리므로 복구 경로가 없었다 — 그 세션 내내 적산이 멈춘다.
+##   (2) `note_activity_day()`가 시작 시 한 번만 불려서, 세션이 자정을 넘겨도 그날이
+##       기록되지 않았다(실측: active_sec 24.5시간인데 last_active_day는 나흘 전).
+##
+## 헬퍼 자체를 띄우는 검사는 하지 않는다 — counter.exe는 Windows 전용이라 리눅스 CI에서
+## 항상 실패한다. 대신 생존 판정 술어와 날짜 롤오버 배선을 본다.
+func _test_input_accumulation_liveness() -> void:
+	var probe: Node = root.get_node_or_null("InputProbe")
+	check(probe != null, "InputProbe 오토로드 존재")
+	if probe != null:
+		var saved_pid: int = probe._helper_pid
+		probe._helper_pid = 0
+		check(not probe.helper_is_alive(), "헬퍼를 띄우지 못한 상태(pid 0)는 죽은 것으로 판정")
+		probe._helper_pid = 2147483000
+		check(not probe.helper_is_alive(), "존재하지 않는 pid는 죽은 것으로 판정")
+		probe._helper_pid = OS.get_process_id()
+		check(probe.helper_is_alive(), "살아 있는 pid는 생존으로 판정")
+		probe._helper_pid = saved_pid
+		check(probe.has_method("_restart_helper_if_dead"),
+			"죽은 헬퍼 재기동 경로 존재 (_restart_helper_if_dead)")
+	# 날짜 롤오버 배선. 이 연결이 빠지면 활동일 계열 조건이 세션 내내 얼어붙는데, 그 증상은
+	# 하루가 지나야 드러나서 어떤 런타임 검사로도 잡히지 않는다 — 그래서 배선을 직접 본다.
+	var main_source := FileAccess.get_file_as_string("res://scenes/main.gd")
+	check(main_source.contains("minute_ticked.connect(_note_today)"),
+		"main.gd가 분 단위로 활동일을 다시 기록한다(자정 넘김 대응)")
+	check(main_source.contains("func _note_today()"), "_note_today 정의 존재")
 
 
 ## 클릭통과 폴리곤은 **항상 볼록 사각형 하나**여야 한다.
