@@ -98,25 +98,41 @@ func _on_download_done(result: int, code: int, _headers: PackedStringArray, _bod
 
 ## 실행 중인 exe는 자신을 덮어쓸 수 없으므로, 종료 후 교체·재시작하는 bat을 남긴다.
 ## v0.8.6: 부모 PID 대기 + 최대 60회 재시도 + 로그로 실패 원인 추적 가능하게 강화.
-func _apply() -> void:
-	var new_exe := ProjectSettings.globalize_path(NEW_EXE_PATH).replace("/", "\\")
-	var target := OS.get_executable_path().replace("/", "\\")
-	var bat_path := ProjectSettings.globalize_path("user://update/apply_update.bat")
-	var log_path := ProjectSettings.globalize_path("user://update/update.log").replace("/", "\\")
-	var parent_pid := OS.get_process_id()
-	var bat := "\r\n".join([
+## 교체·재시작 배치를 만든다. 순수 함수라 검사에서 문자열째로 검증할 수 있다.
+##
+## 배치 텍스트에는 GDScript의 `%` 포맷 연산자를 **쓰지 않는다**. 배치는 `%VAR%`로 변수를
+## 참조하는데 `%` 포맷을 섞으면, 포맷 인자를 받는 줄은 `%%`로 써야 하고 받지 않는 줄은 `%`로
+## 써야 해서 같은 파일 안에서 규칙이 갈린다. 실제로 갈렸다 — `if %%WPID%% GEQ 30`과
+## `if %%CRET%% GEQ 60` 두 줄이 포맷 인자를 받지 못한 채 남았고, 배치에서 `%%`는 리터럴 `%`로
+## 줄어들어 비교가 문자열 `%WPID%` vs `30`이 됐다. 즉 **두 상한이 영구히 거짓**이었다:
+## 대기 루프는 30초 강제 종료를 못 하고, 복사 루프는 60회 상한에 걸리지 않아 복사가 계속
+## 실패하면 영원히 돌면서 마지막 `start` 줄에 끝내 도달하지 못한다 — 업데이트가 끝나도
+## 앱이 다시 켜지지 않는 경로가 이것이다(2026-08-20 사용자 신고).
+## 그래서 `{키}` 치환만 쓴다. 배치의 `%`는 전부 그대로 남는다.
+static func build_apply_script(
+	new_exe: String, target: String, log_path: String, parent_pid: int
+) -> String:
+	var subs := {
+		"new_exe": new_exe,
+		"target": target,
+		"workdir": target.get_base_dir(),
+		"log": log_path,
+		"pid": str(parent_pid),
+	}
+	return "
+".join([
 		"@echo off",
 		"setlocal EnableExtensions",
-		"echo [%%DATE%% %%TIME%%] update start (pid=%d) >> \"%s\"" % [parent_pid, log_path],
+		"echo [%DATE% %TIME%] update start (pid={pid}) >> \"{log}\"",
 		# 부모(게임) 프로세스가 확실히 종료될 때까지 대기 — 최대 30초
 		"set /a WPID=0",
 		":waitparent",
-		"tasklist /FI \"PID eq %d\" 2>nul | find \"%d\" >nul" % [parent_pid, parent_pid],
+		"tasklist /FI \"PID eq {pid}\" 2>nul | find \"{pid}\" >nul",
 		"if errorlevel 1 goto ready",
 		"set /a WPID+=1",
-		"if %%WPID%% GEQ 30 (",
-		"  echo [%%DATE%% %%TIME%%] parent still alive after 30s, forcing kill >> \"%s\"" % log_path,
-		"  taskkill /F /PID %d >nul 2>&1" % parent_pid,
+		"if %WPID% GEQ 30 (",
+		"  echo [%DATE% %TIME%] parent still alive after 30s, forcing kill >> \"{log}\"",
+		"  taskkill /F /PID {pid} >nul 2>&1",
 		"  goto ready",
 		")",
 		"timeout /t 1 /nobreak >nul",
@@ -125,24 +141,32 @@ func _apply() -> void:
 		# 파일 교체 — 최대 60회 재시도 (파일 락 해제 대기)
 		"set /a CRET=0",
 		":copyloop",
-		"copy /y \"%s\" \"%s\" >>\"%s\" 2>&1" % [new_exe, target, log_path],
+		"copy /y \"{new_exe}\" \"{target}\" >>\"{log}\" 2>&1",
 		"if not errorlevel 1 goto done",
 		"set /a CRET+=1",
-		"if %%CRET%% GEQ 60 (",
-		"  echo [%%DATE%% %%TIME%%] copy failed after 60 retries >> \"%s\"" % log_path,
+		"if %CRET% GEQ 60 (",
+		"  echo [%DATE% %TIME%] copy failed after 60 retries >> \"{log}\"",
 		"  exit /b 1",
 		")",
 		"timeout /t 1 /nobreak >nul",
 		"goto copyloop",
 		":done",
-		"del \"%s\" >nul 2>&1" % new_exe,
-		"echo [%%DATE%% %%TIME%%] copy ok, launching >> \"%s\"" % log_path,
-		# start /D <workdir> "" "<exe>" 로 작업 디렉토리도 exe 폴더로 맞춰서 상대경로 리소스 접근 실패 방지
-		"start \"\" /D \"%s\" \"%s\"" % [target.get_base_dir(), target],
-		"echo [%%DATE%% %%TIME%%] update done >> \"%s\"" % log_path,
+		"del \"{new_exe}\" >nul 2>&1",
+		"echo [%DATE% %TIME%] copy ok, launching >> \"{log}\"",
+		# start /D <workdir> 로 작업 디렉토리를 exe 폴더로 맞춰 상대경로 리소스 접근 실패 방지
+		"start \"\" /D \"{workdir}\" \"{target}\"",
+		"echo [%DATE% %TIME%] update done >> \"{log}\"",
 		"exit /b 0",
 		"",
-	])
+	]).format(subs)
+
+
+func _apply() -> void:
+	var new_exe := ProjectSettings.globalize_path(NEW_EXE_PATH).replace("/", "\\")
+	var target := OS.get_executable_path().replace("/", "\\")
+	var bat_path := ProjectSettings.globalize_path("user://update/apply_update.bat")
+	var log_path := ProjectSettings.globalize_path("user://update/update.log").replace("/", "\\")
+	var bat := build_apply_script(new_exe, target, log_path, OS.get_process_id())
 	var f := FileAccess.open(bat_path, FileAccess.WRITE)
 	if f == null:
 		update_failed.emit("교체 스크립트 생성 실패")

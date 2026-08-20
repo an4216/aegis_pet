@@ -9,6 +9,7 @@ const PetStateScript := preload("res://autoload/pet_state.gd")
 const PetScript := preload("res://scenes/pet/pet.gd")
 const PetScene := preload("res://scenes/pet/pet.tscn")
 const RegionBuilder := preload("res://scripts/platform/region_builder.gd")
+const UpdaterScript := preload("res://scripts/updater.gd")
 
 var fails := 0
 var passes := 0
@@ -278,6 +279,7 @@ func _init() -> void:
 	_test_kong_walk_torso_stability()
 	_test_mirror_forbidden_species()
 	_test_input_accumulation_liveness()
+	_test_update_apply_script()
 	_test_region_builder_never_self_intersects()
 	_test_loop_seam()
 	_test_static_fallback_walk_flags()
@@ -2876,6 +2878,38 @@ func _test_generated_walk_size_continuity() -> void:
 				"%s/%s Walk 몸통 면적 %.1f~%.1f가 Idle %.1f의 ±%.0f%% 이내"
 				% [species, tier, minimum, maximum, idle_area, WALK_BOUNCE_TOLERANCE * 100.0]
 			)
+
+
+## 업데이트 교체·재시작 배치가 실제로 재시작 줄에 도달할 수 있는지 잠근다.
+##
+## 2026-08-20 사용자 신고 "업데이트가 끝나면 저절로 다시 켜져야 하는데 안 켜져"의 원인:
+## 배치 텍스트를 GDScript `%` 포맷으로 만들면서, 포맷 인자를 받는 줄은 `%%`로 배치 변수를
+## 써야 하고 받지 않는 줄은 `%`로 써야 하는 규칙이 갈렸다. `if %%WPID%% GEQ 30`과
+## `if %%CRET%% GEQ 60` 두 줄이 인자를 받지 못한 채 남아 배치에 리터럴 `%%`로 들어갔고,
+## 배치에서 `%%`는 리터럴 `%`로 줄어들어 비교가 문자열 `%WPID%` vs `30`이 됐다.
+## cmd에서 실측하면 X=5인데도 `if %%X%% GEQ 1`은 거짓이다(단일 `%`는 참).
+## 결과: 복사 실패 시 60회 상한에 걸리지 않고 영원히 돌아 `start` 줄에 끝내 도달하지 못한다.
+##
+## 그래서 배치 생성을 `%` 포맷 없는 순수 함수로 분리했고, 이 검사는 그 산출물을 직접 본다.
+## 리터럴 `%%` 검사 하나가 이 결함 전체를 잡는다 — 그것이 이 검사의 핵심 단정이다.
+func _test_update_apply_script() -> void:
+	var script: String = UpdaterScript.build_apply_script(
+		"C:/u/new.exe".replace("/", "\\"),
+		"C:/app dir/aegis-pet.exe".replace("/", "\\"),
+		"C:/u/update.log".replace("/", "\\"),
+		4242)
+	check(not script.contains("%%"),
+		"배치에 리터럴 %% 가 남지 않음 (남으면 상한 비교가 영구히 거짓이 된다)")
+	check(script.contains("if %WPID% GEQ 30"), "부모 대기 30초 상한이 배치 변수로 비교됨")
+	check(script.contains("if %CRET% GEQ 60"), "복사 재시도 60회 상한이 배치 변수로 비교됨")
+	check(script.contains("echo [%DATE% %TIME%]"), "로그 타임스탬프가 배치 변수로 남음")
+	check(script.contains("PID eq 4242"), "부모 pid 주입됨")
+	check(script.contains("taskkill /F /PID 4242"), "강제 종료 경로에 pid 주입됨")
+	# 재시작 줄이 존재하고 작업 디렉터리가 exe 폴더여야 한다 — 상대경로 리소스 접근 실패 방지.
+	var target := "C:/app dir/aegis-pet.exe".replace("/", "\\")
+	check(script.contains("start \"\" /D \"%s\" \"%s\"" % [target.get_base_dir(), target]),
+		"작업 디렉터리를 지정해 재시작하는 줄 존재")
+	check(script.contains("copy /y"), "교체 복사 줄 존재")
 
 
 ## 입력 카운터가 조용히 멈추지 않는지 잠근다 (모찌·당근이 등 진화 조건의 입력원).
