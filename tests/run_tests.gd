@@ -2897,8 +2897,16 @@ func _test_input_accumulation_liveness() -> void:
 		check(not probe.helper_is_alive(), "헬퍼를 띄우지 못한 상태(pid 0)는 죽은 것으로 판정")
 		probe._helper_pid = 2147483000
 		check(not probe.helper_is_alive(), "존재하지 않는 pid는 죽은 것으로 판정")
-		probe._helper_pid = OS.get_process_id()
-		check(probe.helper_is_alive(), "살아 있는 pid는 생존으로 판정")
+		# 살아 있는 쪽은 **자식 프로세스로** 확인해야 한다. OS.is_process_running()은
+		# OS.create_process()로 띄운 자식만 추적한다 — 자기 자신의 pid를 넣으면 Windows에서는
+		# true지만 리눅스에서는 false다(2026-08-20 CI가 잡아준 플랫폼 차이). 프로덕션 경로는
+		# 어차피 자식(counter.exe)이라 이 술어로 충분하고, 검사도 같은 형태로 맞춘다.
+		var sleeper := OS.create_process("ping.exe", ["-n", "30", "127.0.0.1"]) 			if OS.get_name() == "Windows" 			else OS.create_process("/bin/sleep", ["30"])
+		check(sleeper > 0, "생존 판정 검사용 자식 프로세스 기동 (pid %d)" % sleeper)
+		if sleeper > 0:
+			probe._helper_pid = sleeper
+			check(probe.helper_is_alive(), "살아 있는 자식 프로세스는 생존으로 판정")
+			OS.kill(sleeper)
 		probe._helper_pid = saved_pid
 		check(probe.has_method("_restart_helper_if_dead"),
 			"죽은 헬퍼 재기동 경로 존재 (_restart_helper_if_dead)")
