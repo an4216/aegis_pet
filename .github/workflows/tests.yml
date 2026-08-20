@@ -1,0 +1,67 @@
+name: tests
+
+# 이 리포의 검증은 전부 헤드리스로 돌아간다(Godot GDScript 스위트 + Pillow 도구 pytest).
+# 그런데 2026-08-19까지 CI가 없어서, 로컬에서 돌리지 않으면 그냥 통과했다 — 실제로 커밋
+# 9f0d796이 미검증으로 푸시된 뒤 14건 실패가 드러난 적이 있다. 그래서 PR과 main push에 건다.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# 같은 브랜치에 새 푸시가 오면 이전 실행을 취소한다 (에셋 임포트가 무거워 낭비가 크다).
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  godot:
+    name: Godot headless tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GODOT_VERSION: 4.4.1-stable
+    steps:
+      - uses: actions/checkout@v4
+
+      # 프로젝트가 고정한 엔진 버전과 같아야 한다 (README / pet-qa-checklist 기준).
+      - name: Cache Godot binary
+        id: cache-godot
+        uses: actions/cache@v4
+        with:
+          path: ~/godot
+          key: godot-${{ env.GODOT_VERSION }}-linux-x86_64
+
+      - name: Download Godot
+        if: steps.cache-godot.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/godot
+          curl -fsSL -o /tmp/godot.zip \
+            "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}/Godot_v${GODOT_VERSION}_linux.x86_64.zip"
+          unzip -q /tmp/godot.zip -d ~/godot
+          chmod +x ~/godot/Godot_v${GODOT_VERSION}_linux.x86_64
+
+      # .godot/ 은 커밋되지 않으므로 CI가 직접 임포트해야 한다. 이 단계를 빼면 스위트
+      # 첫 검사(_test_import_cache_fresh)가 "캐시가 낡았다"로 떨어진다.
+      - name: Import assets
+        run: ~/godot/Godot_v${GODOT_VERSION}_linux.x86_64 --headless --editor --path . --quit-after 900
+
+      - name: Unit + contract tests
+        run: ~/godot/Godot_v${GODOT_VERSION}_linux.x86_64 --headless --path . --script tests/run_tests.gd
+
+      - name: Animation integration
+        run: ~/godot/Godot_v${GODOT_VERSION}_linux.x86_64 --headless --path . --script tests/bichon_animation_integration.gd
+
+  python:
+    name: Sprite tool tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      # 의존은 각 도구 스크립트의 PEP 723 헤더가 SSoT다 — 여기 버전을 또 적지 않는다.
+      - name: pytest
+        run: |
+          uv run --with 'pillow>=11,<13' --with 'typer>=0.16,<1' --with pytest \
+            -m pytest tests/ -q
