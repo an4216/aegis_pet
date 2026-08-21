@@ -1,0 +1,81 @@
+name: release
+
+# 태그를 밀면 Windows exe 를 빌드해 릴리스 자산으로 올린다.
+# 지금까지 릴리스는 수동 빌드였는데, 그래서 "코드는 고쳤지만 배포되지 않은" 상태가 생겼다 —
+# 2026-08-21에 사용자들이 받은 v0.8.7에는 응아 복원 시 펫이 사라지는 수정이 빠져 있었다.
+# 자동 업데이터가 내려받는 자산 이름은 `aegis-pet.exe` 다(updater.gd EXE_ASSET) — 바꾸면
+# 구 빌드가 업데이트를 찾지 못한다.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "릴리스할 태그 (예: v0.8.8)"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      GODOT_VERSION: 4.4.1-stable
+      # 프리셋이 application/modify_resources=false 이고 아이콘을 쓰지 않으므로
+      # 리눅스에서 Windows 타깃을 내보내도 wine/rcedit 가 필요하지 않다.
+      PRESET: Windows Desktop
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve tag
+        id: tag
+        run: echo "name=${{ github.event.inputs.tag || github.ref_name }}" >> "$GITHUB_OUTPUT"
+
+      - name: Cache Godot + export templates
+        id: cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/godot
+            ~/.local/share/godot/export_templates
+          key: godot-export-${{ env.GODOT_VERSION }}
+
+      - name: Install Godot and export templates
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/godot
+          curl -fsSL -o /tmp/godot.zip \
+            "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}/Godot_v${GODOT_VERSION}_linux.x86_64.zip"
+          unzip -q /tmp/godot.zip -d ~/godot
+          chmod +x ~/godot/Godot_v${GODOT_VERSION}_linux.x86_64
+          curl -fsSL -o /tmp/templates.tpz \
+            "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}/Godot_v${GODOT_VERSION}_export_templates.tpz"
+          # .tpz 안의 파일들은 templates/ 아래에 있고, Godot 은 <version>/ 아래를 본다.
+          unzip -q /tmp/templates.tpz -d /tmp/tpz
+          mkdir -p ~/.local/share/godot/export_templates/${GODOT_VERSION/-/.}
+          mv /tmp/tpz/templates/* ~/.local/share/godot/export_templates/${GODOT_VERSION/-/.}/
+
+      # .godot/ 은 커밋되지 않으므로 익스포트 전에 임포트를 끝내야 한다.
+      - name: Import assets
+        run: ~/godot/Godot_v${GODOT_VERSION}_linux.x86_64 --headless --editor --path . --quit-after 900
+
+      - name: Export Windows build
+        run: |
+          mkdir -p export
+          ~/godot/Godot_v${GODOT_VERSION}_linux.x86_64 --headless --path . \
+            --export-release "$PRESET" export/aegis-pet.exe
+          ls -l export/
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${{ steps.tag.outputs.name }}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" export/aegis-pet.exe --clobber
+          else
+            gh release create "$TAG" export/aegis-pet.exe \
+              --title "$TAG" --generate-notes
+          fi
