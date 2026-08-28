@@ -12,14 +12,14 @@ model: opus
 
 ## 작업 원칙
 
-1. **Godot 헤드리스 바이너리 위치를 먼저 확인한다.** 이 환경의 캐시 경로는 `$env:LOCALAPPDATA\Temp\aegis_pet_godot_4_4_1\Godot_v4.4.1-stable_win64_console.exe` (console 빌드, 헤드리스 테스트용) / `Godot_v4.4.1-stable_win64.exe` (GUI 빌드, 실제 화면 확인용) 이다. 없으면 PATH나 다른 위치를 탐색한다.
+1. **Godot 헤드리스 바이너리 위치를 먼저 확인한다.** 이 환경의 캐시 경로는 `C:\aegis_dx\tools\godot_4_4_1\Godot_v4.4.1-stable_win64_console.exe` (console 빌드, 헤드리스 테스트용) / `Godot_v4.4.1-stable_win64.exe` (GUI 빌드, 실제 화면 확인용) 이다. 없으면 PATH나 다른 위치를 탐색한다.
 2. **최소 3종의 테스트를 `tests/run_tests.gd`에 추가한다** (기존 `_test_bichon_registration`/`_test_bichon_animation_manifest`/`_test_dialog_evolution_pools` 패턴을 그대로 따른다):
    - 등록 테스트: `Characters.CHARACTERS.has(id)`, `name_kr` 값 확인
    - 애니메이션 매니페스트 테스트: 각 상태의 `frames` 수, `sprite_frame_sequence`/`foot_padding`/`horizontal_offsets` 배열 길이가 `frames`와 일치하는지, 아틀라스 리소스가 실제로 존재하는지(`ResourceLoader.exists`)
    - `_test_dialog_evolution_pools`는 전체 캐릭터를 순회하는 공용 테스트이므로 새로 안 만들어도 되지만, 새 캐릭터의 대사 풀이 이 테스트를 통과하는지는 반드시 확인한다.
 3. **헤드리스 전체 스위트를 실행하고 종료 코드를 확인한다.**
    ```powershell
-   $godot = "$env:LOCALAPPDATA\Temp\aegis_pet_godot_4_4_1\Godot_v4.4.1-stable_win64_console.exe"
+   $godot = "C:\aegis_dx\tools\godot_4_4_1\Godot_v4.4.1-stable_win64_console.exe"
    & $godot --headless --path . --script tests/run_tests.gd
    ```
    `RESULT: N passed, M failed`에서 `M`이 0인지 확인한다. `.import` 캐시가 없어서 나는 `Unable to open file: ....ctex` 에러는 무해할 수 있으니, 먼저 `pet-qa-checklist` 스킬의 "임포트 캐시 갱신" 절차로 해소한 뒤 재실행해서 진짜 실패와 구분한다.

@@ -7,11 +7,20 @@ description: aegis_pet 신규/변경된 캐릭터를 헤드리스 Godot 테스�
 
 ## Godot 바이너리 위치
 
-이 환경은 Godot이 PATH에 없고, 프로젝트 캐시 경로에 있다:
+이 환경은 Godot이 PATH에 없고, 아래 고정 경로에 둔다:
+
+> 2026-08-28: 예전에는 `%LOCALAPPDATA%\Temp\` 아래에 뒀는데 Windows가 임시 폴더를 비우면서
+> **두 번 사라졌다** — 그때마다 로컬 테스트와 화면 확인이 전부 막힌다. 그래서 영구 경로로 옮겼다.
+> 없으면 다시 받는다(릴리스/테스트 CI는 자체 다운로드라 이 경로와 무관하다):
+>
+> ```powershell
+> Invoke-WebRequest "https://github.com/godotengine/godot/releases/download/4.4.1-stable/Godot_v4.4.1-stable_win64.exe.zip" -OutFile godot.zip
+> Expand-Archive godot.zip -DestinationPath "C:\aegis_dx\tools\godot_4_4_1"
+> ```
 
 ```powershell
-$godot = "$env:LOCALAPPDATA\Temp\aegis_pet_godot_4_4_1\Godot_v4.4.1-stable_win64_console.exe"      # 헤드리스(콘솔)
-$godotGui = "$env:LOCALAPPDATA\Temp\aegis_pet_godot_4_4_1\Godot_v4.4.1-stable_win64.exe"            # GUI(화면 확인용)
+$godot = "C:\aegis_dx\tools\godot_4_4_1\Godot_v4.4.1-stable_win64_console.exe"      # 헤드리스(콘솔)
+$godotGui = "C:\aegis_dx\tools\godot_4_4_1\Godot_v4.4.1-stable_win64.exe"            # GUI(화면 확인용)
 ```
 
 없으면 `Get-ChildItem`으로 다른 위치를 탐색하거나 사용자에게 물어본다. `$godot` 변수는 PowerShell 세션 안에서만 유지되므로, 새 커맨드 블록마다 다시 정의해야 한다 — 정의와 사용을 같은 명령 문자열에 줄바꿈으로 묶는다.
