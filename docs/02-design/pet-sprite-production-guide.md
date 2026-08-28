@@ -133,13 +133,13 @@
 
 ```powershell
 # 비숑 기준 회귀 검증
-& 'C:\Users\User\AppData\Local\Temp\aegis_pet_godot_4_4_1\Godot_v4.4.1-stable_win64_console.exe' --headless --path . --script tests/bichon_animation_integration.gd
+& 'C:\aegis_dx\tools\godot_4_4_1\Godot_v4.4.1-stable_win64_console.exe' --headless --path . --script tests/bichon_animation_integration.gd
 
 # 전체 회귀 검증
-& 'C:\Users\User\AppData\Local\Temp\aegis_pet_godot_4_4_1\Godot_v4.4.1-stable_win64_console.exe' --headless --path . --script tests/run_tests.gd
+& 'C:\aegis_dx\tools\godot_4_4_1\Godot_v4.4.1-stable_win64_console.exe' --headless --path . --script tests/run_tests.gd
 
 # 실제 오버레이 확인
-& 'C:\Users\User\AppData\Local\Temp\aegis_pet_godot_4_4_1\Godot_v4.4.1-stable_win64.exe' --path . --rendering-method gl_compatibility
+& 'C:\aegis_dx\tools\godot_4_4_1\Godot_v4.4.1-stable_win64.exe' --path . --rendering-method gl_compatibility
 ```
 
 새 캐릭터에는 같은 수준의 `<character>_animation_integration.gd`를 추가하거나 일반화된 검증으로 확장한다. 비숑 테스트를 통과시키기 위해 비숑 기준을 약화하지 않는다.
